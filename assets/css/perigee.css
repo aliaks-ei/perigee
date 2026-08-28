@@ -1,0 +1,1041 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Tokens
+   ========================================================================== */
+
+:root {
+  /* Surfaces. Perigee is always dark; these are glass over a live render, so
+     they are deliberately low-alpha and lean on blur for separation. */
+  --surface-void: #02050a;
+  --surface-glass: rgba(9, 14, 22, 0.52);
+  --surface-glass-strong: rgba(7, 11, 18, 0.74);
+  --surface-raised: rgba(255, 255, 255, 0.055);
+  --surface-raised-hover: rgba(255, 255, 255, 0.09);
+
+  /* Ink. Four steps is enough; more and the hierarchy stops reading. */
+  --ink-primary: #f5f3ee;
+  --ink-secondary: rgba(226, 232, 241, 0.72);
+  --ink-tertiary: rgba(214, 223, 236, 0.46);
+  --ink-quiet: rgba(206, 217, 232, 0.3);
+
+  --hairline: rgba(190, 205, 226, 0.12);
+  --hairline-strong: rgba(196, 211, 232, 0.2);
+  --warning: #f7a06a;
+
+  /* Set per-object from the shot definition. */
+  --accent-object: #d8c7a4;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --speed-fast: 160ms;
+  --speed-base: 240ms;
+  --speed-slow: 420ms;
+
+  --shadow-rail: 0 24px 80px rgba(0, 0, 0, 0.5), 0 2px 12px rgba(0, 0, 0, 0.3);
+  --shadow-text: 0 2px 18px rgba(0, 0, 0, 0.7);
+
+  color-scheme: dark;
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#__nuxt {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--surface-void);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:where(button):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-object) 70%, white);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   Shell
+   ========================================================================== */
+
+.perigee-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--ink-primary);
+  background: var(--surface-void);
+}
+
+/* Fine grain over the whole frame. Breaks up the wide sky gradients that
+   would otherwise band on 8-bit displays. */
+.perigee-shell::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.perigee-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.perigee-canvas:active {
+  cursor: grabbing;
+}
+
+/* Two scrims: a light one at the top for the header, and a deeper one at the
+   bottom so the title and rail never have to fight the skyline for contrast. */
+.scene-scrim {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(1, 4, 9, 0.5) 0, rgba(1, 4, 9, 0.14) 14%, transparent 26%),
+    linear-gradient(0deg, rgba(1, 4, 9, 0.66) 0, rgba(1, 4, 9, 0.28) 14%, transparent 34%),
+    radial-gradient(110% 62% at 10% 98%, rgba(1, 4, 9, 0.6) 0, transparent 60%);
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.perigee-header {
+  position: absolute;
+  z-index: 4;
+  top: clamp(20px, 3.4vh, 38px);
+  left: clamp(24px, 3.2vw, 54px);
+  right: clamp(24px, 3.2vw, 54px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.brand {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.brand-mark {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 80%, white);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-object) 46%, transparent);
+  transition: box-shadow var(--speed-base) var(--ease-out);
+}
+
+/* The mark is a body at perigee: a dot riding the inside of its orbit. */
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -1px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent-object);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px var(--accent-object);
+}
+
+.brand:hover .brand-mark {
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent-object) 72%, transparent);
+}
+
+.brand-word {
+  text-transform: uppercase;
+  letter-spacing: 0.42em;
+  font-size: 11px;
+  font-weight: 600;
+  text-indent: 0.42em;
+  text-shadow: var(--shadow-text);
+}
+
+.viewpoint-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-glass);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  pointer-events: auto;
+}
+
+.viewpoint-switcher button {
+  position: relative;
+  min-height: 32px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color var(--speed-fast) ease, background-color var(--speed-fast) ease;
+}
+
+.viewpoint-switcher button:hover:not(:disabled) {
+  color: var(--ink-primary);
+  background: var(--surface-raised);
+}
+
+.viewpoint-switcher button.selected {
+  color: var(--ink-primary);
+  background: var(--surface-raised-hover);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* ==========================================================================
+   Object identity
+   ========================================================================== */
+
+.object-identity {
+  position: absolute;
+  z-index: 3;
+  left: clamp(26px, 3.4vw, 58px);
+  bottom: clamp(132px, 18vh, 186px);
+  max-width: min(720px, 64vw);
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--speed-base) ease,
+    transform var(--speed-slow) var(--ease-out),
+    bottom var(--speed-slow) var(--ease-out);
+}
+
+.object-identity.transitioning {
+  opacity: 0.55;
+  transform: translateY(5px);
+}
+
+.perigee-shell.browser-open .object-identity {
+  bottom: clamp(258px, 34vh, 318px);
+}
+
+.identity-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: var(--ink-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  text-shadow: var(--shadow-text);
+}
+
+.kicker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-object);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-object) 60%, transparent);
+}
+
+.object-identity h1 {
+  margin: 0 0 16px;
+  color: var(--ink-primary);
+  font-size: clamp(44px, 5.4vw, 80px);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.7);
+}
+
+.object-metadata {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 450;
+  letter-spacing: 0.015em;
+  text-shadow: var(--shadow-text);
+}
+
+.metadata-lead {
+  color: var(--ink-primary);
+  font-weight: 600;
+}
+
+.metadata-rule {
+  width: 14px;
+  height: 1px;
+  background: var(--hairline-strong);
+}
+
+.hazard-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 0;
+  padding: 7px 14px 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--warning) 26%, transparent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--warning) 11%, rgba(8, 6, 4, 0.5));
+  color: var(--warning);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ==========================================================================
+   Control rail
+   ========================================================================== */
+
+.control-rail {
+  position: absolute;
+  z-index: 5;
+  left: clamp(14px, 1.8vw, 30px);
+  right: clamp(14px, 1.8vw, 30px);
+  bottom: clamp(14px, 1.8vw, 26px);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-rail), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  opacity: 0;
+}
+
+.rail-row {
+  position: relative;
+  z-index: 2;
+  height: 74px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 0 clamp(14px, 1.6vw, 22px);
+}
+
+/* --- Object trigger ------------------------------------------------------ */
+
+.object-trigger {
+  justify-self: start;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--speed-fast) ease, border-color var(--speed-fast) ease;
+}
+
+.object-trigger:hover,
+.object-trigger[aria-expanded='true'] {
+  border-color: var(--hairline);
+  background: var(--surface-raised);
+}
+
+.trigger-thumb {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: block;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 34%, transparent);
+  border-radius: 50%;
+  background: #0a1017;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-object) 18%, transparent);
+}
+
+.trigger-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.25);
+}
+
+.trigger-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.trigger-kicker {
+  color: var(--ink-quiet);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.trigger-name {
+  color: var(--ink-primary);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+}
+
+.object-trigger svg {
+  color: var(--ink-tertiary);
+  transition: transform var(--speed-base) var(--ease-out);
+}
+
+.object-trigger svg.rotated {
+  transform: rotate(180deg);
+}
+
+/* --- Distance segmented control ------------------------------------------ */
+
+.distance-options {
+  position: relative;
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: rgba(4, 8, 14, 0.42);
+}
+
+/* Sliding pill. Position comes from measured geometry, so it stays glued to
+   the selected label whatever its width. */
+.distance-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: var(--indicator-w, 0);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent-object) 16%, rgba(255, 255, 255, 0.07));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-object) 30%, transparent),
+    0 0 22px color-mix(in srgb, var(--accent-object) 16%, transparent);
+  transform: translateX(var(--indicator-x, 0));
+  transition:
+    transform var(--speed-base) var(--ease-in-out),
+    width var(--speed-base) var(--ease-in-out);
+  pointer-events: none;
+}
+
+.distance-options button {
+  position: relative;
+  z-index: 1;
+  min-width: 62px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-tertiary);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--speed-fast) ease;
+}
+
+.distance-options button:hover:not(:disabled):not(.selected) {
+  color: var(--ink-secondary);
+}
+
+.distance-options button.selected {
+  color: var(--ink-primary);
+  font-weight: 600;
+}
+
+/* --- Apparent size readout ----------------------------------------------- */
+
+.apparent-size {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  transition: opacity var(--speed-base) ease;
+}
+
+.apparent-size.transitioning {
+  opacity: 0.5;
+}
+
+.apparent-size .spin {
+  align-self: center;
+  color: var(--accent-object);
+  animation: spin 900ms linear infinite;
+}
+
+.size-value {
+  color: var(--ink-primary);
+  font-size: 21px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.size-kicker {
+  color: var(--ink-quiet);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Object browser
+   ========================================================================== */
+
+.object-browser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 10px);
+  padding: 16px clamp(14px, 1.6vw, 22px) 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-rail);
+  backdrop-filter: blur(30px) saturate(1.4);
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
+  transform-origin: bottom;
+}
+
+.browser-kicker {
+  margin: 0 0 14px 4px;
+  color: var(--ink-quiet);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.browser-track {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.object-option {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px 13px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-tertiary);
+  cursor: pointer;
+  transition:
+    color var(--speed-fast) ease,
+    background-color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease;
+}
+
+/* Hairline separators between tiles, drawn on the gaps rather than as borders
+   so the selected tile's own border never doubles up. */
+.object-option + .object-option::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: var(--hairline);
+  transition: opacity var(--speed-fast) ease;
+}
+
+.object-option:hover {
+  color: var(--ink-primary);
+  background: var(--surface-raised);
+}
+
+.object-option.selected {
+  color: var(--ink-primary);
+  border-color: color-mix(in srgb, var(--option-accent, var(--accent-object)) 32%, transparent);
+  background: color-mix(in srgb, var(--option-accent, var(--accent-object)) 9%, transparent);
+}
+
+.object-option.selected::before,
+.object-option:hover::before,
+.object-option:hover + .object-option::before,
+.object-option.selected + .object-option::before {
+  opacity: 0;
+}
+
+.object-thumbnail {
+  position: relative;
+  width: clamp(48px, 4vw, 62px);
+  height: clamp(48px, 4vw, 62px);
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(235, 238, 243, 0.1);
+  border-radius: 50%;
+  background: #0a1017;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition:
+    transform var(--speed-base) var(--ease-out),
+    border-color var(--speed-fast) ease,
+    box-shadow var(--speed-base) ease;
+}
+
+.object-option:hover .object-thumbnail {
+  transform: translateY(-3px) scale(1.05);
+}
+
+.object-option.selected .object-thumbnail {
+  border-color: color-mix(in srgb, var(--option-accent) 62%, transparent);
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.5),
+    0 0 26px color-mix(in srgb, var(--option-accent) 26%, transparent);
+}
+
+.object-thumbnail img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.2);
+}
+
+.object-name {
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.015em;
+}
+
+.object-kind {
+  color: var(--ink-quiet);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* The shared star texture needs a per-object tint to read as that star. */
+.object-jupiter .object-thumbnail img,
+.object-saturn .object-thumbnail img,
+.object-neptune .object-thumbnail img {
+  transform: scale(1.42);
+}
+
+.object-betelgeuse .object-thumbnail img {
+  filter: sepia(1) saturate(2.1) hue-rotate(330deg) brightness(1.12);
+}
+
+.object-sirius .object-thumbnail img {
+  filter: grayscale(1) brightness(1.18) sepia(0.5) hue-rotate(186deg) saturate(1.35);
+}
+
+.object-rigel .object-thumbnail img {
+  filter: grayscale(1) brightness(1.06) sepia(0.58) hue-rotate(192deg) saturate(1.6);
+}
+
+/* ==========================================================================
+   Ambient states
+   ========================================================================== */
+
+.drag-hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: clamp(112px, 14vh, 132px);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  color: var(--ink-quiet);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-shadow: var(--shadow-text);
+  pointer-events: none;
+}
+
+.drag-hint::before,
+.drag-hint::after {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hairline-strong));
+}
+
+.drag-hint::after {
+  background: linear-gradient(90deg, var(--hairline-strong), transparent);
+}
+
+.loading-state {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  color: var(--ink-tertiary);
+  background: radial-gradient(120% 90% at 50% 42%, #050b14 0, #01040a 70%);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+/* A body arriving: the dot swells as it comes close, then holds. */
+.loading-state span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-primary);
+  box-shadow: 0 0 28px var(--ink-primary);
+  animation: approach 1.9s var(--ease-in-out) infinite;
+}
+
+.capability-fallback {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(32px, 9vw, 140px);
+  background: radial-gradient(110% 80% at 22% 40%, #060d18 0, #01040a 72%);
+}
+
+.fallback-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 30px;
+  color: var(--ink-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.38em;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.capability-fallback h1 {
+  margin: 0 0 18px;
+  max-width: 620px;
+  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.fallback-body {
+  max-width: 520px;
+  margin: 0;
+  color: var(--ink-secondary);
+  line-height: 1.7;
+}
+
+.capability-fallback button {
+  min-height: 44px;
+  margin-top: 28px;
+  padding: 0 26px;
+  color: #05080e;
+  background: var(--ink-primary);
+  border: 0;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--speed-fast) var(--ease-out), box-shadow var(--speed-fast) ease;
+}
+
+.capability-fallback button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* ==========================================================================
+   Motion
+   ========================================================================== */
+
+.scene-ready .perigee-header {
+  animation: interface-rise 760ms 140ms var(--ease-out) forwards;
+}
+
+.scene-ready .object-identity {
+  animation: interface-rise 880ms 280ms var(--ease-out) forwards;
+}
+
+.scene-ready .control-rail {
+  animation: interface-rise 780ms 440ms var(--ease-out) forwards;
+}
+
+.browser-enter-active,
+.browser-leave-active {
+  transition: transform var(--speed-base) var(--ease-out), opacity var(--speed-fast) ease;
+}
+
+.browser-enter-from,
+.browser-leave-to {
+  opacity: 0;
+  transform: translateY(12px) scale(0.99);
+}
+
+.hazard-enter-active,
+.hazard-leave-active,
+.hint-enter-active,
+.hint-leave-active {
+  transition: opacity var(--speed-slow) ease, transform var(--speed-slow) var(--ease-out);
+}
+
+.hazard-enter-from,
+.hazard-leave-to,
+.hint-enter-from,
+.hint-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@keyframes interface-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes approach {
+  0%, 100% { opacity: 0.28; transform: scale(0.6); }
+  55% { opacity: 1; transform: scale(1.5); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1100px) {
+  .rail-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .apparent-size {
+    display: none;
+  }
+
+  .distance-options {
+    justify-self: end;
+  }
+}
+
+@media (max-width: 900px) {
+  .perigee-header {
+    top: 16px;
+    left: 18px;
+    right: 18px;
+  }
+
+  .object-identity {
+    left: 20px;
+    bottom: 128px;
+    max-width: 78vw;
+  }
+
+  .distance-options {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .distance-options::-webkit-scrollbar {
+    display: none;
+  }
+
+  .browser-track {
+    grid-template-columns: repeat(8, 92px);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .browser-track::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .perigee-header {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .brand-word {
+    font-size: 10px;
+    letter-spacing: 0.32em;
+  }
+
+  .viewpoint-switcher button {
+    min-height: 30px;
+    padding: 0 11px;
+    font-size: 11px;
+  }
+
+  .object-identity {
+    left: 18px;
+    bottom: 118px;
+    max-width: calc(100vw - 36px);
+  }
+
+  .object-identity h1 {
+    margin-bottom: 12px;
+    font-size: clamp(34px, 12vw, 54px);
+    letter-spacing: 0.09em;
+  }
+
+  .object-metadata {
+    gap: 7px;
+    font-size: 11px;
+  }
+
+  .control-rail {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .rail-row {
+    height: 64px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .trigger-label {
+    display: none;
+  }
+
+  .distance-options button {
+    min-width: 54px;
+    padding: 0 11px;
+    font-size: 11.5px;
+  }
+
+  .object-thumbnail {
+    width: 46px;
+    height: 46px;
+  }
+
+  .drag-hint {
+    display: none;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 641px) {
+  .object-identity {
+    bottom: 120px;
+  }
+
+  .object-identity h1 {
+    font-size: clamp(38px, 4.6vw, 58px);
+  }
+}
+
+/* ==========================================================================
+   User preferences
+   ========================================================================== */
+
+@media (prefers-reduced-transparency: reduce) {
+  .control-rail,
+  .object-browser,
+  .viewpoint-switcher,
+  .hazard-notice {
+    background: rgba(4, 8, 14, 0.94);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 160ms !important;
+  }
+
+  .scene-ready .perigee-header,
+  .scene-ready .object-identity,
+  .scene-ready .control-rail {
+    opacity: 1;
+  }
+}
