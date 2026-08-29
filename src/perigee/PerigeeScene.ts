@@ -16,13 +16,11 @@ import {
   TextureLoader,
   Vector3,
   WebGLRenderer,
-  WebGLRenderTarget,
 } from 'three'
 import {
   BloomEffect,
   EffectComposer,
   EffectPass,
-  Pass,
   RenderPass,
   SMAAEffect,
   ToneMappingEffect,
@@ -43,7 +41,7 @@ import {
 } from './math/angularSize'
 import { createPlanetMaterial, type PlanetMaterialSet } from './materials/PlanetMaterial'
 import { createRingMaterial, type RingMaterialSet } from './materials/RingMaterial'
-import { createCoronaMaterial, createStellarMaterial } from './materials/StellarMaterial'
+import { createStellarMaterial } from './materials/StellarMaterial'
 import { CameraRig } from './CameraRig'
 import { createSkyScene, type SkySceneBundle } from './scenes/createSkyScene'
 import { createGroundScene, type GroundSceneBundle } from './scenes/createGroundScene'
@@ -61,21 +59,6 @@ const HERO_POSITION = new Vector3(86, 118, -500)
  * lower third, which is what makes the ground read as ground.
  */
 const BASE_PITCH = 0.11
-
-class DepthClearPass extends Pass {
-  constructor() {
-    super('DepthClearPass')
-    this.needsSwap = false
-  }
-
-  override render(
-    renderer: WebGLRenderer,
-    inputBuffer: WebGLRenderTarget | null,
-  ): void {
-    renderer.setRenderTarget(this.renderToScreen ? null : inputBuffer)
-    renderer.clearDepth()
-  }
-}
 
 /**
  * Fades a subtree. Hero materials are hand-written shaders that carry their own
@@ -122,6 +105,7 @@ export class PerigeeScene implements PerigeeController {
   private sky!: SkySceneBundle
   private ground!: GroundSceneBundle
   private hero: Group | null = null
+  private heroSurface: Mesh | null = null
   private heroPlanet: PlanetMaterialSet | null = null
   private heroRing: { set: RingMaterialSet, mesh: Mesh } | null = null
   private currentObjectId: SkyObjectId = 'saturn'
@@ -165,10 +149,11 @@ export class PerigeeScene implements PerigeeController {
 
     this.groundCamera.position.set(0, 24, 84)
     this.skyCamera.position.set(0, 0, 0)
-    this.cameraRig = new CameraRig(canvas, this.groundCamera, BASE_PITCH)
+    this.cameraRig = new CameraRig(canvas, this.groundCamera, BASE_PITCH, !this.reducedMotion)
 
     const defaultShot = skyObjectsById.saturn.shot
     this.sky = createSkyScene(defaultShot.skyPalette)
+    await this.sky.setViewpoint('rooftop', true)
     this.ground = createGroundScene()
     this.ground.setViewpoint('rooftop')
 
@@ -177,9 +162,6 @@ export class PerigeeScene implements PerigeeController {
     this.sky.scene.add(this.sunlight)
 
     const skyPass = new RenderPass(this.sky.scene, this.skyCamera)
-    const depthClearPass = new DepthClearPass()
-    const groundPass = new RenderPass(this.ground.scene, this.groundCamera)
-    groundPass.clearPass.enabled = false
 
     this.bloom = new BloomEffect({
       intensity: 0.52,
@@ -199,8 +181,6 @@ export class PerigeeScene implements PerigeeController {
       multisampling: 0,
     })
     this.composer.addPass(skyPass)
-    this.composer.addPass(depthClearPass)
-    this.composer.addPass(groundPass)
     this.composer.addPass(effectPass)
 
     this.setQuality(this.quality.current)
@@ -226,6 +206,7 @@ export class PerigeeScene implements PerigeeController {
 
     const previous = this.hero
     this.hero = nextHero
+    this.heroSurface = built.surface
     this.heroPlanet = built.planet
     this.heroRing = built.ring
     this.currentObjectId = objectId
@@ -303,27 +284,12 @@ export class PerigeeScene implements PerigeeController {
   async setViewpoint(viewpointId: ViewpointId): Promise<void> {
     if (viewpointId === this.currentViewpointId) return
     this.currentViewpointId = viewpointId
-    const next = this.ground.groups[viewpointId]!
-    next.visible = true
-    next.position.y = -6
-    setObjectOpacity(next, 0)
-
-    const duration = this.reducedMotion ? 0.2 : 0.85
-    await this.director.replace((timeline) => {
-      const nextOpacity = { value: 0 }
-      timeline.to(nextOpacity, {
-        value: 1,
-        duration,
-        onUpdate: () => setObjectOpacity(next, nextOpacity.value),
-      }, 0)
-      timeline.to(next.position, { y: 0, duration, ease: 'power3.out' }, 0)
-    })
-
-    // Enforced after the fade rather than trusted to it, so an interrupted
-    // transition can never leave two landscapes stacked on each other.
-    setObjectOpacity(next, 1)
-    next.position.y = 0
     this.ground.setViewpoint(viewpointId)
+    await this.sky.setViewpoint(viewpointId)
+  }
+
+  resetView(): void {
+    this.cameraRig?.reset()
   }
 
   setQuality(tier: QualityTier): void {
@@ -331,7 +297,7 @@ export class PerigeeScene implements PerigeeController {
     const width = this.renderer?.domElement.clientWidth ?? window.innerWidth
     const height = this.renderer?.domElement.clientHeight ?? window.innerHeight
     this.resize(width, height, Math.min(window.devicePixelRatio, dprCap))
-    if (this.bloom) this.bloom.intensity = tier === 'safe' ? 0.32 : tier === 'balanced' ? 0.42 : 0.52
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, skyObjectsById[this.currentObjectId].kind === 'star')
     this.sky?.setQuality(tier)
     this.ground?.setQuality(tier)
   }
@@ -369,10 +335,12 @@ export class PerigeeScene implements PerigeeController {
     this.pause()
     this.director.kill()
     this.cameraRig?.dispose()
+    this.sky?.dispose()
     if (this.hero) disposeObject(this.hero)
     this.composer?.dispose()
     this.renderer?.dispose()
     this.hero = null
+    this.heroSurface = null
     this.heroPlanet = null
     this.heroRing = null
     this.composer = null
@@ -381,20 +349,20 @@ export class PerigeeScene implements PerigeeController {
 
   private async createHero(definition: SkyObjectDefinition): Promise<{
     group: Group
+    surface: Mesh
     planet: PlanetMaterialSet | null
     ring: { set: RingMaterialSet, mesh: Mesh } | null
   }> {
     const group = new Group()
     group.name = `hero-${definition.id}`
-    const sphere = new SphereGeometry(1, 144, 96)
+    const sphere = new SphereGeometry(1, 192, 128)
     const flattening = 1 - (definition.flattening ?? 0)
 
     if (definition.kind === 'star') {
       const surface = new Mesh(sphere, createStellarMaterial(definition.id))
-      const corona = new Mesh(new SphereGeometry(1.12, 72, 48), createCoronaMaterial(definition.id))
-      group.add(surface, corona)
+      group.add(surface)
       group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
-      return { group, planet: null, ring: null }
+      return { group, surface, planet: null, ring: null }
     }
 
     if (!definition.texture) throw new Error(`Missing texture for ${definition.id}`)
@@ -406,17 +374,12 @@ export class PerigeeScene implements PerigeeController {
     surface.scale.y = flattening
     group.add(surface)
 
-    // Back-faced shell just outside the silhouette carries the limb glow.
-    const limb = new Mesh(sphere, planet.limb)
-    limb.scale.set(1.035, flattening * 1.035, 1.035)
-    group.add(limb)
-
     let ring: { set: RingMaterialSet, mesh: Mesh } | null = null
     if (definition.id === 'saturn') {
       const ringTexture = await this.loader.loadAsync('/assets/objects/saturn-ring.png')
       ringTexture.anisotropy = Math.min(16, this.renderer?.capabilities.getMaxAnisotropy() ?? 8)
       const ringSet = createRingMaterial(ringTexture)
-      const mesh = new Mesh(new RingGeometry(1.24, 2.32, 192), ringSet.material)
+      const mesh = new Mesh(new RingGeometry(1.24, 2.32, 256), ringSet.material)
       mesh.rotation.x = Math.PI / 2 + (definition.shot.ringTilt ?? 0)
       mesh.rotation.z = 0.12
       group.add(mesh)
@@ -424,7 +387,7 @@ export class PerigeeScene implements PerigeeController {
     }
 
     group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
-    return { group, planet, ring }
+    return { group, surface, planet, ring }
   }
 
   private radiusFor(definition: SkyObjectDefinition, distanceKm: number): number {
@@ -442,7 +405,7 @@ export class PerigeeScene implements PerigeeController {
     this.sky.setPalette(shot.skyPalette)
     this.sky.setGlow(
       emissive ? (shot.environmentTint ?? shot.accent) : '#ff9550',
-      emissive ? 0.16 : 0.24,
+      emissive ? 0.12 : 0.035,
     )
     this.ground.setLighting(shot.sunDirection, shot.environmentTint, shot.skyPalette[2], emissive)
     this.ground.setHero(HERO_POSITION, shot.accent, this.angularRadiusFor(definition, distanceKm))
@@ -453,7 +416,13 @@ export class PerigeeScene implements PerigeeController {
       this.sunlight.color.set(shot.environmentTint ?? '#f0f4ff')
       this.sunlight.intensity = emissive ? 1.1 : 3.2
     }
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(this.quality.current, emissive)
     if (this.renderer) this.renderer.setClearColor(shot.skyPalette[0], 1)
+  }
+
+  private bloomIntensity(tier: QualityTier, emissive: boolean): number {
+    const base = tier === 'safe' ? 0.32 : tier === 'balanced' ? 0.42 : 0.52
+    return emissive ? base * 4.1 : base
   }
 
   /** Hero shaders light themselves, so they need the sun in their own space. */
@@ -476,13 +445,16 @@ export class PerigeeScene implements PerigeeController {
     this.elapsed += delta
     const elapsed = this.elapsed
     this.cameraRig?.update(delta)
+    const view = this.cameraRig?.view
+    if (view) this.sky.setView(view.yaw, view.pitch, this.skyCamera.fov, this.skyCamera.aspect)
     this.skyCamera.quaternion.copy(this.groundCamera.quaternion)
     this.skyCamera.updateMatrixWorld()
     this.sky.update(elapsed)
-    this.ground.update(elapsed)
 
     if (this.hero) {
-      this.hero.rotation.y += delta * 0.018
+      // Spin the textured body, not its placement group. Rotating the group
+      // makes Saturn's ring plane precess across the frame over time.
+      if (this.heroSurface) this.heroSurface.rotation.y += delta * 0.018
       this.hero.updateMatrixWorld()
     }
     this.updateHeroLighting()

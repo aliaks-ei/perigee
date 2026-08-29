@@ -99,7 +99,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 116_460,
     flattening: 0.09796,
     rotationPeriodHours: 10.7,
-    texture: '/assets/objects/saturn.jpg',
+    texture: '/assets/objects/saturn-atmosphere-v2.webp',
     material: 'gas-giant',
     presets: planetPresets(1_195_000_000),
     shot: {

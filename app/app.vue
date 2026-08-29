@@ -3,6 +3,7 @@ const sceneCanvas = ref<HTMLCanvasElement | null>(null)
 const {
   currentObject,
   currentPreset,
+  currentViewpointId,
   angularDiameter,
   loading,
   capabilityError,
@@ -27,7 +28,9 @@ useSeoMeta({
 })
 
 function handleKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') toggleObjectBrowser(false)
+  if (event.key !== 'Escape' || !objectBrowserOpen.value) return
+  toggleObjectBrowser(false)
+  nextTick(() => document.querySelector<HTMLButtonElement>('[data-object-trigger]')?.focus())
 }
 
 function handleRetry(): void {
@@ -42,13 +45,15 @@ function handleVisibility(): void {
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('visibilitychange', handleVisibility)
-  if (!sceneCanvas.value) return
-  await initialize(sceneCanvas.value)
+  const canvas = sceneCanvas.value
+  if (!canvas) return
+  await initialize(canvas)
+  if (!canvas.isConnected) return
   observer = new ResizeObserver(([entry]) => {
     if (!entry) return
     resize(entry.contentRect.width, entry.contentRect.height, window.devicePixelRatio)
   })
-  observer.observe(sceneCanvas.value)
+  observer.observe(canvas)
 })
 
 onBeforeUnmount(() => {

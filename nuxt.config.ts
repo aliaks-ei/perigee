@@ -11,6 +11,9 @@ export default defineNuxtConfig({
     '@fontsource/manrope/400.css',
     '@fontsource/manrope/500.css',
     '@fontsource/manrope/600.css',
+    '@fontsource/space-grotesk/latin-300.css',
+    '@fontsource/space-grotesk/latin-400.css',
+    '@fontsource/space-grotesk/latin-500.css',
     '~/../assets/css/perigee.css',
   ],
   app: {

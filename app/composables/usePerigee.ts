@@ -95,10 +95,14 @@ async function selectDistance(presetId: string): Promise<void> {
 
 async function selectViewpoint(viewpointId: ViewpointId): Promise<void> {
   if (transitioning.value || viewpointId === currentViewpointId.value) return
+  const previousViewpointId = currentViewpointId.value
+  currentViewpointId.value = viewpointId
   transitioning.value = true
   try {
     await controller.value?.setViewpoint(viewpointId)
-    currentViewpointId.value = viewpointId
+  } catch (error) {
+    currentViewpointId.value = previousViewpointId
+    throw error
   } finally {
     transitioning.value = false
   }
@@ -114,6 +118,8 @@ function dismissHint(): void {
 
 async function resetExperience(): Promise<void> {
   if (transitioning.value) return
+  objectBrowserOpen.value = false
+  controller.value?.resetView()
   if (currentViewpointId.value !== 'rooftop') await selectViewpoint('rooftop')
   if (currentObjectId.value !== 'saturn') await selectObject('saturn')
   if (currentPresetId.value !== 'moon-swap') await selectDistance('moon-swap')

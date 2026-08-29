@@ -10,19 +10,19 @@
   /* Surfaces. Perigee is always dark; these are glass over a live render, so
      they are deliberately low-alpha and lean on blur for separation. */
   --surface-void: #02050a;
-  --surface-glass: rgba(9, 14, 22, 0.52);
-  --surface-glass-strong: rgba(7, 11, 18, 0.74);
-  --surface-raised: rgba(255, 255, 255, 0.055);
-  --surface-raised-hover: rgba(255, 255, 255, 0.09);
+  --surface-glass: rgba(5, 10, 18, 0.38);
+  --surface-glass-strong: rgba(4, 9, 17, 0.7);
+  --surface-raised: rgba(255, 255, 255, 0.06);
+  --surface-raised-hover: rgba(255, 255, 255, 0.105);
 
   /* Ink. Four steps is enough; more and the hierarchy stops reading. */
   --ink-primary: #f5f3ee;
-  --ink-secondary: rgba(226, 232, 241, 0.72);
-  --ink-tertiary: rgba(214, 223, 236, 0.46);
-  --ink-quiet: rgba(206, 217, 232, 0.3);
+  --ink-secondary: rgba(229, 234, 242, 0.74);
+  --ink-tertiary: rgba(220, 227, 237, 0.5);
+  --ink-quiet: rgba(213, 222, 234, 0.34);
 
-  --hairline: rgba(190, 205, 226, 0.12);
-  --hairline-strong: rgba(196, 211, 232, 0.2);
+  --hairline: rgba(199, 212, 231, 0.14);
+  --hairline-strong: rgba(206, 218, 235, 0.24);
   --warning: #f7a06a;
 
   /* Set per-object from the shot definition. */
@@ -39,7 +39,7 @@
   --speed-base: 240ms;
   --speed-slow: 420ms;
 
-  --shadow-rail: 0 24px 80px rgba(0, 0, 0, 0.5), 0 2px 12px rgba(0, 0, 0, 0.3);
+  --shadow-rail: 0 -24px 80px rgba(0, 0, 0, 0.24), 0 -1px 0 rgba(255, 255, 255, 0.025);
   --shadow-text: 0 2px 18px rgba(0, 0, 0, 0.7);
 
   color-scheme: dark;
@@ -100,19 +100,6 @@ button {
   background: var(--surface-void);
 }
 
-/* Fine grain over the whole frame. Breaks up the wide sky gradients that
-   would otherwise band on 8-bit displays. */
-.perigee-shell::after {
-  content: '';
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.14;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
-  mix-blend-mode: soft-light;
-}
-
 .perigee-canvas {
   position: absolute;
   inset: 0;
@@ -136,9 +123,9 @@ button {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(1, 4, 9, 0.5) 0, rgba(1, 4, 9, 0.14) 14%, transparent 26%),
-    linear-gradient(0deg, rgba(1, 4, 9, 0.66) 0, rgba(1, 4, 9, 0.28) 14%, transparent 34%),
-    radial-gradient(110% 62% at 10% 98%, rgba(1, 4, 9, 0.6) 0, transparent 60%);
+    linear-gradient(180deg, rgba(1, 4, 9, 0.5) 0, rgba(1, 4, 9, 0.1) 17%, transparent 29%),
+    linear-gradient(0deg, rgba(1, 4, 9, 0.72) 0, rgba(1, 4, 9, 0.22) 17%, transparent 37%),
+    radial-gradient(ellipse 38% 30% at 13% 68%, rgba(1, 4, 9, 0.48), transparent 100%);
 }
 
 /* ==========================================================================
@@ -148,9 +135,9 @@ button {
 .perigee-header {
   position: absolute;
   z-index: 4;
-  top: clamp(20px, 3.4vh, 38px);
-  left: clamp(24px, 3.2vw, 54px);
-  right: clamp(24px, 3.2vw, 54px);
+  top: clamp(24px, 4.4vh, 46px);
+  left: clamp(30px, 3.7vw, 62px);
+  right: clamp(30px, 3.7vw, 62px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -163,7 +150,7 @@ button {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: 0;
   padding: 0;
   border: 0;
   background: none;
@@ -172,13 +159,7 @@ button {
 }
 
 .brand-mark {
-  position: relative;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--accent-object) 80%, white);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-object) 46%, transparent);
-  transition: box-shadow var(--speed-base) var(--ease-out);
+  display: none;
 }
 
 /* The mark is a body at perigee: a dot riding the inside of its orbit. */
@@ -201,8 +182,8 @@ button {
 
 .brand-word {
   text-transform: uppercase;
-  letter-spacing: 0.42em;
-  font-size: 11px;
+  letter-spacing: 0.48em;
+  font-size: 12px;
   font-weight: 600;
   text-indent: 0.42em;
   text-shadow: var(--shadow-text);
@@ -211,41 +192,54 @@ button {
 .viewpoint-switcher {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-pill);
-  background: var(--surface-glass);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   pointer-events: auto;
 }
 
 .viewpoint-switcher button {
   position: relative;
-  min-height: 32px;
-  padding: 0 15px;
+  min-height: 40px;
+  padding: 0 14px;
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--ink-tertiary);
-  font-size: 12px;
+  color: var(--ink-quiet);
+  font-size: 12.5px;
   font-weight: 500;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: color var(--speed-fast) ease, background-color var(--speed-fast) ease;
+  transition: color var(--speed-fast) ease;
+}
+
+.viewpoint-switcher button::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  bottom: 4px;
+  left: 14px;
+  height: 1px;
+  background: var(--accent-object);
+  opacity: 0;
+  transform: scaleX(0.4);
+  transition: opacity var(--speed-fast) ease, transform var(--speed-base) var(--ease-out);
 }
 
 .viewpoint-switcher button:hover:not(:disabled) {
   color: var(--ink-primary);
-  background: var(--surface-raised);
 }
 
 .viewpoint-switcher button.selected {
   color: var(--ink-primary);
-  background: var(--surface-raised-hover);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  background: transparent;
+  box-shadow: none;
+}
+
+.viewpoint-switcher button.selected::after {
+  opacity: 0;
+  transform: scaleX(0.4);
 }
 
 /* ==========================================================================
@@ -255,9 +249,9 @@ button {
 .object-identity {
   position: absolute;
   z-index: 3;
-  left: clamp(26px, 3.4vw, 58px);
-  bottom: clamp(132px, 18vh, 186px);
-  max-width: min(720px, 64vw);
+  left: clamp(34px, 4.2vw, 70px);
+  bottom: clamp(102px, 12vh, 132px);
+  max-width: min(640px, 60vw);
   pointer-events: none;
   opacity: 0;
   transition:
@@ -272,18 +266,20 @@ button {
 }
 
 .perigee-shell.browser-open .object-identity {
-  bottom: clamp(258px, 34vh, 318px);
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden;
 }
 
 .identity-kicker {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 8px;
-  margin: 0 0 14px;
-  color: var(--ink-tertiary);
-  font-size: 10px;
+  margin: 0 0 16px;
+  color: var(--ink-quiet);
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
   text-shadow: var(--shadow-text);
 }
@@ -297,12 +293,13 @@ button {
 }
 
 .object-identity h1 {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   color: var(--ink-primary);
-  font-size: clamp(44px, 5.4vw, 80px);
-  font-weight: 400;
-  line-height: 0.92;
-  letter-spacing: 0.13em;
+  font-family: 'Space Grotesk', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(38px, 4.35vw, 66px);
+  font-weight: 300;
+  line-height: 0.94;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   text-wrap: balance;
   text-shadow: 0 6px 40px rgba(0, 0, 0, 0.7);
@@ -312,24 +309,25 @@ button {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
   color: var(--ink-secondary);
-  font-size: 12.5px;
-  font-weight: 450;
-  letter-spacing: 0.015em;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.035em;
   text-shadow: var(--shadow-text);
 }
 
 .metadata-lead {
-  color: var(--ink-primary);
-  font-weight: 600;
+  color: var(--ink-secondary);
+  font-weight: 500;
 }
 
 .metadata-rule {
-  width: 14px;
-  height: 1px;
-  background: var(--hairline-strong);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-quiet);
 }
 
 .hazard-notice {
@@ -337,15 +335,14 @@ button {
   align-items: center;
   gap: 9px;
   margin: 18px 0 0;
-  padding: 7px 14px 7px 11px;
-  border: 1px solid color-mix(in srgb, var(--warning) 26%, transparent);
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--warning) 11%, rgba(8, 6, 4, 0.5));
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--warning);
   font-size: 12px;
   letter-spacing: 0.01em;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  text-shadow: var(--shadow-text);
 }
 
 /* ==========================================================================
@@ -355,54 +352,124 @@ button {
 .control-rail {
   position: absolute;
   z-index: 5;
-  left: clamp(14px, 1.8vw, 30px);
-  right: clamp(14px, 1.8vw, 30px);
-  bottom: clamp(14px, 1.8vw, 26px);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface-glass-strong);
-  box-shadow: var(--shadow-rail), inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(28px) saturate(1.4);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  left: 50%;
+  bottom: clamp(18px, 2.5vh, 28px);
+  width: max-content;
+  transform: translateX(-50%);
   opacity: 0;
 }
 
-.rail-row {
-  position: relative;
-  z-index: 2;
-  height: 74px;
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+.control-panel {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 14px);
+  width: min(1040px, calc(100vw - 48px));
+  max-height: min(540px, calc(100vh - 126px));
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), transparent 34%),
+    rgba(3, 8, 15, 0.72);
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.54),
+    0 8px 30px rgba(0, 0, 0, 0.28),
+    inset 0 1px rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(34px) saturate(1.38);
+  -webkit-backdrop-filter: blur(34px) saturate(1.38);
+  transform: translateX(-50%);
+  transform-origin: bottom center;
+}
+
+.control-panel-heading {
+  display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 0 clamp(14px, 1.6vw, 22px);
+  justify-content: space-between;
+  padding: 14px 16px 0 20px;
+}
+
+.control-panel-heading p,
+.control-label {
+  margin: 0;
+  color: var(--ink-quiet);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.control-panel-heading button {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-tertiary);
+  cursor: pointer;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease,
+    background-color var(--speed-fast) ease;
+}
+
+.control-panel-heading button:hover {
+  border-color: var(--hairline);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
 }
 
 /* --- Object trigger ------------------------------------------------------ */
 
 .object-trigger {
-  justify-self: start;
-  min-height: 50px;
+  min-height: 54px;
   display: inline-flex;
   align-items: center;
   gap: 11px;
-  padding: 0 14px 0 7px;
-  border: 1px solid transparent;
+  padding: 7px 14px 7px 8px;
+  border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-pill);
-  background: transparent;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 48%),
+    rgba(3, 8, 15, 0.66);
+  box-shadow:
+    0 16px 46px rgba(0, 0, 0, 0.42),
+    inset 0 1px rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(26px) saturate(1.32);
+  -webkit-backdrop-filter: blur(26px) saturate(1.32);
   cursor: pointer;
-  transition: background-color var(--speed-fast) ease, border-color var(--speed-fast) ease;
+  transition:
+    background-color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease,
+    box-shadow var(--speed-base) ease,
+    transform var(--speed-base) var(--ease-out);
 }
 
 .object-trigger:hover,
 .object-trigger[aria-expanded='true'] {
-  border-color: var(--hairline);
-  background: var(--surface-raised);
+  border-color: color-mix(in srgb, var(--accent-object) 34%, var(--hairline-strong));
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), transparent 48%),
+    rgba(5, 11, 20, 0.76);
+  box-shadow:
+    0 18px 54px rgba(0, 0, 0, 0.48),
+    0 0 30px color-mix(in srgb, var(--accent-object) 10%, transparent),
+    inset 0 1px rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.object-trigger:hover .trigger-name,
+.object-trigger[aria-expanded='true'] .trigger-name,
+.object-trigger:hover > svg,
+.object-trigger[aria-expanded='true'] > svg {
+  color: var(--ink-primary);
 }
 
 .trigger-thumb {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
   display: block;
   overflow: hidden;
@@ -436,33 +503,50 @@ button {
 }
 
 .trigger-name {
-  color: var(--ink-primary);
+  color: var(--ink-secondary);
   font-size: 13px;
-  font-weight: 550;
-  letter-spacing: 0.01em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: color var(--speed-fast) ease;
+}
+
+.trigger-name i {
+  margin: 0 3px;
+  color: var(--ink-quiet);
+  font-style: normal;
 }
 
 .object-trigger svg {
   color: var(--ink-tertiary);
-  transition: transform var(--speed-base) var(--ease-out);
+  transition: color var(--speed-fast) ease, transform var(--speed-base) var(--ease-out);
 }
 
 .object-trigger svg.rotated {
   transform: rotate(180deg);
 }
 
+.distance-panel {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) auto minmax(130px, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 10px 20px 12px;
+  border-top: 1px solid var(--hairline);
+}
+
 /* --- Distance segmented control ------------------------------------------ */
 
 .distance-options {
   position: relative;
-  grid-column: 2;
+  justify-self: center;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   padding: 4px;
-  border: 1px solid var(--hairline);
+  border: 0;
   border-radius: var(--radius-pill);
-  background: rgba(4, 8, 14, 0.42);
+  background: transparent;
 }
 
 /* Sliding pill. Position comes from measured geometry, so it stays glued to
@@ -474,10 +558,13 @@ button {
   left: 0;
   width: var(--indicator-w, 0);
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--accent-object) 16%, rgba(255, 255, 255, 0.07));
+  background: color-mix(in srgb, var(--accent-object) 12%, rgba(255, 255, 255, 0.055));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent-object) 30%, transparent),
-    0 0 22px color-mix(in srgb, var(--accent-object) 16%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-object) 36%, transparent),
+    0 10px 30px rgba(0, 0, 0, 0.24),
+    0 0 22px color-mix(in srgb, var(--accent-object) 12%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   transform: translateX(var(--indicator-x, 0));
   transition:
     transform var(--speed-base) var(--ease-in-out),
@@ -489,13 +576,13 @@ button {
   position: relative;
   z-index: 1;
   min-width: 62px;
-  min-height: 38px;
-  padding: 0 16px;
+  min-height: 42px;
+  padding: 0 18px;
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--ink-tertiary);
-  font-size: 12.5px;
+  color: var(--ink-quiet);
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -514,7 +601,6 @@ button {
 /* --- Apparent size readout ----------------------------------------------- */
 
 .apparent-size {
-  grid-column: 3;
   justify-self: end;
   display: flex;
   align-items: baseline;
@@ -554,22 +640,12 @@ button {
    ========================================================================== */
 
 .object-browser {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% + 10px);
-  padding: 16px clamp(14px, 1.6vw, 22px) 18px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  background: var(--surface-glass-strong);
-  box-shadow: var(--shadow-rail);
-  backdrop-filter: blur(30px) saturate(1.4);
-  -webkit-backdrop-filter: blur(30px) saturate(1.4);
-  transform-origin: bottom;
+  padding: 2px 20px 18px;
 }
 
 .browser-kicker {
-  margin: 0 0 14px 4px;
+  display: block;
+  margin: 0 0 12px;
   color: var(--ink-quiet);
   font-size: 9px;
   font-weight: 600;
@@ -580,7 +656,7 @@ button {
 .browser-track {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 4px;
+  gap: 0;
 }
 
 .object-option {
@@ -589,10 +665,10 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 12px 6px 13px;
+  gap: 8px;
+  padding: 5px 6px 8px;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: transparent;
   color: var(--ink-tertiary);
   cursor: pointer;
@@ -617,13 +693,13 @@ button {
 
 .object-option:hover {
   color: var(--ink-primary);
-  background: var(--surface-raised);
+  background: transparent;
 }
 
 .object-option.selected {
   color: var(--ink-primary);
-  border-color: color-mix(in srgb, var(--option-accent, var(--accent-object)) 32%, transparent);
-  background: color-mix(in srgb, var(--option-accent, var(--accent-object)) 9%, transparent);
+  border-color: transparent;
+  background: transparent;
 }
 
 .object-option.selected::before,
@@ -635,8 +711,8 @@ button {
 
 .object-thumbnail {
   position: relative;
-  width: clamp(48px, 4vw, 62px);
-  height: clamp(48px, 4vw, 62px);
+  width: clamp(52px, 4vw, 64px);
+  height: clamp(52px, 4vw, 64px);
   display: block;
   overflow: hidden;
   border: 1px solid rgba(235, 238, 243, 0.1);
@@ -650,14 +726,16 @@ button {
 }
 
 .object-option:hover .object-thumbnail {
-  transform: translateY(-3px) scale(1.05);
+  transform: translateY(-4px) scale(1.045);
 }
 
 .object-option.selected .object-thumbnail {
-  border-color: color-mix(in srgb, var(--option-accent) 62%, transparent);
+  border-color: color-mix(in srgb, var(--option-accent) 74%, white 8%);
   box-shadow:
     0 8px 26px rgba(0, 0, 0, 0.5),
-    0 0 26px color-mix(in srgb, var(--option-accent) 26%, transparent);
+    0 0 0 5px rgba(4, 9, 16, 0.9),
+    0 0 0 6px color-mix(in srgb, var(--option-accent) 62%, transparent),
+    0 0 30px color-mix(in srgb, var(--option-accent) 28%, transparent);
 }
 
 .object-thumbnail img {
@@ -669,8 +747,8 @@ button {
 }
 
 .object-name {
-  font-size: 12px;
-  font-weight: 550;
+  font-size: 12.5px;
+  font-weight: 500;
   letter-spacing: 0.015em;
 }
 
@@ -689,16 +767,30 @@ button {
   transform: scale(1.42);
 }
 
-.object-betelgeuse .object-thumbnail img {
-  filter: sepia(1) saturate(2.1) hue-rotate(330deg) brightness(1.12);
+.object-betelgeuse .object-thumbnail {
+  background:
+    radial-gradient(circle at 62% 38%, rgba(255, 238, 170, 0.98) 0 4%, transparent 20%),
+    radial-gradient(circle at 36% 64%, rgba(255, 173, 73, 0.9) 0 6%, transparent 25%),
+    radial-gradient(circle, #ffb24c 0, #d53d0d 47%, #3b0902 73%, transparent 75%);
+  box-shadow: 0 0 28px rgba(255, 91, 20, 0.38);
 }
 
-.object-sirius .object-thumbnail img {
-  filter: grayscale(1) brightness(1.18) sepia(0.5) hue-rotate(186deg) saturate(1.35);
-}
-
+.object-betelgeuse .object-thumbnail img,
+.object-sirius .object-thumbnail img,
 .object-rigel .object-thumbnail img {
-  filter: grayscale(1) brightness(1.06) sepia(0.58) hue-rotate(192deg) saturate(1.6);
+  opacity: 0;
+}
+
+.object-sirius .object-thumbnail,
+.object-rigel .object-thumbnail {
+  background:
+    radial-gradient(circle at 50% 50%, white 0 4%, #dceeff 8%, #72a9ea 28%, rgba(33, 74, 136, 0.72) 52%, transparent 72%),
+    #070e19;
+  box-shadow: 0 0 28px rgba(113, 169, 239, 0.32);
+}
+
+.object-rigel .object-thumbnail {
+  filter: saturate(0.74) brightness(0.92);
 }
 
 /* ==========================================================================
@@ -706,11 +798,11 @@ button {
    ========================================================================== */
 
 .drag-hint {
+  display: none;
   position: absolute;
   z-index: 3;
   left: 50%;
   bottom: clamp(112px, 14vh, 132px);
-  display: inline-flex;
   align-items: center;
   gap: 9px;
   margin: 0;
@@ -827,26 +919,31 @@ button {
    ========================================================================== */
 
 .scene-ready .perigee-header {
-  animation: interface-rise 760ms 140ms var(--ease-out) forwards;
+  opacity: 1;
+  animation: interface-rise 760ms 140ms var(--ease-out) backwards;
 }
 
 .scene-ready .object-identity {
-  animation: interface-rise 880ms 280ms var(--ease-out) forwards;
+  opacity: 1;
+  animation: interface-rise 880ms 280ms var(--ease-out) backwards;
 }
 
 .scene-ready .control-rail {
-  animation: interface-rise 780ms 440ms var(--ease-out) forwards;
+  opacity: 1;
+  animation: dock-rise 780ms 440ms var(--ease-out) backwards;
 }
 
-.browser-enter-active,
-.browser-leave-active {
-  transition: transform var(--speed-base) var(--ease-out), opacity var(--speed-fast) ease;
+.dock-enter-active,
+.dock-leave-active {
+  transition:
+    transform var(--speed-base) var(--ease-out),
+    opacity var(--speed-fast) ease;
 }
 
-.browser-enter-from,
-.browser-leave-to {
+.dock-enter-from,
+.dock-leave-to {
   opacity: 0;
-  transform: translateY(12px) scale(0.99);
+  transform: translate(-50%, 12px) scale(0.985);
 }
 
 .hazard-enter-active,
@@ -869,6 +966,11 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes dock-rise {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 @keyframes approach {
   0%, 100% { opacity: 0.28; transform: scale(0.6); }
   55% { opacity: 1; transform: scale(1.5); }
@@ -883,7 +985,7 @@ button {
    ========================================================================== */
 
 @media (max-width: 1100px) {
-  .rail-row {
+  .distance-panel {
     grid-template-columns: auto 1fr;
   }
 
@@ -905,8 +1007,12 @@ button {
 
   .object-identity {
     left: 20px;
-    bottom: 128px;
+    bottom: 100px;
     max-width: 78vw;
+  }
+
+  .control-panel {
+    width: calc(100vw - 32px);
   }
 
   .distance-options {
@@ -950,14 +1056,14 @@ button {
 
   .object-identity {
     left: 18px;
-    bottom: 118px;
+    bottom: 88px;
     max-width: calc(100vw - 36px);
   }
 
   .object-identity h1 {
-    margin-bottom: 12px;
-    font-size: clamp(34px, 12vw, 54px);
-    letter-spacing: 0.09em;
+    margin-bottom: 10px;
+    font-size: clamp(32px, 9.5vw, 46px);
+    letter-spacing: 0.075em;
   }
 
   .object-metadata {
@@ -966,20 +1072,54 @@ button {
   }
 
   .control-rail {
-    left: 10px;
-    right: 10px;
+    left: 50%;
     bottom: 10px;
-    border-radius: var(--radius-md);
+    width: max-content;
   }
 
-  .rail-row {
-    height: 64px;
-    gap: 10px;
-    padding: 0 10px;
+  .object-trigger {
+    min-width: min(230px, calc(100vw - 20px));
   }
 
-  .trigger-label {
+  .control-panel {
+    bottom: calc(100% + 10px);
+    width: calc(100vw - 20px);
+    max-height: calc(100svh - 84px);
+    overflow-y: auto;
+    border-radius: 18px;
+  }
+
+  .control-panel-heading {
+    padding: 12px 10px 0 14px;
+  }
+
+  .object-browser {
+    padding: 0 12px 14px;
+  }
+
+  .browser-kicker {
+    margin-bottom: 10px;
+  }
+
+  .browser-track {
+    grid-template-columns: repeat(8, 86px);
+  }
+
+  .distance-panel {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 9px 10px 11px;
+  }
+
+  .control-label {
     display: none;
+  }
+
+  .distance-options {
+    min-width: 0;
+    width: 100%;
+    justify-self: stretch;
   }
 
   .distance-options button {
@@ -1000,11 +1140,11 @@ button {
 
 @media (max-height: 720px) and (min-width: 641px) {
   .object-identity {
-    bottom: 120px;
+    bottom: 92px;
   }
 
   .object-identity h1 {
-    font-size: clamp(38px, 4.6vw, 58px);
+    font-size: clamp(34px, 4vw, 50px);
   }
 }
 
@@ -1013,8 +1153,8 @@ button {
    ========================================================================== */
 
 @media (prefers-reduced-transparency: reduce) {
-  .control-rail,
-  .object-browser,
+  .control-panel,
+  .object-trigger,
   .viewpoint-switcher,
   .hazard-notice {
     background: rgba(4, 8, 14, 0.94);
@@ -1038,4 +1178,5 @@ button {
   .scene-ready .control-rail {
     opacity: 1;
   }
+
 }

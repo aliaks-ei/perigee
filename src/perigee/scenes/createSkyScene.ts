@@ -11,6 +11,8 @@ import {
 } from 'three'
 import type { QualityTier } from '../../../app/types/perigee'
 import { createAtmosphereMaterial } from '../materials/AtmosphereMaterial'
+import type { ViewpointId } from '../../../app/types/perigee'
+import { createEnvironmentLayer } from './createEnvironmentLayer'
 
 export interface SkySceneBundle {
   scene: Scene
@@ -21,7 +23,10 @@ export interface SkySceneBundle {
   setGlow: (color: string, strength: number) => void
   setPixelRatio: (pixelRatio: number) => void
   setQuality: (tier: QualityTier) => void
+  setViewpoint: (viewpointId: ViewpointId, immediate?: boolean) => Promise<void>
+  setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
   update: (time: number) => void
+  dispose: () => void
 }
 
 function seededRandom(seed: number): () => number {
@@ -36,7 +41,11 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
   const scene = new Scene()
   const atmosphere = createAtmosphereMaterial(palette)
   const dome = new Mesh(new SphereGeometry(1_200, 32, 20), atmosphere)
+  dome.renderOrder = -200
   scene.add(dome)
+
+  const environment = createEnvironmentLayer()
+  scene.add(environment.mesh)
 
   const random = seededRandom(731_992)
   const starCount = 5_200
@@ -88,7 +97,7 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
     uniforms: {
       uTime: { value: 0 },
       uPixelRatio: { value: 1 },
-      uOpacity: { value: 0.88 },
+      uOpacity: { value: 0.5 },
     },
     vertexShader: `
       uniform float uTime;
@@ -138,11 +147,16 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
       atmosphere.uniforms.uMiddle!.value.set(nextPalette[1])
       atmosphere.uniforms.uHorizon!.value.set(nextPalette[2])
       const luminance = new Color(nextPalette[2]).getHSL({ h: 0, s: 0, l: 0 }).l
-      pointsMaterial.uniforms.uOpacity!.value = Math.max(0.2, 0.96 - luminance * 1.2)
+      pointsMaterial.uniforms.uOpacity!.value = Math.max(0.14, 0.58 - luminance * 0.8)
+      environment.setTint(nextPalette[2], 0.09)
     },
     setGlow(color, strength) {
       atmosphere.uniforms.uGlow!.value.set(color)
       atmosphere.uniforms.uGlowStrength!.value = strength
+      const environmentStrength = strength > 0.08
+        ? Math.min(0.58, strength * 4.6)
+        : Math.min(0.11, 0.045 + strength)
+      environment.setTint(color, environmentStrength)
     },
     setPixelRatio(pixelRatio) {
       pointsMaterial.uniforms.uPixelRatio!.value = pixelRatio
@@ -150,10 +164,24 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
     setQuality(tier) {
       pointsMaterial.uniforms.uOpacity!.value *= tier === 'safe' ? 0.82 : 1
     },
+    setViewpoint(viewpointId, immediate) {
+      return environment.setViewpoint(viewpointId, immediate)
+    },
+    setView(yaw, pitch, verticalFovDegrees, viewportAspect) {
+      environment.setView(yaw, pitch, verticalFovDegrees, viewportAspect)
+    },
     update(time) {
       atmosphere.uniforms.uTime!.value = time
       pointsMaterial.uniforms.uTime!.value = time
       stars.rotation.y = time * 0.0007
+      environment.update(time)
+    },
+    dispose() {
+      environment.dispose()
+      dome.geometry.dispose()
+      atmosphere.dispose()
+      geometry.dispose()
+      pointsMaterial.dispose()
     },
   }
 }

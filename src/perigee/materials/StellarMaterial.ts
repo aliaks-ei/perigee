@@ -1,4 +1,4 @@
-import { AdditiveBlending, BackSide, Color, ShaderMaterial } from 'three'
+import { Color, ShaderMaterial } from 'three'
 import type { SkyObjectId } from '../../../app/types/perigee'
 
 const palettes: Partial<Record<SkyObjectId, [string, string, string]>> = {
@@ -57,47 +57,20 @@ export function createStellarMaterial(objectId: SkyObjectId): ShaderMaterial {
 
       void main() {
         vec3 p = normalize(vPosition);
-        float large = noise(p * 4.2 + uTime * 0.018);
-        float fine = noise(p * 11.0 - uTime * 0.026);
-        float heat = smoothstep(0.18, 0.9, large * 0.72 + fine * 0.35);
+        float drift = uTime * 0.016;
+        float large = noise(p * 3.8 + drift);
+        float cells = noise(p * 10.5 - drift * 1.7);
+        float granules = noise(p * 34.0 + drift * 2.3);
+        float filaments = noise(p * 68.0 - drift * 1.2);
+        float convection = large * 0.48 + cells * 0.3 + granules * 0.17 + filaments * 0.05;
+        float heat = smoothstep(0.2, 0.82, convection);
         vec3 color = mix(uLow, uMiddle, heat);
-        color = mix(color, uHigh, smoothstep(0.7, 1.0, heat));
+        float hotCell = smoothstep(0.68, 0.94, cells * 0.7 + granules * 0.42);
+        color = mix(color, uHigh, hotCell * 0.72);
         float limb = pow(max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 0.34);
-        color *= mix(0.42, 1.34, limb);
-        gl_FragColor = vec4(color * 2.25, uOpacity);
+        color *= mix(0.35, 1.3, limb);
+        gl_FragColor = vec4(color * 2.18, uOpacity);
       }
     `,
-  })
-}
-
-export function createCoronaMaterial(objectId: SkyObjectId): ShaderMaterial {
-  const [, middle] = palettes[objectId] ?? palettes.betelgeuse!
-
-  return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color(middle) }, uOpacity: { value: 1 } },
-    vertexShader: `
-      varying vec3 vNormal;
-      varying vec3 vView;
-      void main() {
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        vNormal = normalize(normalMatrix * normal);
-        vView = normalize(-mvPosition.xyz);
-        gl_Position = projectionMatrix * mvPosition;
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 uColor;
-      uniform float uOpacity;
-      varying vec3 vNormal;
-      varying vec3 vView;
-      void main() {
-        float fresnel = pow(1.0 - abs(dot(vNormal, vView)), 2.3);
-        gl_FragColor = vec4(uColor * 1.4, fresnel * 0.27 * uOpacity);
-      }
-    `,
-    side: BackSide,
-    transparent: true,
-    depthWrite: false,
-    blending: AdditiveBlending,
   })
 }

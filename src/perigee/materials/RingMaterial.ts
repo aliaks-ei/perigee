@@ -64,7 +64,8 @@ export function createRingMaterial(texture: Texture): RingMaterialSet {
         float shadow = step(along, 0.0) * (1.0 - smoothstep(uPlanetRadius * 0.88, uPlanetRadius * 1.08, offset));
         light *= 1.0 - shadow * 0.9;
 
-        gl_FragColor = vec4(ring.rgb * light * 1.5, ring.a * 0.94 * uOpacity);
+        vec3 ringColor = clamp((ring.rgb - 0.5) * 1.16 + 0.48, 0.0, 1.0);
+        gl_FragColor = vec4(ringColor * light * 1.38, ring.a * 0.94 * uOpacity);
       }
     `,
     transparent: true,
