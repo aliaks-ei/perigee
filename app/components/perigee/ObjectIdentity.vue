@@ -7,12 +7,12 @@ const {
   currentPreset,
   angularDiameter,
   hazardCopy,
-  transitioning,
+  busy,
 } = usePerigee()
 </script>
 
 <template>
-  <section class="object-identity" :class="{ transitioning }" aria-live="polite" aria-atomic="true">
+  <section class="object-identity" :class="{ transitioning: busy }" aria-live="polite" aria-atomic="true">
     <p class="identity-kicker">
       <span class="kicker-dot" aria-hidden="true" />
       {{ currentObject.kind === 'star' ? 'Star' : currentObject.kind === 'moon' ? 'Natural satellite' : 'Planet' }}

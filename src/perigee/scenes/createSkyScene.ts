@@ -4,23 +4,21 @@ import {
   Color,
   Points,
   Scene,
-  SphereGeometry,
-  Mesh,
   ShaderMaterial,
   Vector3,
 } from 'three'
 import type { QualityTier } from '../../../app/types/perigee'
-import { createAtmosphereMaterial } from '../materials/AtmosphereMaterial'
 import type { ViewpointId } from '../../../app/types/perigee'
 import { createEnvironmentLayer } from './createEnvironmentLayer'
 
 export interface SkySceneBundle {
   scene: Scene
-  atmosphere: ShaderMaterial
   stars: Points
   setPalette: (palette: [string, string, string]) => void
   /** Warm sky-glow thrown up from the ground, matched to the viewpoint. */
   setGlow: (color: string, strength: number) => void
+  /** Warms the other viewpoints' backdrops while the main thread is idle. */
+  prefetch: () => void
   setPixelRatio: (pixelRatio: number) => void
   setQuality: (tier: QualityTier) => void
   setViewpoint: (viewpointId: ViewpointId, immediate?: boolean) => Promise<void>
@@ -37,13 +35,12 @@ function seededRandom(seed: number): () => number {
   }
 }
 
-export function createSkyScene(palette: [string, string, string]): SkySceneBundle {
+export function createSkyScene(): SkySceneBundle {
   const scene = new Scene()
-  const atmosphere = createAtmosphereMaterial(palette)
-  const dome = new Mesh(new SphereGeometry(1_200, 32, 20), atmosphere)
-  dome.renderOrder = -200
-  scene.add(dome)
 
+  // No sky dome: the environment layer is an opaque full-screen backdrop that
+  // covers every pixel behind the hero, so a dome would only ever be overdrawn.
+  // The palette still drives star density and the backdrop's tint.
   const environment = createEnvironmentLayer()
   scene.add(environment.mesh)
 
@@ -138,21 +135,25 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
   const stars = new Points(geometry, pointsMaterial)
   scene.add(stars)
 
+  // Star opacity has two independent inputs. Keeping them apart stops the
+  // quality factor from compounding on repeated calls, or from being wiped by
+  // the next palette change.
+  let paletteOpacity = 0.5
+  let qualityOpacity = 1
+  const applyStarOpacity = (): void => {
+    pointsMaterial.uniforms.uOpacity!.value = paletteOpacity * qualityOpacity
+  }
+
   return {
     scene,
-    atmosphere,
     stars,
     setPalette(nextPalette) {
-      atmosphere.uniforms.uZenith!.value.set(nextPalette[0])
-      atmosphere.uniforms.uMiddle!.value.set(nextPalette[1])
-      atmosphere.uniforms.uHorizon!.value.set(nextPalette[2])
       const luminance = new Color(nextPalette[2]).getHSL({ h: 0, s: 0, l: 0 }).l
-      pointsMaterial.uniforms.uOpacity!.value = Math.max(0.14, 0.58 - luminance * 0.8)
+      paletteOpacity = Math.max(0.14, 0.58 - luminance * 0.8)
+      applyStarOpacity()
       environment.setTint(nextPalette[2], 0.09)
     },
     setGlow(color, strength) {
-      atmosphere.uniforms.uGlow!.value.set(color)
-      atmosphere.uniforms.uGlowStrength!.value = strength
       const environmentStrength = strength > 0.08
         ? Math.min(0.58, strength * 4.6)
         : Math.min(0.11, 0.045 + strength)
@@ -161,8 +162,12 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
     setPixelRatio(pixelRatio) {
       pointsMaterial.uniforms.uPixelRatio!.value = pixelRatio
     },
+    prefetch() {
+      environment.prefetch()
+    },
     setQuality(tier) {
-      pointsMaterial.uniforms.uOpacity!.value *= tier === 'safe' ? 0.82 : 1
+      qualityOpacity = tier === 'safe' ? 0.82 : 1
+      applyStarOpacity()
     },
     setViewpoint(viewpointId, immediate) {
       return environment.setViewpoint(viewpointId, immediate)
@@ -171,15 +176,12 @@ export function createSkyScene(palette: [string, string, string]): SkySceneBundl
       environment.setView(yaw, pitch, verticalFovDegrees, viewportAspect)
     },
     update(time) {
-      atmosphere.uniforms.uTime!.value = time
       pointsMaterial.uniforms.uTime!.value = time
       stars.rotation.y = time * 0.0007
       environment.update(time)
     },
     dispose() {
       environment.dispose()
-      dome.geometry.dispose()
-      atmosphere.dispose()
       geometry.dispose()
       pointsMaterial.dispose()
     },

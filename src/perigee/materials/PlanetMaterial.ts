@@ -1,8 +1,11 @@
 import {
   Color,
+  DataTexture,
+  RGBAFormat,
   ShaderMaterial,
   SRGBColorSpace,
   Texture,
+  Vector2,
   Vector3,
 } from 'three'
 import type { SkyObjectDefinition } from '../../../app/types/perigee'
@@ -40,8 +43,16 @@ const SURFACE_RESPONSE: Record<SkyObjectDefinition['material'], {
   'stellar': { contrast: 1, saturation: 1, detail: 0, specular: 0, specularPower: 1, warmth: 0 },
 }
 
+/**
+ * The tangent frame comes from the sphere's own equirectangular mapping: +u
+ * runs east, so the tangent is the object's north axis crossed with the normal.
+ * Surface relief is read out of the albedo in the fragment stage, and without a
+ * frame there is no way to tilt the normal in the direction the detail runs.
+ */
 const SHARED_VERTEX = `
   varying vec3 vNormalView;
+  varying vec3 vTangentView;
+  varying vec3 vBitangentView;
   varying vec3 vViewDirection;
   varying vec2 vUv;
 
@@ -49,10 +60,27 @@ const SHARED_VERTEX = `
     vUv = uv;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vNormalView = normalize(normalMatrix * normal);
+    vec3 axis = abs(normal.y) > 0.999 ? vec3(1.0, 0.0, 0.0) : normalize(cross(vec3(0.0, 1.0, 0.0), normal));
+    vTangentView = normalize(normalMatrix * axis);
+    vBitangentView = cross(vNormalView, vTangentView);
     vViewDirection = normalize(-mvPosition.xyz);
     gl_Position = projectionMatrix * mvPosition;
   }
 `
+
+/**
+ * Stands in for the bodies that have no elevation data, so the sampler is
+ * always bound and there is one program rather than one per variant.
+ */
+let neutralNormal: DataTexture | null = null
+
+function neutralNormalMap(): DataTexture {
+  if (!neutralNormal) {
+    neutralNormal = new DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, RGBAFormat)
+    neutralNormal.needsUpdate = true
+  }
+  return neutralNormal
+}
 
 export interface PlanetMaterialSet {
   surface: ShaderMaterial
@@ -63,10 +91,12 @@ export interface PlanetMaterialSet {
 export function createPlanetMaterial(
   definition: SkyObjectDefinition,
   texture: Texture,
+  normalMap: Texture | null = null,
 ): PlanetMaterialSet {
   texture.colorSpace = SRGBColorSpace
-  texture.anisotropy = 8
 
+  const source = texture.image as { width?: number, height?: number } | null
+  const texelSize = new Vector2(1 / (source?.width ?? 4_096), 1 / (source?.height ?? 2_048))
   const limbColor = new Color(LIMB_COLORS[definition.material])
   const bodyTint = new Color(definition.id === 'saturn' ? '#d8aa70' : '#ffffff')
   const sunDirection = new Vector3(0, 0, 1)
@@ -88,7 +118,12 @@ export function createPlanetMaterial(
       uOpacity: { value: 1 },
       uContrast: { value: response.contrast + (saturn ? 0.1 : 0) },
       uSaturation: { value: response.saturation + (saturn ? 0.04 : 0) },
-      uDetail: { value: response.detail + (saturn ? 0.08 : 0) },
+      // Real elevation wins where it exists; the albedo gradient is the
+      // stand-in for bodies whose relief is cloud banding, not ground.
+      uRelief: { value: normalMap ? 0 : (response.detail + (saturn ? 0.08 : 0)) * 2.6 },
+      uTexelSize: { value: texelSize },
+      uNormalMap: { value: normalMap ?? neutralNormalMap() },
+      uNormalStrength: { value: normalMap ? 1 : 0 },
       uSpecular: { value: response.specular },
       uSpecularPower: { value: response.specularPower },
       uWarmth: { value: response.warmth + (saturn ? 0.05 : 0) },
@@ -106,28 +141,52 @@ export function createPlanetMaterial(
       uniform float uOpacity;
       uniform float uContrast;
       uniform float uSaturation;
-      uniform float uDetail;
+      uniform float uRelief;
+      uniform vec2 uTexelSize;
+      uniform sampler2D uNormalMap;
+      uniform float uNormalStrength;
       uniform float uSpecular;
       uniform float uSpecularPower;
       uniform float uWarmth;
 
       varying vec3 vNormalView;
+      varying vec3 vTangentView;
+      varying vec3 vBitangentView;
       varying vec3 vViewDirection;
       varying vec2 vUv;
+
+      float brightness(vec2 uv) {
+        return dot(texture2D(uMap, uv).rgb, vec3(0.2126, 0.7152, 0.0722));
+      }
 
       void main() {
         vec3 normal = normalize(vNormalView);
         vec3 view = normalize(vViewDirection);
         vec3 sun = normalize(uSunDirection);
         vec3 albedo = texture2D(uMap, vUv).rgb;
-        vec3 nearby = texture2D(uMap, vec2(vUv.x, min(vUv.y + 0.00048828125, 1.0))).rgb;
         float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
         albedo = mix(vec3(luma), albedo, uSaturation);
         albedo = clamp((albedo - 0.5) * uContrast + 0.5, 0.0, 1.0);
         albedo = mix(albedo, albedo * uBodyTint * 1.28, uBodyTintStrength);
         albedo = mix(albedo, albedo * uLimbColor, uWarmth);
-        float localRelief = dot(albedo - nearby, vec3(0.2126, 0.7152, 0.0722));
-        albedo *= 1.0 + localRelief * uDetail * 7.0;
+
+        // Relief, from measured topography where there is any. The tangent
+        // frame is built in the vertex stage from the sphere's own
+        // equirectangular mapping, so +x is east and +y is north, matching how
+        // the maps are generated.
+        if (uNormalStrength > 0.0) {
+          vec3 surface = texture2D(uNormalMap, vUv).xyz * 2.0 - 1.0;
+          surface.xy *= uNormalStrength;
+          normal = normalize(vTangentView * surface.x + vBitangentView * surface.y + vNormalView * surface.z);
+        }
+        // Otherwise fall back to the albedo's own gradient. Tilting the normal
+        // reads as depth because the shading then answers to the sun, where the
+        // old single-tap brightness nudge stayed put whatever the light did.
+        else if (uRelief > 0.001) {
+          float slopeU = brightness(vUv + vec2(uTexelSize.x, 0.0)) - brightness(vUv - vec2(uTexelSize.x, 0.0));
+          float slopeV = brightness(vUv + vec2(0.0, uTexelSize.y)) - brightness(vUv - vec2(0.0, uTexelSize.y));
+          normal = normalize(normal - (vTangentView * slopeU + vBitangentView * slopeV) * uRelief);
+        }
 
         float lambert = dot(normal, sun);
         // Wrapped diffuse. A hard clamp gives the CG "pasted sphere" look; the

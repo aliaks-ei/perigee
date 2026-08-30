@@ -39,6 +39,12 @@ export interface SkyObjectDefinition {
   flattening?: number
   rotationPeriodHours?: number
   texture?: string
+  /**
+   * Tangent-space normal map derived from real elevation data. Only the rocky
+   * bodies have one; see `scripts/normal-maps.py`. Must end in `-normal` so the
+   * texture cache loads it as data rather than colour.
+   */
+  normalMap?: string
   material: 'rocky' | 'gas-giant' | 'ice-giant' | 'stellar'
   presets: DistancePreset[]
   shot: ShotDefinition
@@ -58,8 +64,15 @@ export interface PerigeeSelection {
   viewpointId: ViewpointId
 }
 
+export interface PerigeeInitOptions {
+  /** Restores a shared link's selection before the first frame is drawn. */
+  selection?: Partial<PerigeeSelection>
+  /** Reports 0..1 while the first shot's assets load. */
+  onProgress?: (ratio: number) => void
+}
+
 export interface PerigeeController {
-  initialize(canvas: HTMLCanvasElement): Promise<void>
+  initialize(canvas: HTMLCanvasElement, options?: PerigeeInitOptions): Promise<void>
   setObject(objectId: SkyObjectId, presetId: string, immediate?: boolean): Promise<void>
   setDistance(presetId: string): Promise<void>
   setViewpoint(viewpointId: ViewpointId): Promise<void>

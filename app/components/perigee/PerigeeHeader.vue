@@ -2,7 +2,6 @@
 const {
   viewpoints,
   currentViewpointId,
-  transitioning,
   selectViewpoint,
   resetExperience,
 } = usePerigee()
@@ -23,7 +22,6 @@ const {
         role="radio"
         :aria-checked="currentViewpointId === viewpoint.id"
         :aria-label="`${viewpoint.label}: ${viewpoint.description}`"
-        :disabled="transitioning"
         :class="{ selected: currentViewpointId === viewpoint.id }"
         @click="selectViewpoint(viewpoint.id)"
       >

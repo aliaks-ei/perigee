@@ -20,6 +20,11 @@ export class CameraRig {
   private lastY = 0
   private readonly euler = new Euler(0, 0, 0, 'YXZ')
   private readonly quaternion = new Quaternion()
+  /**
+   * Cached because reading it inside `pointermove` forces a layout on every
+   * event. The canvas fills the viewport, so only a resize can invalidate it.
+   */
+  private rect: DOMRect | null = null
 
   constructor(canvas: HTMLCanvasElement, camera: PerspectiveCamera, basePitch = 0, ambientMotion = true) {
     this.canvas = canvas
@@ -31,6 +36,7 @@ export class CameraRig {
     canvas.addEventListener('pointerup', this.onPointerUp)
     canvas.addEventListener('pointercancel', this.onPointerUp)
     canvas.addEventListener('pointerleave', this.onPointerLeave)
+    window.addEventListener('resize', this.onResize)
   }
 
   get view(): Readonly<{ yaw: number, pitch: number }> {
@@ -75,9 +81,14 @@ export class CameraRig {
     this.canvas.dataset.dragged = 'true'
   }
 
+  private readonly onResize = (): void => {
+    this.rect = null
+  }
+
   private readonly onPointerMove = (event: PointerEvent): void => {
     if (this.ambientMotion && event.pointerType === 'mouse') {
-      const rect = this.canvas.getBoundingClientRect()
+      this.rect ??= this.canvas.getBoundingClientRect()
+      const rect = this.rect
       const normalizedX = MathUtils.clamp((event.clientX - rect.left) / Math.max(rect.width, 1) * 2 - 1, -1, 1)
       const normalizedY = MathUtils.clamp((event.clientY - rect.top) / Math.max(rect.height, 1) * 2 - 1, -1, 1)
       this.hoverYaw = normalizedX * 0.014
@@ -88,8 +99,11 @@ export class CameraRig {
     const dy = event.clientY - this.lastY
     this.lastX = event.clientX
     this.lastY = event.clientY
-    this.manualYaw = MathUtils.clamp(this.manualYaw - dx * 0.00125, -0.1, 0.1)
-    this.manualPitch = MathUtils.clamp(this.manualPitch - dy * 0.00105, -0.052, 0.062)
+    // The backdrop is sampled at 0.79 zoom, which leaves room for roughly
+    // +/-0.19 rad of yaw before the image runs out. Staying inside that is what
+    // makes "drag to look around" worth saying.
+    this.manualYaw = MathUtils.clamp(this.manualYaw - dx * 0.00125, -0.15, 0.15)
+    this.manualPitch = MathUtils.clamp(this.manualPitch - dy * 0.00105, -0.07, 0.085)
   }
 
   private readonly onPointerUp = (event: PointerEvent): void => {

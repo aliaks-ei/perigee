@@ -3,22 +3,26 @@ const sceneCanvas = ref<HTMLCanvasElement | null>(null)
 const {
   currentObject,
   currentPreset,
-  currentViewpointId,
   angularDiameter,
   loading,
+  loadingProgress,
   capabilityError,
   objectBrowserOpen,
   hintVisible,
+  notice,
   retry,
   toggleObjectBrowser,
   initialize,
   pause,
   resume,
   resize,
+  stepDistance,
   dismissHint,
+  dismissNotice,
   dispose,
 } = usePerigee()
 let observer: ResizeObserver | null = null
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
 useSeoMeta({
   title: 'Perigee — Impossible skies, honest scale',
@@ -27,10 +31,24 @@ useSeoMeta({
   ogDescription: 'A cinematic, scientifically grounded view of impossible skies.',
 })
 
+const loadingPercent = computed(() => Math.round(loadingProgress.value * 100))
+
 function handleKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape' || !objectBrowserOpen.value) return
-  toggleObjectBrowser(false)
-  nextTick(() => document.querySelector<HTMLButtonElement>('[data-object-trigger]')?.focus())
+  if (event.key === 'Escape' && objectBrowserOpen.value) {
+    toggleObjectBrowser(false)
+    nextTick(() => document.querySelector<HTMLButtonElement>('[data-object-trigger]')?.focus())
+    return
+  }
+  if (event.metaKey || event.ctrlKey || event.altKey) return
+  // Only when the viewer is not inside a control, so the rail's own arrow-key
+  // handling keeps working.
+  const target = event.target
+  if (target instanceof HTMLElement && target.closest('button, input, select, textarea')) return
+
+  if (event.key === ']' || event.key === 'ArrowRight') stepDistance(1)
+  else if (event.key === '[' || event.key === 'ArrowLeft') stepDistance(-1)
+  else return
+  event.preventDefault()
 }
 
 function handleRetry(): void {
@@ -49,15 +67,20 @@ onMounted(async () => {
   if (!canvas) return
   await initialize(canvas)
   if (!canvas.isConnected) return
+  // Debounced: every callback reallocates the composer's render targets, and a
+  // window drag fires one per frame.
   observer = new ResizeObserver(([entry]) => {
     if (!entry) return
-    resize(entry.contentRect.width, entry.contentRect.height, window.devicePixelRatio)
+    const { width, height } = entry.contentRect
+    if (resizeTimer) clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => resize(width, height, window.devicePixelRatio), 100)
   })
   observer.observe(canvas)
 })
 
 onBeforeUnmount(() => {
   observer?.disconnect()
+  if (resizeTimer) clearTimeout(resizeTimer)
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('visibilitychange', handleVisibility)
   dispose()
@@ -91,9 +114,26 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="loading" class="loading-state" aria-live="polite">
-      <span />
+      <span class="loading-dot" />
       <p>Bringing the sky into focus</p>
+      <span
+        class="loading-track"
+        role="progressbar"
+        aria-label="Loading the sky"
+        :aria-valuenow="loadingPercent"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <i :style="{ transform: `scaleX(${Math.max(loadingProgress, 0.04)})` }" />
+      </span>
     </div>
+
+    <Transition name="hint">
+      <p v-if="notice" class="scene-notice" role="status">
+        <span>{{ notice }}</span>
+        <button type="button" aria-label="Dismiss message" @click="dismissNotice">×</button>
+      </p>
+    </Transition>
 
     <PerigeeCapabilityFallback
       v-if="capabilityError"

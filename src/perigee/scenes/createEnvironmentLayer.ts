@@ -3,14 +3,13 @@ import {
   Mesh,
   PlaneGeometry,
   ShaderMaterial,
-  SRGBColorSpace,
   Texture,
-  TextureLoader,
   Vector2,
 } from 'three'
 import type { ViewpointId } from '../../../app/types/perigee'
+import { loadTexture, prefetchTextures } from '../TextureCache'
 
-const ENVIRONMENT_ASSETS: Record<ViewpointId, string> = {
+export const ENVIRONMENT_ASSETS: Record<ViewpointId, string> = {
   rooftop: '/assets/environments/rooftop-cinematic-4k.webp',
   hilltop: '/assets/environments/hilltop-cinematic-4k.webp',
   lakeside: '/assets/environments/lakeside-cinematic-4k.webp',
@@ -24,13 +23,13 @@ export interface EnvironmentLayer {
   setViewpoint: (viewpointId: ViewpointId, immediate?: boolean) => Promise<void>
   setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
   setTint: (color: string, strength: number) => void
+  /** Warms the backdrops the viewer has not switched to yet. */
+  prefetch: () => void
   update: (time: number) => void
   dispose: () => void
 }
 
 export function createEnvironmentLayer(): EnvironmentLayer {
-  const loader = new TextureLoader()
-  const textures = new Map<ViewpointId, Texture>()
   const lookOffset = new Vector2()
   const material = new ShaderMaterial({
     uniforms: {
@@ -109,20 +108,10 @@ export function createEnvironmentLayer(): EnvironmentLayer {
   let lastTime = 0
   let transitioning = false
 
-  async function loadTexture(viewpointId: ViewpointId): Promise<Texture> {
-    const cached = textures.get(viewpointId)
-    if (cached) return cached
-    const texture = await loader.loadAsync(ENVIRONMENT_ASSETS[viewpointId])
-    texture.colorSpace = SRGBColorSpace
-    texture.anisotropy = 8
-    textures.set(viewpointId, texture)
-    return texture
-  }
-
   return {
     mesh,
     async setViewpoint(viewpointId, immediate = false) {
-      const texture = await loadTexture(viewpointId)
+      const texture = await loadTexture(ENVIRONMENT_ASSETS[viewpointId])
       if (!currentTexture || immediate) {
         currentTexture = texture
         nextTexture = texture
@@ -152,6 +141,9 @@ export function createEnvironmentLayer(): EnvironmentLayer {
       material.uniforms.uTint!.value.set(color)
       material.uniforms.uTintStrength!.value = strength
     },
+    prefetch() {
+      prefetchTextures(Object.values(ENVIRONMENT_ASSETS))
+    },
     update(time) {
       lastTime = time
       if (!transitioning) return
@@ -165,10 +157,9 @@ export function createEnvironmentLayer(): EnvironmentLayer {
       transitioning = false
     },
     dispose() {
+      // Textures belong to the shared cache, which outlives this layer.
       mesh.geometry.dispose()
       material.dispose()
-      textures.forEach((texture) => texture.dispose())
-      textures.clear()
     },
   }
 }

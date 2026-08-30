@@ -1,0 +1,14 @@
+# Static-host cache rules (Netlify, Cloudflare Pages). The build is a static
+# bundle, so these are the only place long-lived caching can be declared.
+
+# Textures and backdrops are addressed by name: a new one ships under a new
+# filename, so the old one can be held indefinitely.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Nuxt already hashes these.
+/_nuxt/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/
+  Cache-Control: public, max-age=0, must-revalidate

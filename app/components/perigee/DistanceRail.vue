@@ -9,7 +9,7 @@ const {
   currentPresetId,
   angularDiameter,
   objectBrowserOpen,
-  transitioning,
+  busy,
   selectDistance,
   toggleObjectBrowser,
 } = usePerigee()
@@ -122,7 +122,6 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
               type="button"
               role="radio"
               :aria-checked="currentPresetId === preset.id"
-              :disabled="transitioning"
               :class="{ selected: currentPresetId === preset.id }"
               @click="selectDistanceAndClose(preset.id)"
               @keydown="onDistanceKeydown($event, index)"
@@ -131,8 +130,8 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
             </button>
           </div>
 
-          <p class="apparent-size" :class="{ transitioning }">
-            <PhCircleNotch v-if="transitioning" :size="13" weight="bold" class="spin" aria-hidden="true" />
+          <p class="apparent-size" :class="{ transitioning: busy }">
+            <PhCircleNotch v-if="busy" :size="13" weight="bold" class="spin" aria-hidden="true" />
             <span class="size-value">{{ formatDegrees(angularDiameter) }}</span>
             <span class="size-kicker">Apparent size</span>
           </p>
@@ -150,7 +149,7 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
       @click="toggleObjectBrowser()"
     >
       <span class="trigger-thumb" aria-hidden="true">
-        <img :src="currentObject.thumbnail" alt="">
+        <img :src="currentObject.thumbnail" alt="" width="160" height="160" decoding="async">
       </span>
       <span class="trigger-label">
         <span class="trigger-kicker">Sky controls</span>

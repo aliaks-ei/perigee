@@ -14,7 +14,6 @@ export interface RingMaterialSet {
 
 export function createRingMaterial(texture: Texture): RingMaterialSet {
   texture.colorSpace = SRGBColorSpace
-  texture.anisotropy = 8
 
   const sunDirection = new Vector3(0.45, 0.72, 0.86).normalize()
 

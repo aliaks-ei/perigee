@@ -34,6 +34,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 3_474.8,
     rotationPeriodHours: 655.72,
     texture: '/assets/objects/moon.jpg',
+    normalMap: '/assets/objects/moon-normal.webp',
     material: 'rocky',
     presets: planetPresets(363_300),
     shot: {
@@ -45,8 +46,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.3,
       accent: '#c7c6c2',
     },
-    thumbnail: '/assets/objects/moon.jpg',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: '/assets/objects/thumbs/moon.webp',
+    attributionIds: ['solar-system-scope-textures', 'planetary-elevation-data'],
   },
   {
     id: 'mars',
@@ -56,6 +57,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     flattening: 0.00589,
     rotationPeriodHours: 24.62,
     texture: '/assets/objects/mars.jpg',
+    normalMap: '/assets/objects/mars-normal.webp',
     material: 'rocky',
     presets: planetPresets(54_600_000),
     shot: {
@@ -67,8 +69,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.27,
       accent: '#c87950',
     },
-    thumbnail: '/assets/objects/mars.jpg',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: '/assets/objects/thumbs/mars.webp',
+    attributionIds: ['solar-system-scope-textures', 'planetary-elevation-data'],
   },
   {
     id: 'jupiter',
@@ -89,7 +91,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.24,
       accent: '#d4b89a',
     },
-    thumbnail: '/assets/objects/jupiter.jpg',
+    thumbnail: '/assets/objects/thumbs/jupiter.webp',
     attributionIds: ['solar-system-scope-textures'],
   },
   {
@@ -112,7 +114,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       ringTilt: -0.31,
       accent: '#d8c7a4',
     },
-    thumbnail: '/assets/objects/saturn.jpg',
+    thumbnail: '/assets/objects/thumbs/saturn.webp',
     attributionIds: ['solar-system-scope-textures'],
   },
   {
@@ -134,7 +136,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.29,
       accent: '#6187dc',
     },
-    thumbnail: '/assets/objects/neptune.jpg',
+    thumbnail: '/assets/objects/thumbs/neptune.webp',
     attributionIds: ['solar-system-scope-textures'],
   },
   {
@@ -155,7 +157,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#ff5d2f',
       accent: '#ed6a38',
     },
-    thumbnail: '/assets/objects/star-surface.jpg',
+    thumbnail: '/assets/objects/thumbs/star.webp',
     attributionIds: ['solar-system-scope-textures'],
   },
   {
@@ -176,7 +178,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#b7d5ff',
       accent: '#b9d6ff',
     },
-    thumbnail: '/assets/objects/star-surface.jpg',
+    thumbnail: '/assets/objects/thumbs/star.webp',
     attributionIds: ['solar-system-scope-textures'],
   },
   {
@@ -197,7 +199,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#a8c8ff',
       accent: '#abcaff',
     },
-    thumbnail: '/assets/objects/star-surface.jpg',
+    thumbnail: '/assets/objects/thumbs/star.webp',
     attributionIds: ['solar-system-scope-textures'],
   },
 ]
