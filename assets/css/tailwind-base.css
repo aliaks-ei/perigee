@@ -1,0 +1,5 @@
+/* Preflight and Tailwind's component layer. Loaded first so every rule in
+   `base.css` and `perigee.css` overrides it. See `nuxt.config.ts` for the
+   full stylesheet order. */
+@tailwind base;
+@tailwind components;

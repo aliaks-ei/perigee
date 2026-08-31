@@ -12,6 +12,11 @@ export default defineNuxtConfig({
     public: '../public',
   },
   modules: ['@nuxtjs/tailwindcss'],
+  tailwindcss: {
+    // The directives are split across two files so utilities can be loaded
+    // last (see `css` below). The module only injects one, so it injects none.
+    cssPath: false,
+  },
   css: [
     // Latin subsets only. The unscoped entries declare every subset Manrope
     // ships, which is nine extra font faces the app never renders.
@@ -21,7 +26,20 @@ export default defineNuxtConfig({
     '@fontsource/space-grotesk/latin-300.css',
     '@fontsource/space-grotesk/latin-400.css',
     '@fontsource/space-grotesk/latin-500.css',
+    // Order matters: preflight first, the component sheet in the middle, and
+    // Tailwind's utilities last so a class in a template always wins over the
+    // component class beside it.
+    //
+    // `animations.css` sits after `perigee.css` on purpose. A transition class
+    // like `.dock-enter-from` ties on specificity with the component class it
+    // lands on (`.control-panel`), so the later sheet wins. Load it first and
+    // every transition on a positioned element silently stops moving.
+    '~/../assets/css/tailwind-base.css',
+    '~/../assets/css/tokens.css',
+    '~/../assets/css/base.css',
     '~/../assets/css/perigee.css',
+    '~/../assets/css/animations.css',
+    '~/../assets/css/tailwind-utilities.css',
   ],
   app: {
     head: {

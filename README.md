@@ -37,9 +37,9 @@ contracts, and the production build.
 - Object-appropriate distance ladders with exact angular-size math
 - Static output suitable for CDN hosting
 
-The design and scientific contracts live in `product-overview.md`,
-`implementation-plan.md`, and `tech-stack.md`. Runtime asset licensing is
-recorded in `public/assets/ATTRIBUTIONS.md`.
+The next product direction, release sequence, decision gates, and scientific
+content rules live in [`product-expansion-plan.md`](product-expansion-plan.md).
+Runtime asset licensing is recorded in `public/assets/ATTRIBUTIONS.md`.
 
 ## License
 

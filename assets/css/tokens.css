@@ -1,0 +1,65 @@
+/* ==========================================================================
+   Design tokens
+   --------------------------------------------------------------------------
+   The single source of truth for Perigee's palette, radii and motion curves.
+   `tailwind.config.ts` mirrors these names so the same values are reachable as
+   utilities (`text-ink-secondary`, `rounded-pill`, `duration-base`). Change a
+   value here and both layers follow.
+   ========================================================================== */
+
+:root {
+  /* Surfaces. Perigee is always dark; these are glass over a live render, so
+     they are deliberately low-alpha and lean on blur for separation. */
+  --surface-void: #02050a;
+  --surface-glass: rgba(5, 10, 18, 0.38);
+  --surface-glass-strong: rgba(4, 9, 17, 0.7);
+  --surface-raised: rgba(255, 255, 255, 0.06);
+  --surface-raised-hover: rgba(255, 255, 255, 0.105);
+
+  /* Ink. Four steps is enough; more and the hierarchy stops reading. */
+  --ink-primary: #f5f3ee;
+  --ink-secondary: rgba(229, 234, 242, 0.74);
+  --ink-tertiary: rgba(220, 227, 237, 0.5);
+  --ink-quiet: rgba(213, 222, 234, 0.34);
+
+  --hairline: rgba(199, 212, 231, 0.14);
+  --hairline-strong: rgba(206, 218, 235, 0.24);
+  --warning: #f7a06a;
+
+  /* Set per-object from the shot definition, on `.perigee-shell` in `app.vue`.
+     Every `accent` utility re-tints itself on each object swap for free. */
+  --accent-object: #d8c7a4;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --speed-fast: 160ms;
+  --speed-base: 240ms;
+  --speed-slow: 420ms;
+
+  --shadow-rail: 0 -24px 80px rgba(0, 0, 0, 0.24), 0 -1px 0 rgba(255, 255, 255, 0.025);
+  --shadow-text: 0 2px 18px rgba(0, 0, 0, 0.7);
+
+  /* The stacking order of the whole interface, in one place. Mirrored in
+     `tailwind.config.ts` as `z-scrim`, `z-header` and so on. */
+  --z-canvas: 0;
+  --z-scrim: 1;
+  --z-locator: 2;
+  --z-identity: 3;
+  --z-header: 4;
+  --z-rail: 5;
+  --z-encounter: 6;
+  --z-loading: 7;
+  --z-fallback: 8;
+  --z-notice: 9;
+
+  color-scheme: dark;
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}

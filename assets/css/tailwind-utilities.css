@@ -1,0 +1,3 @@
+/* Loaded last, so a utility in a template always beats the component class it
+   sits next to. See `nuxt.config.ts` for the full stylesheet order. */
+@tailwind utilities;

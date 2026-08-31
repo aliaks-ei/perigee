@@ -1,0 +1,191 @@
+/* ==========================================================================
+   Motion
+   --------------------------------------------------------------------------
+   Every keyframe and every Vue `<Transition>` state in the app.
+
+   The keyframes are defined here rather than in `tailwind.config.ts` because
+   three of them are driven by a state class on an ancestor (`.scene-ready`),
+   not by a class in a template, and Tailwind only emits keyframes for
+   animations a template actually names. The config registers the `animation`
+   shorthands on top of these definitions, so `animate-approach` and
+   `animate-orbit-turn` are available as utilities as well.
+
+   Durations here are clamped by the reduced-motion block at the bottom. Any
+   new animation must stay in CSS, or carry its own `prefers-reduced-motion`
+   guard, for that clamp to keep holding.
+   ========================================================================== */
+
+@keyframes interface-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The rail is centred with `translateX(-50%)`, so its rise has to carry it. */
+@keyframes dock-rise {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* A body arriving: the dot swells as it comes close, then holds. */
+@keyframes approach {
+  0%, 100% { opacity: 0.28; transform: scale(0.6); }
+  55% { opacity: 1; transform: scale(1.5); }
+}
+
+@keyframes orbit-turn {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes locator-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* --- Interface entrance --------------------------------------------------- */
+
+.scene-ready .perigee-header {
+  opacity: 1;
+  animation: interface-rise 760ms 140ms var(--ease-out) backwards;
+}
+
+.scene-ready .object-identity {
+  opacity: 1;
+  animation: interface-rise 880ms 280ms var(--ease-out) backwards;
+}
+
+.scene-ready .control-rail {
+  opacity: 1;
+  animation: dock-rise 780ms 440ms var(--ease-out) backwards;
+}
+
+/* --- Vue transitions ------------------------------------------------------
+
+   This sheet loads AFTER `perigee.css` (see `nuxt.config.ts`). A class like
+   `.dock-enter-from` ties on specificity with the component class it lands on,
+   so it only wins by coming later.
+
+   Several of these elements are centred with `translateX(-50%)`. A transition
+   that sets `transform` would drop that and make the element jump sideways
+   while it moves, so the component declares its centring as `--center-x` and
+   every transform below carries it through. An element that is not centred
+   simply never sets the variable and the fallback of `0` applies.
+   -------------------------------------------------------------------------- */
+
+/* `dock` — the control panel above the rail. */
+.dock-enter-active,
+.dock-leave-active {
+  transition:
+    transform var(--speed-base) var(--ease-out),
+    opacity var(--speed-fast) ease;
+}
+
+.dock-enter-from,
+.dock-leave-to {
+  opacity: 0;
+  transform: translate(var(--center-x, 0), 12px) scale(0.985);
+}
+
+/* `hazard` and `hint` — small notices that fade up in place. */
+.hazard-enter-active,
+.hazard-leave-active,
+.hint-enter-active,
+.hint-leave-active {
+  transition:
+    opacity var(--speed-slow) ease,
+    transform var(--speed-slow) var(--ease-out);
+}
+
+.hazard-enter-from,
+.hazard-leave-to,
+.hint-enter-from,
+.hint-leave-to {
+  opacity: 0;
+  transform: translate(var(--center-x, 0), 6px);
+}
+
+/* `encounter-title` — the beat copy and the discovery aside. */
+.encounter-title-enter-active,
+.encounter-title-leave-active {
+  transition:
+    opacity var(--speed-slow) ease,
+    transform var(--speed-slow) var(--ease-out);
+}
+
+.encounter-title-enter-from,
+.encounter-title-leave-to {
+  opacity: 0;
+  transform: translate(var(--center-x, 0), 8px);
+}
+
+/* `fade` — full-bleed overlays that have nowhere to move to. */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--speed-slow) ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* `chrome` — the idle interface stepping aside for a guided encounter.
+   Scoped to `.perigee-shell` to reach specificity (0,2,0), because the entrance
+   rules above hold these same elements at `opacity: 1` from `.scene-ready`.
+   It must stay below those rules to win the tie. */
+.chrome-enter-active,
+.chrome-leave-active {
+  transition: opacity var(--speed-base) ease;
+}
+
+.perigee-shell .chrome-enter-from,
+.perigee-shell .chrome-leave-to {
+  opacity: 0;
+}
+
+/* `collapse` — a block that has to take its height with it, so the content
+   above glides instead of snapping when it opens or closes. The shell is a
+   one-row grid and the row animates between `0fr` and `1fr`, which gives a real
+   height transition with no measuring in JavaScript. The inner element clips,
+   so the content's own margin and padding collapse with it. */
+.collapsible {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.collapsible > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.collapse-enter-active,
+.collapse-leave-active {
+  transition:
+    grid-template-rows var(--speed-base) var(--ease-out),
+    opacity var(--speed-fast) ease;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+/* --- Reduced motion ------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 160ms !important;
+  }
+
+  /* The entrance animations carry the interface from `opacity: 0`, so with the
+     animation collapsed the opacity has to be restored by hand. */
+  .scene-ready .perigee-header,
+  .scene-ready .object-identity,
+  .scene-ready .control-rail {
+    opacity: 1;
+  }
+}

@@ -87,27 +87,32 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
 </script>
 
 <template>
-  <section ref="railEl" class="control-rail" aria-label="Sky controls">
+  <section ref="railEl" class="control-rail absolute z-rail" aria-label="Sky controls">
     <Transition name="dock">
       <div
         v-if="objectBrowserOpen"
         id="sky-menu"
-        class="control-panel"
+        class="control-panel absolute overflow-hidden rounded-lg lt-sm:overflow-y-auto"
       >
-        <div class="control-panel-heading">
-          <p>Explore the sky</p>
-          <button type="button" aria-label="Close sky controls" @click="closeControls()">
+        <div class="control-panel-heading flex items-center justify-between">
+          <p class="font-semibold uppercase">Explore the sky</p>
+          <button
+            class="inline-grid h-9 w-9 place-items-center rounded-full"
+            type="button"
+            aria-label="Close sky controls"
+            @click="closeControls()"
+          >
             <PhX :size="15" weight="bold" aria-hidden="true" />
           </button>
         </div>
 
         <PerigeeObjectBrowser />
 
-        <div class="distance-panel">
-          <span class="control-label">Distance</span>
+        <div class="distance-panel grid items-center gap-5 lt-sm:gap-1.5">
+          <span class="control-label font-semibold uppercase lt-sm:hidden">Distance</span>
           <div
             ref="optionsEl"
-            class="distance-options"
+            class="distance-options relative flex items-center gap-1 justify-self-center rounded-pill lt-lg:justify-self-end lt-md:overflow-x-auto lt-md:overscroll-x-contain lt-sm:w-full lt-sm:min-w-0 lt-sm:justify-self-stretch"
             role="radiogroup"
             :aria-label="`Distance for ${currentObject.label}`"
             :style="{
@@ -122,6 +127,7 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
               type="button"
               role="radio"
               :aria-checked="currentPresetId === preset.id"
+              class="whitespace-nowrap"
               :class="{ selected: currentPresetId === preset.id }"
               @click="selectDistanceAndClose(preset.id)"
               @keydown="onDistanceKeydown($event, index)"
@@ -130,10 +136,19 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
             </button>
           </div>
 
-          <p class="apparent-size" :class="{ transitioning: busy }">
-            <PhCircleNotch v-if="busy" :size="13" weight="bold" class="spin" aria-hidden="true" />
+          <p
+            class="apparent-size flex items-baseline gap-2.5 justify-self-end lt-lg:hidden"
+            :class="{ transitioning: busy }"
+          >
+            <PhCircleNotch
+              v-if="busy"
+              :size="13"
+              weight="bold"
+              class="animate-spin self-center text-accent"
+              aria-hidden="true"
+            />
             <span class="size-value">{{ formatDegrees(angularDiameter) }}</span>
-            <span class="size-kicker">Apparent size</span>
+            <span class="size-kicker font-semibold uppercase">Apparent size</span>
           </p>
         </div>
       </div>
@@ -141,18 +156,25 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
 
     <button
       type="button"
-      class="object-trigger"
+      class="object-trigger inline-flex items-center rounded-pill"
       data-object-trigger
       :aria-label="`${objectBrowserOpen ? 'Close' : 'Open'} sky controls for ${currentObject.label}, ${currentPreset.label}`"
       aria-controls="sky-menu"
       :aria-expanded="objectBrowserOpen"
       @click="toggleObjectBrowser()"
     >
-      <span class="trigger-thumb" aria-hidden="true">
-        <img :src="currentObject.thumbnail" alt="" width="160" height="160" decoding="async">
+      <span class="trigger-thumb block shrink-0 overflow-hidden rounded-full" aria-hidden="true">
+        <img
+          class="block h-full w-full object-cover"
+          :src="currentObject.thumbnail"
+          alt=""
+          width="160"
+          height="160"
+          decoding="async"
+        >
       </span>
-      <span class="trigger-label">
-        <span class="trigger-kicker">Sky controls</span>
+      <span class="trigger-label flex flex-col gap-0.5 text-left">
+        <span class="trigger-kicker font-semibold uppercase">Sky controls</span>
         <span class="trigger-name">{{ currentObject.label }} <i aria-hidden="true">·</i> {{ currentPreset.label }}</span>
       </span>
       <PhCaretUp :size="12" weight="bold" aria-hidden="true" :class="{ rotated: objectBrowserOpen }" />

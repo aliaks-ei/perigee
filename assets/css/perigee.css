@@ -1,127 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* ==========================================================================
-   Tokens
+   Components
+   --------------------------------------------------------------------------
+   What Tailwind cannot express without an arbitrary value: the clamp-based
+   layout, the layered gradients and glass, the measured sliding indicator, and
+   the type scale, which does not sit on Tailwind's steps.
+
+   Layout, spacing, flex and grid primitives live on the templates as
+   utilities. If a rule here starts with `display: flex`, it is in the wrong
+   place. Order of loading is set in `nuxt.config.ts`.
    ========================================================================== */
-
-:root {
-  /* Surfaces. Perigee is always dark; these are glass over a live render, so
-     they are deliberately low-alpha and lean on blur for separation. */
-  --surface-void: #02050a;
-  --surface-glass: rgba(5, 10, 18, 0.38);
-  --surface-glass-strong: rgba(4, 9, 17, 0.7);
-  --surface-raised: rgba(255, 255, 255, 0.06);
-  --surface-raised-hover: rgba(255, 255, 255, 0.105);
-
-  /* Ink. Four steps is enough; more and the hierarchy stops reading. */
-  --ink-primary: #f5f3ee;
-  --ink-secondary: rgba(229, 234, 242, 0.74);
-  --ink-tertiary: rgba(220, 227, 237, 0.5);
-  --ink-quiet: rgba(213, 222, 234, 0.34);
-
-  --hairline: rgba(199, 212, 231, 0.14);
-  --hairline-strong: rgba(206, 218, 235, 0.24);
-  --warning: #f7a06a;
-
-  /* Set per-object from the shot definition. */
-  --accent-object: #d8c7a4;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-pill: 999px;
-
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --speed-fast: 160ms;
-  --speed-base: 240ms;
-  --speed-slow: 420ms;
-
-  --shadow-rail: 0 -24px 80px rgba(0, 0, 0, 0.24), 0 -1px 0 rgba(255, 255, 255, 0.025);
-  --shadow-text: 0 2px 18px rgba(0, 0, 0, 0.7);
-
-  color-scheme: dark;
-  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#__nuxt {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  overflow: hidden;
-  background: var(--surface-void);
-}
-
-button {
-  font: inherit;
-  color: inherit;
-}
-
-:where(button):focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent-object) 70%, white);
-  outline-offset: 4px;
-  border-radius: var(--radius-sm);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
 
 /* ==========================================================================
    Shell
    ========================================================================== */
 
-.perigee-shell {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  isolation: isolate;
-  color: var(--ink-primary);
-  background: var(--surface-void);
-}
-
-.perigee-canvas {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  cursor: grab;
-  touch-action: none;
-}
-
-.perigee-canvas:active {
-  cursor: grabbing;
-}
-
 /* Two scrims: a light one at the top for the header, and a deeper one at the
    bottom so the title and rail never have to fight the skyline for contrast. */
 .scene-scrim {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  pointer-events: none;
   background:
     linear-gradient(180deg, rgba(1, 4, 9, 0.5) 0, rgba(1, 4, 9, 0.1) 17%, transparent 29%),
     linear-gradient(0deg, rgba(1, 4, 9, 0.72) 0, rgba(1, 4, 9, 0.22) 17%, transparent 37%),
@@ -133,29 +28,10 @@ button {
    ========================================================================== */
 
 .perigee-header {
-  position: absolute;
-  z-index: 4;
   top: clamp(24px, 4.4vh, 46px);
   left: clamp(30px, 3.7vw, 62px);
   right: clamp(30px, 3.7vw, 62px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  pointer-events: none;
   opacity: 0;
-}
-
-.brand {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  pointer-events: auto;
 }
 
 .brand-mark {
@@ -176,44 +52,33 @@ button {
   box-shadow: 0 0 8px var(--accent-object);
 }
 
-.brand:hover .brand-mark {
-  box-shadow: 0 0 22px color-mix(in srgb, var(--accent-object) 72%, transparent);
-}
-
 .brand-word {
-  text-transform: uppercase;
   letter-spacing: 0.48em;
   font-size: 12px;
-  font-weight: 600;
   text-indent: 0.42em;
-  text-shadow: var(--shadow-text);
+  transition: opacity var(--speed-fast) ease;
 }
 
-.viewpoint-switcher {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  pointer-events: auto;
+/* The wordmark is already at full ink, so the shared colour lift is invisible
+   on it. This is the brand's only hover affordance. */
+.brand:hover .brand-word,
+.brand:focus-visible .brand-word {
+  opacity: 0.68;
 }
 
 .viewpoint-switcher button {
   position: relative;
   min-height: 40px;
   padding: 0 14px;
-  border: 0;
   border-radius: var(--radius-pill);
-  background: transparent;
   color: var(--ink-quiet);
   font-size: 12.5px;
   font-weight: 500;
   letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: color var(--speed-fast) ease;
 }
 
+/* Selection marker. Hover only lifts the colour, so without this the hovered
+   and the selected viewpoint are indistinguishable. */
 .viewpoint-switcher button::after {
   content: '';
   position: absolute;
@@ -224,22 +89,18 @@ button {
   background: var(--accent-object);
   opacity: 0;
   transform: scaleX(0.4);
-  transition: opacity var(--speed-fast) ease, transform var(--speed-base) var(--ease-out);
-}
-
-.viewpoint-switcher button:hover:not(:disabled) {
-  color: var(--ink-primary);
+  transition:
+    opacity var(--speed-fast) ease,
+    transform var(--speed-base) var(--ease-out);
 }
 
 .viewpoint-switcher button.selected {
   color: var(--ink-primary);
-  background: transparent;
-  box-shadow: none;
 }
 
 .viewpoint-switcher button.selected::after {
-  opacity: 0;
-  transform: scaleX(0.4);
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 /* ==========================================================================
@@ -247,17 +108,15 @@ button {
    ========================================================================== */
 
 .object-identity {
-  position: absolute;
-  z-index: 3;
   left: clamp(34px, 4.2vw, 70px);
   bottom: clamp(102px, 12vh, 132px);
   max-width: min(640px, 60vw);
-  pointer-events: none;
   opacity: 0;
   transition:
     opacity var(--speed-base) ease,
     transform var(--speed-slow) var(--ease-out),
-    bottom var(--speed-slow) var(--ease-out);
+    bottom var(--speed-slow) var(--ease-out),
+    visibility var(--speed-base) ease;
 }
 
 .object-identity.transitioning {
@@ -273,15 +132,10 @@ button {
 
 .identity-kicker {
   display: none;
-  align-items: center;
-  gap: 8px;
   margin: 0 0 16px;
   color: var(--ink-quiet);
   font-size: 9px;
-  font-weight: 600;
   letter-spacing: 0.34em;
-  text-transform: uppercase;
-  text-shadow: var(--shadow-text);
 }
 
 .kicker-dot {
@@ -294,8 +148,6 @@ button {
 
 .object-identity h1 {
   margin: 0 0 12px;
-  color: var(--ink-primary);
-  font-family: 'Space Grotesk', 'Manrope', ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(38px, 4.35vw, 66px);
   font-weight: 300;
   line-height: 0.94;
@@ -306,20 +158,12 @@ button {
 }
 
 .object-metadata {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 0;
   color: var(--ink-secondary);
   font-size: 13px;
-  font-weight: 400;
   letter-spacing: 0.035em;
-  text-shadow: var(--shadow-text);
 }
 
 .metadata-lead {
-  color: var(--ink-secondary);
   font-weight: 500;
 }
 
@@ -331,27 +175,369 @@ button {
 }
 
 .hazard-notice {
-  display: inline-flex;
-  align-items: center;
   gap: 9px;
   margin: 18px 0 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
   color: var(--warning);
   font-size: 12px;
   letter-spacing: 0.01em;
-  text-shadow: var(--shadow-text);
 }
+
+.encounter-invite {
+  min-height: 40px;
+  margin: 18px 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-object) 58%, transparent);
+  color: var(--ink-secondary);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease;
+}
+
+.encounter-invite:hover,
+.encounter-invite:focus-visible {
+  border-color: var(--accent-object);
+  color: var(--ink-primary);
+}
+
+.free-discovery {
+  width: min(440px, calc(100vw - 36px));
+  margin-top: 16px;
+  padding: 14px 34px 2px 0;
+  border-top: 1px solid color-mix(in srgb, var(--accent-object) 42%, var(--hairline));
+  color: var(--ink-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.free-discovery p { margin: 0 0 7px; }
+.free-discovery p:first-of-type { color: var(--ink-primary); font-size: 13px; }
+
+.free-discovery span {
+  display: block;
+  color: var(--accent-object);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.free-discovery a {
+  display: inline-block;
+  margin-top: 7px;
+  font-size: 10px;
+}
+
+/* ==========================================================================
+   Guided encounters — Celestial Cut
+   ========================================================================== */
+
+/* The overlay is transparent to the pointer so the viewer can still drag the
+   sky behind it; its controls opt back in. */
+.encounter-overlay button,
+.encounter-overlay a {
+  pointer-events: auto;
+}
+
+.encounter-invitation {
+  left: 50%;
+  bottom: clamp(92px, 13vh, 138px);
+  width: min(620px, calc(100vw - 40px));
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
+}
+
+.encounter-invitation > p {
+  margin: 0 0 24px;
+  color: var(--accent-object);
+  font-size: 9px;
+  letter-spacing: 0.32em;
+}
+
+.encounter-invitation h2 {
+  max-width: 570px;
+  margin: 0 0 28px;
+  font-size: clamp(28px, 3.4vw, 48px);
+  font-weight: 300;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.encounter-play {
+  min-height: 72px;
+  padding: 0 18px;
+  color: var(--accent-object);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.encounter-play span {
+  width: 54px;
+  height: 54px;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 76%, white 8%);
+  transition:
+    transform var(--speed-base) var(--ease-out),
+    background-color var(--speed-fast) ease;
+}
+
+.encounter-play:hover span,
+.encounter-play:focus-visible span {
+  transform: scale(1.06);
+  background: color-mix(in srgb, var(--accent-object) 12%, transparent);
+}
+
+.encounter-dismiss {
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--ink-tertiary);
+}
+
+.encounter-exit {
+  top: clamp(24px, 4.4vh, 46px);
+  right: clamp(30px, 3.7vw, 62px);
+  min-height: 40px;
+  color: var(--ink-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.encounter-observation {
+  left: 50%;
+  bottom: clamp(118px, 17vh, 180px);
+  width: min(680px, calc(100vw - 40px));
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
+}
+
+.encounter-observation p {
+  margin: 0;
+  font-size: clamp(16px, 1.45vw, 22px);
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+/* Focused programmatically when a beat reveals, so the ring would fire on a
+   pointer-driven step the viewer never asked to be told about. */
+.encounter-observation:focus {
+  outline: none;
+}
+
+.encounter-observation button {
+  min-height: 38px;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--hairline-strong);
+  color: var(--ink-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease;
+}
+
+.encounter-observation button:hover,
+.encounter-observation button:focus-visible {
+  border-color: var(--accent-object);
+}
+
+.encounter-beat-actions {
+  gap: 6px 22px;
+  margin-top: 16px;
+}
+
+.encounter-observation .encounter-primary-action {
+  min-height: 46px;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--accent-object);
+  color: var(--accent-object);
+  font-size: 12px;
+  transition:
+    color var(--speed-fast) ease,
+    gap var(--speed-base) var(--ease-out);
+}
+
+.encounter-observation .encounter-primary-action:hover,
+.encounter-observation .encounter-primary-action:focus-visible {
+  gap: 14px;
+  color: var(--ink-primary);
+}
+
+.encounter-observation .encounter-primary-action:disabled {
+  opacity: 0.4;
+}
+
+.encounter-transition-state {
+  left: 50%;
+  bottom: clamp(132px, 19vh, 196px);
+  width: min(520px, calc(100vw - 40px));
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
+  color: var(--ink-secondary);
+}
+
+.encounter-transition-state p {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.13em;
+}
+
+.transition-orbit {
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 36%, transparent);
+}
+
+.transition-orbit i {
+  position: absolute;
+  top: 50%;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-object);
+  box-shadow: 0 0 14px var(--accent-object);
+  transform: translateY(-50%);
+}
+
+/* --- Locator -------------------------------------------------------------- */
+
+.celestial-locator {
+  left: var(--locator-x, 50%);
+  top: var(--locator-y, 32%);
+  width: 0;
+  height: 0;
+  filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.8));
+  transition: opacity var(--speed-base) ease;
+}
+
+.locator-arrow {
+  left: 7px;
+  top: -38px;
+  width: 76px;
+  height: 40px;
+  overflow: visible;
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent-object) 82%, white 14%);
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent-object) 28%, transparent));
+}
+
+.locator-arrow path {
+  stroke-dasharray: 90;
+  stroke-dashoffset: 90;
+  animation: locator-draw 680ms var(--ease-out) forwards;
+}
+
+.locator-label {
+  left: 44px;
+  top: -56px;
+  width: max-content;
+  max-width: 180px;
+  color: var(--ink-secondary);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  line-height: 1.4;
+}
+
+.celestial-locator.align-left .locator-label {
+  right: 44px;
+  left: auto;
+  text-align: right;
+}
+
+.celestial-locator.align-left .locator-arrow {
+  right: 7px;
+  left: auto;
+  transform: scaleX(-1);
+}
+
+.celestial-locator.off-screen .locator-arrow {
+  stroke-dasharray: 3 5;
+  opacity: 0.64;
+}
+
+/* --- Discovery note ------------------------------------------------------- */
+
+.encounter-discovery {
+  right: clamp(24px, 4vw, 64px);
+  bottom: clamp(118px, 17vh, 180px);
+  width: min(360px, calc(100vw - 40px));
+  padding: 18px 20px;
+  border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
+  background: linear-gradient(180deg, rgba(3, 8, 15, 0.84), rgba(3, 8, 15, 0.62));
+  backdrop-filter: blur(14px);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.encounter-discovery p { margin: 0 0 10px; }
+
+.encounter-discovery .discovery-close {
+  min-height: 32px;
+  margin: -8px -8px 6px 12px;
+  padding: 0 8px;
+  color: var(--ink-tertiary);
+  font-size: 10px;
+}
+
+.encounter-discovery .discovery-glance { color: var(--ink-primary); font-size: 14px; }
+
+.encounter-discovery .discovery-boundary {
+  color: var(--accent-object);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.encounter-discovery a { display: block; margin-top: 8px; }
+
+/* --- Transport ------------------------------------------------------------ */
+
+.encounter-transport {
+  left: clamp(24px, 3.7vw, 62px);
+  right: clamp(24px, 3.7vw, 62px);
+  bottom: clamp(18px, 2.5vh, 28px);
+  grid-template-columns: 1fr auto auto;
+  gap: clamp(18px, 3vw, 46px);
+}
+
+.encounter-progress {
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  height: 1px;
+  background: var(--hairline);
+}
+
+.encounter-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent-object);
+  transition: width var(--speed-slow) var(--ease-out);
+}
+
+.encounter-count {
+  color: var(--accent-object);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+.encounter-transport button {
+  min-height: 40px;
+  color: var(--ink-secondary);
+  font-size: 11px;
+}
+
+.encounter-transport button:disabled { opacity: 0.28; }
 
 /* ==========================================================================
    Control rail
    ========================================================================== */
 
 .control-rail {
-  position: absolute;
-  z-index: 5;
   left: 50%;
   bottom: clamp(18px, 2.5vh, 28px);
   width: max-content;
@@ -360,14 +546,11 @@ button {
 }
 
 .control-panel {
-  position: absolute;
   left: 50%;
   bottom: calc(100% + 14px);
   width: min(1040px, calc(100vw - 48px));
   max-height: min(540px, calc(100vh - 126px));
-  overflow: hidden;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-lg);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.045), transparent 34%),
     rgba(3, 8, 15, 0.72);
@@ -377,14 +560,12 @@ button {
     inset 0 1px rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(18px) saturate(1.38);
   -webkit-backdrop-filter: blur(18px) saturate(1.38);
-  transform: translateX(-50%);
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
   transform-origin: bottom center;
 }
 
 .control-panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 14px 16px 0 20px;
 }
 
@@ -393,44 +574,31 @@ button {
   margin: 0;
   color: var(--ink-quiet);
   font-size: 9px;
-  font-weight: 600;
   letter-spacing: 0.22em;
-  text-transform: uppercase;
 }
 
 .control-panel-heading button {
-  width: 36px;
-  height: 36px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
   border: 1px solid transparent;
-  border-radius: 50%;
-  background: transparent;
   color: var(--ink-tertiary);
-  cursor: pointer;
   transition:
     color var(--speed-fast) ease,
     border-color var(--speed-fast) ease,
     background-color var(--speed-fast) ease;
 }
 
-.control-panel-heading button:hover {
+.control-panel-heading button:hover,
+.control-panel-heading button:focus-visible {
   border-color: var(--hairline);
   background: var(--surface-raised);
-  color: var(--ink-primary);
 }
 
-/* --- Object trigger ------------------------------------------------------ */
+/* --- Object trigger ------------------------------------------------------- */
 
 .object-trigger {
   min-height: 54px;
-  display: inline-flex;
-  align-items: center;
   gap: 11px;
   padding: 7px 14px 7px 8px;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-pill);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 48%),
     rgba(3, 8, 15, 0.66);
@@ -439,7 +607,6 @@ button {
     inset 0 1px rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(14px) saturate(1.32);
   -webkit-backdrop-filter: blur(14px) saturate(1.32);
-  cursor: pointer;
   transition:
     background-color var(--speed-fast) ease,
     border-color var(--speed-fast) ease,
@@ -448,6 +615,7 @@ button {
 }
 
 .object-trigger:hover,
+.object-trigger:focus-visible,
 .object-trigger[aria-expanded='true'] {
   border-color: color-mix(in srgb, var(--accent-object) 34%, var(--hairline-strong));
   background:
@@ -461,8 +629,10 @@ button {
 }
 
 .object-trigger:hover .trigger-name,
+.object-trigger:focus-visible .trigger-name,
 .object-trigger[aria-expanded='true'] .trigger-name,
 .object-trigger:hover > svg,
+.object-trigger:focus-visible > svg,
 .object-trigger[aria-expanded='true'] > svg {
   color: var(--ink-primary);
 }
@@ -470,36 +640,19 @@ button {
 .trigger-thumb {
   width: 38px;
   height: 38px;
-  flex: none;
-  display: block;
-  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent-object) 34%, transparent);
-  border-radius: 50%;
   background: #0a1017;
   box-shadow: 0 0 18px color-mix(in srgb, var(--accent-object) 18%, transparent);
 }
 
 .trigger-thumb img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
   transform: scale(1.25);
-}
-
-.trigger-label {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
 }
 
 .trigger-kicker {
   color: var(--ink-quiet);
   font-size: 9px;
-  font-weight: 600;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
 }
 
 .trigger-name {
@@ -518,7 +671,9 @@ button {
 
 .object-trigger svg {
   color: var(--ink-tertiary);
-  transition: color var(--speed-fast) ease, transform var(--speed-base) var(--ease-out);
+  transition:
+    color var(--speed-fast) ease,
+    transform var(--speed-base) var(--ease-out);
 }
 
 .object-trigger svg.rotated {
@@ -527,26 +682,15 @@ button {
 
 .distance-panel {
   min-height: 68px;
-  display: grid;
   grid-template-columns: minmax(70px, 1fr) auto minmax(130px, 1fr);
-  align-items: center;
-  gap: 20px;
   padding: 10px 20px 12px;
   border-top: 1px solid var(--hairline);
 }
 
-/* --- Distance segmented control ------------------------------------------ */
+/* --- Distance segmented control ------------------------------------------- */
 
 .distance-options {
-  position: relative;
-  justify-self: center;
-  display: flex;
-  align-items: center;
-  gap: 4px;
   padding: 4px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
 }
 
 /* Sliding pill. Position comes from measured geometry, so it stays glued to
@@ -578,18 +722,14 @@ button {
   min-width: 62px;
   min-height: 42px;
   padding: 0 18px;
-  border: 0;
   border-radius: var(--radius-pill);
-  background: transparent;
   color: var(--ink-quiet);
   font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color var(--speed-fast) ease;
 }
 
-.distance-options button:hover:not(:disabled):not(.selected) {
+.distance-options button:hover:not(:disabled):not(.selected),
+.distance-options button:focus-visible:not(:disabled):not(.selected) {
   color: var(--ink-secondary);
 }
 
@@ -598,25 +738,15 @@ button {
   font-weight: 600;
 }
 
-/* --- Apparent size readout ----------------------------------------------- */
+/* --- Apparent size readout ------------------------------------------------ */
 
 .apparent-size {
-  justify-self: end;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
   margin: 0;
   transition: opacity var(--speed-base) ease;
 }
 
 .apparent-size.transitioning {
   opacity: 0.5;
-}
-
-.apparent-size .spin {
-  align-self: center;
-  color: var(--accent-object);
-  animation: spin 900ms linear infinite;
 }
 
 .size-value {
@@ -630,9 +760,7 @@ button {
 .size-kicker {
   color: var(--ink-quiet);
   font-size: 9px;
-  font-weight: 600;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
 }
 
 /* ==========================================================================
@@ -644,42 +772,28 @@ button {
 }
 
 .browser-kicker {
-  display: block;
   margin: 0 0 12px;
   color: var(--ink-quiet);
   font-size: 9px;
-  font-weight: 600;
   letter-spacing: 0.24em;
-  text-transform: uppercase;
 }
 
 .browser-track {
-  display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 0;
 }
 
 .object-option {
-  position: relative;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 6px 8px;
+  /* Transparent, but it is part of the tile's measured size. */
   border: 1px solid transparent;
-  border-radius: 0;
-  background: transparent;
+  padding: 5px 6px 8px;
   color: var(--ink-tertiary);
-  cursor: pointer;
   transition:
     color var(--speed-fast) ease,
-    background-color var(--speed-fast) ease,
-    border-color var(--speed-fast) ease;
+    background-color var(--speed-fast) ease;
 }
 
 /* Hairline separators between tiles, drawn on the gaps rather than as borders
-   so the selected tile's own border never doubles up. */
+   so the selected tile's own ring never doubles up. */
 .object-option + .object-option::before {
   content: '';
   position: absolute;
@@ -691,32 +805,23 @@ button {
   transition: opacity var(--speed-fast) ease;
 }
 
-.object-option:hover {
-  color: var(--ink-primary);
-  background: transparent;
-}
-
 .object-option.selected {
   color: var(--ink-primary);
-  border-color: transparent;
-  background: transparent;
 }
 
 .object-option.selected::before,
 .object-option:hover::before,
+.object-option:focus-visible::before,
 .object-option:hover + .object-option::before,
+.object-option:focus-visible + .object-option::before,
 .object-option.selected + .object-option::before {
   opacity: 0;
 }
 
 .object-thumbnail {
-  position: relative;
   width: clamp(52px, 4vw, 64px);
   height: clamp(52px, 4vw, 64px);
-  display: block;
-  overflow: hidden;
   border: 1px solid rgba(235, 238, 243, 0.1);
-  border-radius: 50%;
   background: #0a1017;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   transition:
@@ -725,7 +830,8 @@ button {
     box-shadow var(--speed-base) ease;
 }
 
-.object-option:hover .object-thumbnail {
+.object-option:hover .object-thumbnail,
+.object-option:focus-visible .object-thumbnail {
   transform: translateY(-4px) scale(1.045);
 }
 
@@ -739,10 +845,6 @@ button {
 }
 
 .object-thumbnail img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
   transform: scale(1.2);
 }
 
@@ -751,12 +853,8 @@ button {
 }
 
 .thumbnail-spinner {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   margin: -9px 0 0 -9px;
   color: var(--ink-primary);
-  animation: spin 900ms linear infinite;
 }
 
 .object-name {
@@ -768,12 +866,11 @@ button {
 .object-kind {
   color: var(--ink-quiet);
   font-size: 9px;
-  font-weight: 600;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
 }
 
-/* The shared star texture needs a per-object tint to read as that star. */
+/* The gas giants are shot wider than the rocky bodies, and the stars share one
+   texture that only reads as the right star once it is tinted per object. */
 .object-jupiter .object-thumbnail img,
 .object-saturn .object-thumbnail img,
 .object-neptune .object-thumbnail img {
@@ -812,22 +909,15 @@ button {
 
 .drag-hint {
   display: none;
-  position: absolute;
-  z-index: 3;
   left: 50%;
   bottom: clamp(112px, 14vh, 132px);
-  align-items: center;
   gap: 9px;
   margin: 0;
-  padding: 0;
-  transform: translateX(-50%);
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
   color: var(--ink-quiet);
   font-size: 10px;
-  font-weight: 600;
   letter-spacing: 0.22em;
-  text-transform: uppercase;
-  text-shadow: var(--shadow-text);
-  pointer-events: none;
 }
 
 .drag-hint::before,
@@ -843,35 +933,22 @@ button {
 }
 
 .loading-state {
-  position: absolute;
-  z-index: 7;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 22px;
   color: var(--ink-tertiary);
   background: radial-gradient(120% 90% at 50% 42%, #050b14 0, #01040a 70%);
   font-size: 10px;
-  font-weight: 600;
   letter-spacing: 0.24em;
-  text-transform: uppercase;
 }
 
-/* A body arriving: the dot swells as it comes close, then holds. */
-.loading-state .loading-dot {
+.loading-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--ink-primary);
   box-shadow: 0 0 28px var(--ink-primary);
-  animation: approach 1.9s var(--ease-in-out) infinite;
 }
 
 .loading-track {
-  display: block;
-  overflow: hidden;
   width: clamp(120px, 22vw, 180px);
   height: 2px;
   border-radius: 2px;
@@ -889,19 +966,14 @@ button {
 
 /* Something went wrong after the scene was already running. */
 .scene-notice {
-  position: absolute;
-  z-index: 9;
   top: clamp(76px, 11vh, 104px);
   left: 50%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
   max-width: min(92vw, 460px);
   margin: 0;
   padding: 10px 12px 10px 16px;
-  transform: translateX(-50%);
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
   background: rgba(4, 8, 14, 0.94);
   color: var(--ink-secondary);
   font-size: 12.5px;
@@ -919,32 +991,16 @@ button {
   line-height: 1;
 }
 
-.scene-notice button:hover {
-  color: var(--ink-primary);
-}
-
 .capability-fallback {
-  position: absolute;
-  z-index: 8;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
   padding: clamp(32px, 9vw, 140px);
   background: radial-gradient(110% 80% at 22% 40%, #060d18 0, #01040a 72%);
 }
 
 .fallback-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
   margin: 0 0 30px;
   color: var(--ink-tertiary);
-  text-transform: uppercase;
   letter-spacing: 0.38em;
   font-size: 11px;
-  font-weight: 600;
 }
 
 .capability-fallback h1 {
@@ -964,104 +1020,35 @@ button {
 }
 
 .capability-fallback button {
-  min-height: 44px;
   margin-top: 28px;
   padding: 0 26px;
   color: #05080e;
   background: var(--ink-primary);
-  border: 0;
-  border-radius: var(--radius-pill);
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform var(--speed-fast) var(--ease-out), box-shadow var(--speed-fast) ease;
+  transition:
+    transform var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-fast) ease;
 }
 
-.capability-fallback button:hover {
+/* Overrides the shared text-button hover: this one is dark ink on a light
+   fill, so it must match that rule's shape to win on source order. */
+.capability-fallback button:not(:disabled):hover,
+.capability-fallback button:not(:disabled):focus-visible {
+  color: #05080e;
   transform: translateY(-1px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 /* ==========================================================================
-   Motion
-   ========================================================================== */
-
-.scene-ready .perigee-header {
-  opacity: 1;
-  animation: interface-rise 760ms 140ms var(--ease-out) backwards;
-}
-
-.scene-ready .object-identity {
-  opacity: 1;
-  animation: interface-rise 880ms 280ms var(--ease-out) backwards;
-}
-
-.scene-ready .control-rail {
-  opacity: 1;
-  animation: dock-rise 780ms 440ms var(--ease-out) backwards;
-}
-
-.dock-enter-active,
-.dock-leave-active {
-  transition:
-    transform var(--speed-base) var(--ease-out),
-    opacity var(--speed-fast) ease;
-}
-
-.dock-enter-from,
-.dock-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 12px) scale(0.985);
-}
-
-.hazard-enter-active,
-.hazard-leave-active,
-.hint-enter-active,
-.hint-leave-active {
-  transition: opacity var(--speed-slow) ease, transform var(--speed-slow) var(--ease-out);
-}
-
-.hazard-enter-from,
-.hazard-leave-to,
-.hint-enter-from,
-.hint-leave-to {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
-@keyframes interface-rise {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes dock-rise {
-  from { opacity: 0; transform: translate(-50%, 10px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-@keyframes approach {
-  0%, 100% { opacity: 0.28; transform: scale(0.6); }
-  55% { opacity: 1; transform: scale(1.5); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ==========================================================================
    Responsive
+   --------------------------------------------------------------------------
+   Anything expressible as a utility carries an `lt-lg:`, `lt-md:` or `lt-sm:`
+   prefix on the template instead. What is left here is the clamp-driven
+   geometry and the type scale.
    ========================================================================== */
 
 @media (max-width: 1100px) {
   .distance-panel {
     grid-template-columns: auto 1fr;
-  }
-
-  .apparent-size {
-    display: none;
-  }
-
-  .distance-options {
-    justify-self: end;
   }
 }
 
@@ -1082,34 +1069,24 @@ button {
     width: calc(100vw - 32px);
   }
 
-  .distance-options {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
+  /* The horizontal scroll is a utility on the template; only hiding the bar
+     needs CSS, because Tailwind 3 ships no utility for it. */
+  .distance-options,
+  .browser-track {
     scrollbar-width: none;
   }
 
-  .distance-options::-webkit-scrollbar {
+  .distance-options::-webkit-scrollbar,
+  .browser-track::-webkit-scrollbar {
     display: none;
   }
 
   .browser-track {
     grid-template-columns: repeat(8, 92px);
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-  }
-
-  .browser-track::-webkit-scrollbar {
-    display: none;
   }
 }
 
 @media (max-width: 640px) {
-  .perigee-header {
-    align-items: flex-start;
-    gap: 12px;
-  }
-
   .brand-word {
     font-size: 10px;
     letter-spacing: 0.32em;
@@ -1134,14 +1111,15 @@ button {
   }
 
   .object-metadata {
-    gap: 7px;
     font-size: 11px;
   }
 
+  .encounter-invite {
+    font-size: 9px;
+  }
+
   .control-rail {
-    left: 50%;
     bottom: 10px;
-    width: max-content;
   }
 
   .object-trigger {
@@ -1152,7 +1130,6 @@ button {
     bottom: calc(100% + 10px);
     width: calc(100vw - 20px);
     max-height: calc(100svh - 84px);
-    overflow-y: auto;
     border-radius: 18px;
   }
 
@@ -1175,18 +1152,7 @@ button {
   .distance-panel {
     min-height: 0;
     grid-template-columns: 1fr;
-    gap: 6px;
     padding: 9px 10px 11px;
-  }
-
-  .control-label {
-    display: none;
-  }
-
-  .distance-options {
-    min-width: 0;
-    width: 100%;
-    justify-self: stretch;
   }
 
   .distance-options button {
@@ -1200,9 +1166,60 @@ button {
     height: 46px;
   }
 
-  .drag-hint {
-    display: none;
+  .encounter-invitation {
+    bottom: 92px;
   }
+
+  .encounter-invitation h2 {
+    font-size: clamp(27px, 8.5vw, 38px);
+  }
+
+  .encounter-exit {
+    top: 16px;
+    right: 18px;
+  }
+
+  .encounter-observation {
+    bottom: 110px;
+    width: calc(100vw - 36px);
+  }
+
+  .encounter-transition-state {
+    bottom: 126px;
+  }
+
+  .locator-label {
+    left: 36px;
+    top: -50px;
+    max-width: 126px;
+    font-size: 8px;
+  }
+
+  .celestial-locator.align-left .locator-label {
+    right: 36px;
+  }
+
+  .locator-arrow {
+    top: -34px;
+    width: 66px;
+    height: 35px;
+  }
+
+  .encounter-discovery {
+    right: 18px;
+    bottom: 132px;
+    width: calc(100vw - 36px);
+    max-height: 36svh;
+  }
+
+  .encounter-transport {
+    left: 18px;
+    right: 18px;
+    bottom: 8px;
+    gap: 18px;
+  }
+
+  .encounter-progress { bottom: 46px; }
 }
 
 @media (max-height: 720px) and (min-width: 641px) {
@@ -1223,27 +1240,10 @@ button {
   .control-panel,
   .object-trigger,
   .viewpoint-switcher,
-  .hazard-notice {
+  .hazard-notice,
+  .encounter-discovery {
     background: rgba(4, 8, 14, 0.94);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 160ms !important;
-  }
-
-  .scene-ready .perigee-header,
-  .scene-ready .object-identity,
-  .scene-ready .control-rail {
-    opacity: 1;
-  }
-
 }

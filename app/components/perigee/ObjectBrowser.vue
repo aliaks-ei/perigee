@@ -76,8 +76,8 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
     aria-label="Celestial objects"
     :aria-busy="busy"
   >
-    <p class="browser-kicker">Objects</p>
-    <div class="browser-track">
+    <p class="browser-kicker block font-semibold uppercase">Objects</p>
+    <div class="browser-track grid lt-md:overflow-x-auto lt-md:overscroll-x-contain">
       <button
         v-for="(object, index) in skyObjects"
         :key="object.id"
@@ -86,7 +86,7 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
         role="option"
         :tabindex="index === activeIndex ? 0 : -1"
         :aria-selected="currentObjectId === object.id"
-        :class="['object-option', `object-${object.id}`, {
+        :class="['object-option relative flex min-w-0 flex-col items-center gap-2', `object-${object.id}`, {
           selected: currentObjectId === object.id,
           pending: pendingObjectId === object.id,
         }]"
@@ -94,17 +94,24 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
         @click="selectObjectAndRestoreFocus(object.id)"
         @keydown="onKeydown($event, index)"
       >
-        <span class="object-thumbnail" aria-hidden="true">
-          <img :src="object.thumbnail" alt="" width="160" height="160" decoding="async">
+        <span class="object-thumbnail relative block overflow-hidden rounded-full" aria-hidden="true">
+          <img
+            class="block h-full w-full object-cover"
+            :src="object.thumbnail"
+            alt=""
+            width="160"
+            height="160"
+            decoding="async"
+          >
           <PhCircleNotch
             v-if="pendingObjectId === object.id"
             :size="18"
             weight="bold"
-            class="spin thumbnail-spinner"
+            class="thumbnail-spinner absolute left-1/2 top-1/2 animate-spin"
           />
         </span>
         <span class="object-name">{{ object.label }}</span>
-        <span class="object-kind">{{ object.kind === 'star' ? 'Star' : object.kind === 'moon' ? 'Moon' : 'Planet' }}</span>
+        <span class="object-kind font-semibold uppercase">{{ object.kind === 'star' ? 'Star' : object.kind === 'moon' ? 'Moon' : 'Planet' }}</span>
       </button>
     </div>
   </div>

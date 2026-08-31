@@ -76,6 +76,7 @@ export interface PerigeeController {
   setObject(objectId: SkyObjectId, presetId: string, immediate?: boolean): Promise<void>
   setDistance(presetId: string): Promise<void>
   setViewpoint(viewpointId: ViewpointId): Promise<void>
+  getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null
   resetView(): void
   setQuality(tier: QualityTier): void
   resize(width: number, height: number, dpr: number): void

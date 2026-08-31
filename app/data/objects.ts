@@ -4,6 +4,14 @@ const AU_KM = 149_597_870.7
 const LY_KM = 9_460_730_472_580.8
 const MOON_DISTANCE_KM = 384_400
 
+const moonPresets = [
+  { id: 'real', label: 'Real', metadataLabel: 'Familiar distance', distanceKm: MOON_DISTANCE_KM },
+  { id: 'three-quarter', label: '¾ distance', distanceKm: MOON_DISTANCE_KM * 0.75 },
+  { id: 'half', label: '½ distance', distanceKm: MOON_DISTANCE_KM * 0.5 },
+  { id: 'quarter', label: '¼ distance', distanceKm: MOON_DISTANCE_KM * 0.25 },
+  { id: 'close-pass', label: 'Close pass', distanceKm: MOON_DISTANCE_KM * 0.125 },
+]
+
 const planetPresets = (realKm: number) => [
   { id: 'real', label: 'Real', distanceKm: realKm },
   { id: 'moon-swap', label: 'Moon swap', distanceKm: MOON_DISTANCE_KM },
@@ -36,7 +44,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     texture: '/assets/objects/moon.jpg',
     normalMap: '/assets/objects/moon-normal.webp',
     material: 'rocky',
-    presets: planetPresets(363_300),
+    presets: moonPresets,
     shot: {
       timeOfDay: 0.14,
       exposure: 0.88,

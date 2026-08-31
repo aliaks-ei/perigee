@@ -1,6 +1,15 @@
 import { computed, readonly, ref, shallowRef } from 'vue'
 import { skyObjects, skyObjectsById } from '~/data/objects'
 import { viewpoints } from '~/data/viewpoints'
+import {
+  discoveriesById,
+  encounters,
+  encountersById,
+  encountersBySlug,
+} from '~/data/editorial'
+import { resolveDiscovery } from '~/utils/discoveryCalculations'
+import { analytics } from '~/utils/analytics'
+import type { EncounterDefinition } from '~/types/editorial'
 import type {
   PerigeeController,
   PerigeeSelection,
@@ -9,6 +18,11 @@ import type {
   ViewpointId,
 } from '~/types/perigee'
 import { angularDiameterDegrees } from '../../src/perigee/math/angularSize'
+import {
+  EncounterDirector,
+  type EncounterSnapshot,
+  type EncounterStatus,
+} from '../../src/perigee/EncounterDirector'
 
 const currentObjectId = ref<SkyObjectId>('saturn')
 const currentPresetId = ref('moon-swap')
@@ -24,11 +38,18 @@ const notice = ref<string | null>(null)
 const hintVisible = ref(true)
 const hazardReady = ref(false)
 const controller = shallowRef<PerigeeController | null>(null)
+const encounterDirector = new EncounterDirector()
+const currentEncounter = ref<EncounterDefinition | null>(null)
+const encounterStatus = ref<EncounterStatus>('idle')
+const encounterBeatIndex = ref(0)
+const encounterTransitioning = ref(false)
+const encounterBeatRevealed = ref(false)
 let hazardTimer: ReturnType<typeof setTimeout> | null = null
 let hintTimer: ReturnType<typeof setTimeout> | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
 /** Identifies the newest shot, so a superseded one cannot clear the lock. */
 let shotToken = 0
+let encounterToken = 0
 
 const currentObject = computed(() => skyObjectsById[currentObjectId.value])
 const currentPreset = computed(() =>
@@ -39,6 +60,15 @@ const angularDiameter = computed(() =>
   angularDiameterDegrees(currentObject.value.diameterKm, currentPreset.value.distanceKm),
 )
 const hazardCopy = computed(() => hazardReady.value ? currentPreset.value.hazardCopy : undefined)
+const currentEncounterBeat = computed(() => currentEncounter.value?.beats[encounterBeatIndex.value] ?? null)
+const currentDiscovery = computed(() => {
+  const discoveryId = currentEncounterBeat.value?.discoveryId
+  const discovery = discoveryId ? discoveriesById[discoveryId] : undefined
+  return discovery ? resolveDiscovery(discovery) : null
+})
+const availableEncounter = computed(() => encounters.find((encounter) =>
+  encounter.beats[0]?.selection.objectId === currentObjectId.value,
+) ?? null)
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -84,7 +114,18 @@ function syncUrl(): void {
   params.set('object', currentObjectId.value)
   params.set('distance', currentPresetId.value)
   params.set('view', currentViewpointId.value)
+  if (currentEncounter.value && encounterStatus.value !== 'idle') {
+    params.set('encounter', currentEncounter.value.slug)
+  } else {
+    params.delete('encounter')
+  }
   window.history.replaceState(null, '', `?${params.toString()}`)
+}
+
+function applyEncounterSnapshot(snapshot: EncounterSnapshot): void {
+  currentEncounter.value = snapshot.encounter
+  encounterStatus.value = snapshot.status
+  encounterBeatIndex.value = snapshot.beatIndex
 }
 
 function notify(message: string): void {
@@ -114,11 +155,20 @@ function dismissHint(): void {
 }
 
 async function initialize(canvas: HTMLCanvasElement): Promise<void> {
+  const loadStartedAt = performance.now()
   loading.value = true
   loadingProgress.value = 0
   capabilityError.value = null
 
   const selection = readSelectionFromUrl()
+  const encounterSlug = new URLSearchParams(window.location.search).get('encounter')
+  const linkedEncounter = encounterSlug ? encountersBySlug[encounterSlug] : undefined
+  if (linkedEncounter) {
+    applyEncounterSnapshot(encounterDirector.invite(linkedEncounter))
+    applyEncounterSnapshot(encounterDirector.start())
+    const firstBeat = linkedEncounter.beats[0]
+    if (firstBeat) Object.assign(selection, firstBeat.selection)
+  }
   if (selection.objectId) currentObjectId.value = selection.objectId
   currentPresetId.value = selection.presetId ?? defaultPresetId(currentObject.value)
   if (selection.viewpointId) currentViewpointId.value = selection.viewpointId
@@ -136,6 +186,9 @@ async function initialize(canvas: HTMLCanvasElement): Promise<void> {
       onProgress: (ratio) => { loadingProgress.value = ratio },
     })
     loading.value = false
+    analytics.clock.start()
+    analytics.track('scene_ready', { loadMs: Math.round(performance.now() - loadStartedAt) })
+    encounterBeatRevealed.value = Boolean(linkedEncounter)
     syncUrl()
     queueHazard()
     // The hint is the only thing on screen a touch viewer may never dismiss.
@@ -149,8 +202,11 @@ async function initialize(canvas: HTMLCanvasElement): Promise<void> {
 }
 
 async function selectObject(objectId: SkyObjectId): Promise<void> {
+  if (encounterStatus.value !== 'idle') exitEncounter()
   objectBrowserOpen.value = false
   if (objectId === currentObjectId.value) return
+  analytics.interaction('object')
+  analytics.track('object_change', { objectId })
 
   const object = skyObjectsById[objectId]
   const presetId = carriedPresetId(object)
@@ -184,7 +240,10 @@ async function selectObject(objectId: SkyObjectId): Promise<void> {
 }
 
 async function selectDistance(presetId: string): Promise<void> {
+  if (encounterStatus.value !== 'idle') exitEncounter()
   if (presetId === currentPresetId.value) return
+  analytics.interaction('distance')
+  analytics.track('distance_change', { objectId: currentObjectId.value, presetId })
   const previousPresetId = currentPresetId.value
   currentPresetId.value = presetId
   hazardReady.value = false
@@ -213,7 +272,10 @@ function stepDistance(direction: 1 | -1): void {
 }
 
 async function selectViewpoint(viewpointId: ViewpointId): Promise<void> {
+  if (encounterStatus.value !== 'idle') exitEncounter()
   if (viewpointId === currentViewpointId.value) return
+  analytics.interaction('viewpoint')
+  analytics.track('viewpoint_change', { viewpointId })
   const previousViewpointId = currentViewpointId.value
   currentViewpointId.value = viewpointId
   syncUrl()
@@ -241,6 +303,7 @@ function toggleObjectBrowser(force?: boolean): void {
  * series meant a single click could hold the interface for four seconds.
  */
 async function resetExperience(): Promise<void> {
+  exitEncounter(false)
   objectBrowserOpen.value = false
   controller.value?.resetView()
 
@@ -272,6 +335,113 @@ async function resetExperience(): Promise<void> {
   }
 }
 
+async function runEncounterBeat(): Promise<void> {
+  const beat = currentEncounterBeat.value
+  if (!beat) return
+  const previousObjectId = currentObjectId.value
+  const previousPresetId = currentPresetId.value
+  const previousViewpointId = currentViewpointId.value
+  const token = ++encounterToken
+  encounterTransitioning.value = true
+  encounterBeatRevealed.value = false
+  busy.value = true
+  objectBrowserOpen.value = false
+
+  currentObjectId.value = beat.selection.objectId
+  currentPresetId.value = beat.selection.presetId
+  currentViewpointId.value = beat.selection.viewpointId
+  syncUrl()
+
+  try {
+    const shots: Array<Promise<void> | undefined> = []
+    if (previousObjectId !== beat.selection.objectId) {
+      shots.push(controller.value?.setObject(beat.selection.objectId, beat.selection.presetId))
+    } else if (previousPresetId !== beat.selection.presetId) {
+      shots.push(controller.value?.setDistance(beat.selection.presetId))
+    }
+    if (previousViewpointId !== beat.selection.viewpointId) {
+      shots.push(controller.value?.setViewpoint(beat.selection.viewpointId))
+    }
+    await Promise.all(shots)
+    if (token !== encounterToken) return
+    queueHazard()
+    encounterBeatRevealed.value = true
+    if (currentEncounter.value) {
+      analytics.track('encounter_beat', {
+        encounterId: currentEncounter.value.id,
+        beatIndex: encounterBeatIndex.value,
+      })
+    }
+  } catch {
+    if (token !== encounterToken) return
+    notify('This encounter beat could not be loaded.')
+    exitEncounter()
+  } finally {
+    if (token === encounterToken) {
+      encounterTransitioning.value = false
+      busy.value = false
+    }
+  }
+}
+
+function inviteEncounter(encounterId?: string): void {
+  const encounter = encounterId ? encountersById[encounterId] : availableEncounter.value
+  if (!encounter) return
+  objectBrowserOpen.value = false
+  applyEncounterSnapshot(encounterDirector.invite(encounter))
+  encounterBeatRevealed.value = false
+  syncUrl()
+}
+
+async function startEncounter(): Promise<void> {
+  analytics.interaction('encounter')
+  applyEncounterSnapshot(encounterDirector.start())
+  if (currentEncounter.value) analytics.track('encounter_start', { encounterId: currentEncounter.value.id })
+  await runEncounterBeat()
+}
+
+async function nextEncounter(): Promise<void> {
+  applyEncounterSnapshot(encounterDirector.next())
+  syncUrl()
+  if (encounterStatus.value === 'active') await runEncounterBeat()
+  else if (encounterStatus.value === 'complete' && currentEncounter.value) {
+    analytics.track('encounter_complete', { encounterId: currentEncounter.value.id })
+    encounterToken += 1
+    applyEncounterSnapshot(encounterDirector.exit())
+    encounterTransitioning.value = false
+    encounterBeatRevealed.value = false
+    syncUrl()
+  }
+}
+
+async function previousEncounter(): Promise<void> {
+  applyEncounterSnapshot(encounterDirector.previous())
+  await runEncounterBeat()
+}
+
+function toggleEncounterPause(): void {
+  const snapshot = encounterStatus.value === 'paused'
+    ? encounterDirector.resume()
+    : encounterDirector.pause()
+  applyEncounterSnapshot(snapshot)
+}
+
+async function replayEncounter(): Promise<void> {
+  applyEncounterSnapshot(encounterDirector.replay())
+  await runEncounterBeat()
+}
+
+function exitEncounter(sync = true): void {
+  const exiting = currentEncounter.value
+  const exitingBeat = encounterBeatIndex.value
+  encounterToken += 1
+  applyEncounterSnapshot(encounterDirector.exit())
+  encounterTransitioning.value = false
+  encounterBeatRevealed.value = false
+  if (sync) syncUrl()
+  if (sync && exiting) analytics.track('encounter_exit', { encounterId: exiting.id, beatIndex: exitingBeat })
+}
+
 function retry(canvas: HTMLCanvasElement): Promise<void> {
   controller.value?.dispose()
   controller.value = null
@@ -279,15 +449,21 @@ function retry(canvas: HTMLCanvasElement): Promise<void> {
 }
 
 function pause(): void {
+  analytics.clock.suspend()
   controller.value?.pause()
 }
 
 function resume(): void {
+  analytics.clock.activity()
   controller.value?.resume()
 }
 
 function resize(width: number, height: number, dpr: number): void {
   controller.value?.resize(width, height, dpr)
+}
+
+function getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null {
+  return controller.value?.getObjectScreenPosition() ?? null
 }
 
 function dispose(): void {
@@ -296,6 +472,7 @@ function dispose(): void {
   if (noticeTimer) clearTimeout(noticeTimer)
   controller.value?.dispose()
   controller.value = null
+  exitEncounter(false)
 }
 
 export function usePerigee() {
@@ -309,6 +486,15 @@ export function usePerigee() {
     currentPreset,
     angularDiameter,
     hazardCopy,
+    encounters,
+    availableEncounter,
+    currentEncounter: readonly(currentEncounter),
+    currentEncounterBeat,
+    currentDiscovery,
+    encounterStatus: readonly(encounterStatus),
+    encounterBeatIndex: readonly(encounterBeatIndex),
+    encounterTransitioning: readonly(encounterTransitioning),
+    encounterBeatRevealed: readonly(encounterBeatRevealed),
     objectBrowserOpen: readonly(objectBrowserOpen),
     loading: readonly(loading),
     loadingProgress: readonly(loadingProgress),
@@ -327,6 +513,14 @@ export function usePerigee() {
     dismissHint,
     dismissNotice,
     resetExperience,
+    inviteEncounter,
+    startEncounter,
+    nextEncounter,
+    previousEncounter,
+    toggleEncounterPause,
+    replayEncounter,
+    exitEncounter,
+    getObjectScreenPosition,
     pause,
     resume,
     resize,

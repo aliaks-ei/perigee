@@ -356,6 +356,18 @@ export class PerigeeScene implements PerigeeController {
     await this.sky.setViewpoint(viewpointId)
   }
 
+  getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null {
+    if (!this.hero) return null
+    const projected = this.scratchVector.copy(this.hero.position).project(this.camera)
+    return {
+      x: (projected.x + 1) / 2,
+      y: (1 - projected.y) / 2,
+      onScreen: projected.z >= -1 && projected.z <= 1
+        && projected.x >= -1 && projected.x <= 1
+        && projected.y >= -1 && projected.y <= 1,
+    }
+  }
+
   resetView(): void {
     this.cameraRig?.reset()
   }

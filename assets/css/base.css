@@ -1,0 +1,79 @@
+/* ==========================================================================
+   Base and shared behaviour
+   --------------------------------------------------------------------------
+   Element defaults plus the interaction conventions every component inherits.
+   Loaded after Tailwind's preflight, so anything preflight already does
+   (zeroing button padding, margin, background and border width) is not
+   repeated here.
+   ========================================================================== */
+
+html,
+body,
+#__nuxt {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-void);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* --- Focus --------------------------------------------------------------- */
+
+/* One ring for everything focusable. Buttons, links, and the elements the
+   encounter overlay focuses programmatically via `tabindex="-1"`. */
+:where(a, button, [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-object) 70%, white);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Shared interactive states -------------------------------------------- */
+
+/* The default lift for the plain text buttons the interface is mostly made of.
+   Specificity (0,3,1) on purpose: it has to outrank the component rule that
+   sets the button's resting colour, or a button whose class says
+   `color: var(--ink-tertiary)` would never brighten. A component that needs a
+   different hover matches the same shape and wins on source order, because
+   this file loads before `perigee.css`. */
+.perigee-shell button:not(:disabled):hover,
+.perigee-shell button:not(:disabled):focus-visible {
+  color: var(--ink-primary);
+}
+
+:where(.perigee-shell button) {
+  cursor: pointer;
+  transition: color var(--speed-fast) ease;
+}
+
+:where(.perigee-shell button:disabled) {
+  cursor: default;
+}
+
+/* Reference and source links. The offset keeps the rule clear of descenders. */
+.perigee-shell a {
+  color: var(--ink-tertiary);
+  text-decoration: underline;
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+  transition:
+    color var(--speed-fast) ease,
+    text-decoration-color var(--speed-fast) ease;
+}
+
+.perigee-shell a:hover,
+.perigee-shell a:focus-visible {
+  color: var(--ink-primary);
+  text-decoration-color: var(--accent-object);
+}
+
+/* --- Utilities ------------------------------------------------------------ */
+
+/* Tailwind 3 has no text-shadow utility, and this one is applied to a dozen
+   elements that sit directly over the render. */
+.text-shadow {
+  text-shadow: var(--shadow-text);
+}
