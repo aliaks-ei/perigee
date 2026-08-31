@@ -737,21 +737,19 @@ The current roadmap does not include:
 | --- | --- | --- | --- |
 | G1 | Passed | Encounter UI direction | Three visual targets reviewed; Direction B, `Celestial Cut`, selected and verified in the live scene at desktop and 390 × 844 |
 | G2 | Pending | Analytics provider | Privacy, static-hosting fit, cost, consent, and data ownership reviewed |
-| G3 | Pending | Cabo production approach | Approved visual target, exact viewpoint, licensing path, and performance estimate |
+| G3 | Passed | Cabo production approach | Option 1 and its four final targets approved; exact camera, licensed source, landscape/portrait plate strategy, and performance estimate documented in `docs/design/cabo-da-roca/` |
 | G4 | Pending | First new object class | Comparative visual prototypes and documented scientific assumptions |
 | G5 | Deferred | Observatory Log | Observed repeat/save intent or direct visitor evidence |
 | G6 | Deferred | Sound layer | Demonstrated improvement to the encounter without sensory or performance harm |
 
 ## 13. Recommended next implementation chunk
 
-Start with **R2.1 — Cabo da Roca visual research and target**.
+Implement **R2.3 — Capture and share**.
 
-Release 0 and Release 1 are complete in the local working tree. The next chunk
-must resolve the exact viewpoint, horizon bearing, weather, lighthouse
-visibility, asset-production approach, licensing path, mobile crop, and three
-required visual targets before any Cabo da Roca runtime asset is produced. Do
-not combine R2.1 with catalogue expansion, analytics provisioning, or the
-Observatory Log.
+Release 0, Release 1, R2.1, and R2.2 are complete in the local working tree.
+Next, add clean scene capture, native share/download/copy fallbacks, curated
+social images, and shared-link restoration without combining the chunk with
+catalogue expansion, analytics provisioning, or the Observatory Log.
 
 ## 14. Research basis
 
@@ -795,8 +793,8 @@ Update this section when a release chunk is completed.
 | R1.2 | Complete | Framework-independent director with pause, previous, next, exit, replay, completion, stale-transition protection, semantic progress, keyboard exit, and direct links | Local working tree |
 | R1.3 | Complete | Saturn, Betelgeuse, and Moon encounters completed end to end; Saturn now uses a tracked locator and a verified real → close → Moon-swap reveal; reviewed sources, stable query URLs, reactive metadata, and preset-contract tests verified | Local working tree |
 | R1.4 | Complete | State-aware glance, detail, source, and simulation-boundary disclosures in encounters and free exploration, with predictable close focus | Local working tree |
-| R2.1 | Not started | — | — |
-| R2.2 | Not started | — | — |
+| R2.1 | Complete | Option 1 approved; resting, silent reveal, encounter-copy, and mobile-crop targets plus camera, licensing, and performance decisions documented in `docs/design/cabo-da-roca/` | Local working tree |
+| R2.2 | Complete | Responsive Cabo landscape/portrait plates selected by quality tier; signature Saturn encounter, camera framing, URL restoration and invalid-view fallback, attribution, desktop/mobile target comparisons, and the verified 33-test production build | Local working tree |
 | R2.3 | Not started | — | — |
 | R3.1 | Not started | — | — |
 | R3.2 | Not started | — | — |

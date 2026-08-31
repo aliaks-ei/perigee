@@ -66,9 +66,16 @@ const currentDiscovery = computed(() => {
   const discovery = discoveryId ? discoveriesById[discoveryId] : undefined
   return discovery ? resolveDiscovery(discovery) : null
 })
-const availableEncounter = computed(() => encounters.find((encounter) =>
-  encounter.beats[0]?.selection.objectId === currentObjectId.value,
-) ?? null)
+const availableEncounter = computed(() => {
+  const matching = encounters.filter((encounter) =>
+    encounter.beats[0]?.selection.objectId === currentObjectId.value,
+  )
+  return matching.find((encounter) =>
+    encounter.beats[0]?.selection.viewpointId === currentViewpointId.value,
+  ) ?? matching.find((encounter) =>
+    encounter.beats[0]?.selection.viewpointId === 'rooftop',
+  ) ?? matching[0] ?? null
+})
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches

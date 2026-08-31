@@ -8,7 +8,7 @@ export type SkyObjectId =
   | 'sirius'
   | 'rigel'
 
-export type ViewpointId = 'rooftop' | 'hilltop' | 'lakeside'
+export type ViewpointId = 'rooftop' | 'hilltop' | 'lakeside' | 'cabo-da-roca'
 export type QualityTier = 'high' | 'balanced' | 'safe'
 
 export interface DistancePreset {
@@ -55,6 +55,7 @@ export interface SkyObjectDefinition {
 export interface ViewpointDefinition {
   id: ViewpointId
   label: string
+  shortLabel?: string
   description: string
 }
 

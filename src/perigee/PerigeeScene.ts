@@ -41,22 +41,27 @@ import { createRingMaterial, type RingMaterialSet } from './materials/RingMateri
 import { createStellarMaterial, type StellarMaterialSet } from './materials/StellarMaterial'
 import { CameraRig } from './CameraRig'
 import { createSkyScene, type SkySceneBundle } from './scenes/createSkyScene'
-import { ENVIRONMENT_ASSETS } from './scenes/createEnvironmentLayer'
+import { environmentWarmupAssets } from './scenes/environmentAssets'
 import { QualityManager } from './QualityManager'
 import { ShotDirector } from './ShotDirector'
 import { configureTextureCache, disposeTextures, loadTexture, prefetchTextures } from './TextureCache'
 
 /**
- * Where the hero object hangs. Its distance sets the render scale for every
- * angular-size calculation, so it must stay in sync with `radiusFor`.
+ * Where the hero hangs in each authored composition. Each vector's length sets
+ * that composition's render scale, so `radiusFor` resolves through the same
+ * viewpoint-aware selector.
  */
 const HERO_POSITION = new Vector3(86, 118, -500)
+const CABO_HERO_POSITION = new Vector3(-115, 128, -500)
+const CABO_PORTRAIT_HERO_POSITION = new Vector3(-20, 195, -500)
 
 /**
  * Standing tilt of the camera. Pitching slightly up puts the horizon in the
  * lower third, which is what makes the ground read as ground.
  */
 const BASE_PITCH = 0.11
+const BASE_VERTICAL_FOV = 52
+const CABO_PORTRAIT_VERTICAL_FOV = 80
 
 const RING_TEXTURE = '/assets/objects/saturn-ring-2k.webp'
 
@@ -192,7 +197,7 @@ export class PerigeeScene implements PerigeeController {
     const viewpointId = options.selection?.viewpointId ?? 'rooftop'
 
     this.currentViewpointId = viewpointId
-    this.sky = createSkyScene()
+    this.sky = createSkyScene(this.quality.current)
     await this.sky.setViewpoint(viewpointId, true)
     report(0.55)
 
@@ -253,7 +258,7 @@ export class PerigeeScene implements PerigeeController {
     const nextHero = built.group
     const finalRadius = this.radiusFor(definition, preset.distanceKm)
     const visibleRadius = definition.kind === 'star' ? Math.max(finalRadius, 0.55) : finalRadius
-    nextHero.position.copy(HERO_POSITION)
+    nextHero.position.copy(this.heroPositionFor(this.currentViewpointId))
     nextHero.scale.setScalar(visibleRadius * (this.reducedMotion ? 1 : 0.94))
     nextHero.userData.radius = visibleRadius
     setObjectOpacity(nextHero, 0)
@@ -353,6 +358,8 @@ export class PerigeeScene implements PerigeeController {
   async setViewpoint(viewpointId: ViewpointId): Promise<void> {
     if (viewpointId === this.currentViewpointId) return
     this.currentViewpointId = viewpointId
+    this.applyViewpointCamera()
+    this.placeHeroForCurrentViewpoint()
     await this.sky.setViewpoint(viewpointId)
   }
 
@@ -396,7 +403,9 @@ export class PerigeeScene implements PerigeeController {
     this.composer.setSize(width, height)
     this.sky.setPixelRatio(pixelRatio)
     this.camera.aspect = width / height
+    this.applyViewpointCamera()
     this.camera.updateProjectionMatrix()
+    this.placeHeroForCurrentViewpoint()
   }
 
   pause(): void {
@@ -446,7 +455,11 @@ export class PerigeeScene implements PerigeeController {
     const urls = skyObjects
       .flatMap((object) => [object.texture, object.normalMap])
       .filter((url): url is string => Boolean(url))
-    prefetchTextures([...urls, RING_TEXTURE, ...Object.values(ENVIRONMENT_ASSETS)])
+    prefetchTextures([
+      ...urls,
+      RING_TEXTURE,
+      ...environmentWarmupAssets(this.quality.current, this.camera.aspect),
+    ])
 
     // The first switch to a star otherwise stalls for seconds while the noise
     // shader compiles. Every star shares one program, so compiling it once here
@@ -513,7 +526,34 @@ export class PerigeeScene implements PerigeeController {
 
   private radiusFor(definition: SkyObjectDefinition, distanceKm: number): number {
     const theta = angularDiameterRadians(definition.diameterKm, distanceKm)
-    return renderRadiusForAngularDiameter(theta, HERO_POSITION.length())
+    return renderRadiusForAngularDiameter(
+      theta,
+      this.heroPositionFor(this.currentViewpointId).length(),
+    )
+  }
+
+  private heroPositionFor(viewpointId: ViewpointId): Vector3 {
+    if (viewpointId !== 'cabo-da-roca') return HERO_POSITION
+    return this.camera.aspect < 0.8 ? CABO_PORTRAIT_HERO_POSITION : CABO_HERO_POSITION
+  }
+
+  private placeHeroForCurrentViewpoint(): void {
+    if (!this.hero) return
+    const definition = skyObjectsById[this.currentObjectId]
+    const preset = definition.presets.find((candidate) => candidate.id === this.currentPresetId)
+      ?? definition.presets[0]!
+    const radius = this.radiusFor(definition, preset.distanceKm)
+    const visibleRadius = definition.kind === 'star' ? Math.max(radius, 0.55) : radius
+    this.hero.position.copy(this.heroPositionFor(this.currentViewpointId))
+    this.hero.scale.setScalar(visibleRadius)
+    this.hero.userData.radius = visibleRadius
+  }
+
+  private applyViewpointCamera(): void {
+    this.camera.fov = this.currentViewpointId === 'cabo-da-roca' && this.camera.aspect < 0.8
+      ? CABO_PORTRAIT_VERTICAL_FOV
+      : BASE_VERTICAL_FOV
+    this.camera.updateProjectionMatrix()
   }
 
   private applyShot(definition: SkyObjectDefinition): void {

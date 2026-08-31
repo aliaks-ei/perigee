@@ -36,7 +36,8 @@ const {
         :class="{ selected: currentViewpointId === viewpoint.id }"
         @click="selectViewpoint(viewpoint.id)"
       >
-        {{ viewpoint.label }}
+        <span :class="{ 'lt-sm:hidden': viewpoint.shortLabel }">{{ viewpoint.label }}</span>
+        <span v-if="viewpoint.shortLabel" class="sm:hidden">{{ viewpoint.shortLabel }}</span>
       </button>
     </div>
   </header>

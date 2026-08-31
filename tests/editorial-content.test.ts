@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { discoveries, encounters, scienceSources } from '../app/data/editorial'
 import { skyObjectsById } from '../app/data/objects'
+import { viewpoints } from '../app/data/viewpoints'
 import {
   lightTravelTimeSeconds,
   moonWidthComparison,
@@ -44,6 +45,7 @@ describe('editorial content model', () => {
 
   it('keeps encounter selections inside the existing scene contracts', () => {
     const discoveryIds = new Set(discoveries.map((discovery) => discovery.id))
+    const viewpointIds = new Set(viewpoints.map((viewpoint) => viewpoint.id))
     expect(new Set(encounters.map((encounter) => encounter.slug)).size).toBe(encounters.length)
     for (const encounter of encounters) {
       expect(encounter.estimatedMinutes).toBeLessThanOrEqual(3)
@@ -51,6 +53,7 @@ describe('editorial content model', () => {
       for (const beat of encounter.beats) {
         const object = skyObjectsById[beat.selection.objectId]
         expect(object.presets.some((preset) => preset.id === beat.selection.presetId)).toBe(true)
+        expect(viewpointIds.has(beat.selection.viewpointId)).toBe(true)
         if (beat.discoveryId) expect(discoveryIds.has(beat.discoveryId)).toBe(true)
       }
     }
@@ -71,5 +74,21 @@ describe('editorial content model', () => {
       "Bring Saturn to the Moon's distance",
       'Explore this sky',
     ])
+  })
+
+  it('keeps the signature Saturn encounter at Cabo da Roca', () => {
+    const cabo = encounters.find(
+      (encounter) => encounter.slug === 'saturn-at-the-edge-of-the-world',
+    )!
+
+    expect(cabo.title).toBe('Saturn at the edge of the world')
+    expect(cabo.beats.map((beat) => beat.selection.viewpointId)).toEqual([
+      'cabo-da-roca',
+      'cabo-da-roca',
+      'cabo-da-roca',
+    ])
+    expect(cabo.beats.at(-1)?.observation).toBe(
+      'The planet alone spans about 33 familiar Moons. Its rings reach farther still.',
+    )
   })
 })

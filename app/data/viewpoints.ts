@@ -16,4 +16,10 @@ export const viewpoints: ViewpointDefinition[] = [
     label: 'Lakeside',
     description: 'Still water beneath an open horizon',
   },
+  {
+    id: 'cabo-da-roca',
+    label: 'Cabo da Roca',
+    shortLabel: 'Cabo',
+    description: 'Atlantic cliffs beneath Portugal\'s western lighthouse',
+  },
 ]

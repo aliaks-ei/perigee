@@ -6,21 +6,20 @@ import {
   Texture,
   Vector2,
 } from 'three'
-import type { ViewpointId } from '../../../app/types/perigee'
+import type { QualityTier, ViewpointId } from '../../../app/types/perigee'
 import { loadTexture, prefetchTextures } from '../TextureCache'
+import {
+  environmentAssetFor,
+  environmentWarmupAssets,
+  type EnvironmentAsset,
+} from './environmentAssets'
 
-export const ENVIRONMENT_ASSETS: Record<ViewpointId, string> = {
-  rooftop: '/assets/environments/rooftop-cinematic-4k.webp',
-  hilltop: '/assets/environments/hilltop-cinematic-4k.webp',
-  lakeside: '/assets/environments/lakeside-cinematic-4k.webp',
-}
-
-const IMAGE_ASPECT = 3172 / 1984
 const TRANSITION_SECONDS = 0.9
 
 export interface EnvironmentLayer {
   mesh: Mesh<PlaneGeometry, ShaderMaterial>
   setViewpoint: (viewpointId: ViewpointId, immediate?: boolean) => Promise<void>
+  setQuality: (tier: QualityTier) => void
   setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
   setTint: (color: string, strength: number) => void
   /** Warms the backdrops the viewer has not switched to yet. */
@@ -29,14 +28,15 @@ export interface EnvironmentLayer {
   dispose: () => void
 }
 
-export function createEnvironmentLayer(): EnvironmentLayer {
+export function createEnvironmentLayer(initialQuality: QualityTier): EnvironmentLayer {
   const lookOffset = new Vector2()
   const material = new ShaderMaterial({
     uniforms: {
       uCurrent: { value: null as Texture | null },
       uNext: { value: null as Texture | null },
       uMix: { value: 0 },
-      uImageAspect: { value: IMAGE_ASPECT },
+      uCurrentImageAspect: { value: 3172 / 1984 },
+      uNextImageAspect: { value: 3172 / 1984 },
       uViewportAspect: { value: 1 },
       uLookOffset: { value: lookOffset },
       uZoom: { value: 0.79 },
@@ -55,7 +55,8 @@ export function createEnvironmentLayer(): EnvironmentLayer {
       uniform sampler2D uCurrent;
       uniform sampler2D uNext;
       uniform float uMix;
-      uniform float uImageAspect;
+      uniform float uCurrentImageAspect;
+      uniform float uNextImageAspect;
       uniform float uViewportAspect;
       uniform vec2 uLookOffset;
       uniform float uZoom;
@@ -63,12 +64,12 @@ export function createEnvironmentLayer(): EnvironmentLayer {
       uniform float uTintStrength;
       varying vec2 vUv;
 
-      vec2 environmentUv(vec2 uv) {
+      vec2 environmentUv(vec2 uv, float imageAspect) {
         vec2 cover = vec2(1.0);
-        if (uViewportAspect < uImageAspect) {
-          cover.x = uViewportAspect / uImageAspect;
+        if (uViewportAspect < imageAspect) {
+          cover.x = uViewportAspect / imageAspect;
         } else {
-          cover.y = uImageAspect / uViewportAspect;
+          cover.y = imageAspect / uViewportAspect;
         }
 
         vec2 centered = (uv - 0.5) * cover * uZoom;
@@ -88,9 +89,10 @@ export function createEnvironmentLayer(): EnvironmentLayer {
       }
 
       void main() {
-        vec2 uv = environmentUv(vUv);
-        vec3 current = texture2D(uCurrent, uv).rgb;
-        vec3 next = texture2D(uNext, uv).rgb;
+        vec2 currentUv = environmentUv(vUv, uCurrentImageAspect);
+        vec2 nextUv = environmentUv(vUv, uNextImageAspect);
+        vec3 current = texture2D(uCurrent, currentUv).rgb;
+        vec3 next = texture2D(uNext, nextUv).rgb;
         vec3 color = mix(current, next, smoothstep(0.0, 1.0, uMix));
         gl_FragColor = vec4(gradeEnvironment(color, vUv), 1.0);
       }
@@ -107,42 +109,77 @@ export function createEnvironmentLayer(): EnvironmentLayer {
   let transitionStart = 0
   let lastTime = 0
   let transitioning = false
+  let currentViewpointId: ViewpointId = 'rooftop'
+  let currentAsset: EnvironmentAsset | null = null
+  let quality = initialQuality
+  let viewportAspect = typeof window === 'undefined'
+    ? 1
+    : window.innerWidth / Math.max(window.innerHeight, 1)
+  let generation = 0
+
+  const setTexture = async (asset: EnvironmentAsset, immediate = false): Promise<void> => {
+    if (currentAsset?.url === asset.url && currentTexture) return
+    const request = ++generation
+    const texture = await loadTexture(asset.url)
+    if (request !== generation) return
+    if (!currentTexture || immediate) {
+      currentTexture = texture
+      nextTexture = texture
+      currentAsset = asset
+      material.uniforms.uCurrent!.value = texture
+      material.uniforms.uNext!.value = texture
+      material.uniforms.uCurrentImageAspect!.value = asset.width / asset.height
+      material.uniforms.uNextImageAspect!.value = asset.width / asset.height
+      material.uniforms.uMix!.value = 0
+      transitioning = false
+      return
+    }
+
+    nextTexture = texture
+    currentAsset = asset
+    material.uniforms.uNext!.value = texture
+    material.uniforms.uNextImageAspect!.value = asset.width / asset.height
+    material.uniforms.uMix!.value = 0
+    transitionStart = lastTime
+    transitioning = true
+  }
+
+  const syncActiveAsset = (immediate = false): Promise<void> => setTexture(
+    environmentAssetFor(currentViewpointId, quality, viewportAspect),
+    immediate,
+  )
 
   return {
     mesh,
     async setViewpoint(viewpointId, immediate = false) {
-      const texture = await loadTexture(ENVIRONMENT_ASSETS[viewpointId])
-      if (!currentTexture || immediate) {
-        currentTexture = texture
-        nextTexture = texture
-        material.uniforms.uCurrent!.value = texture
-        material.uniforms.uNext!.value = texture
-        material.uniforms.uMix!.value = 0
-        transitioning = false
-        return
-      }
-
-      nextTexture = texture
-      material.uniforms.uNext!.value = texture
-      material.uniforms.uMix!.value = 0
-      transitionStart = lastTime
-      transitioning = true
+      currentViewpointId = viewpointId
+      await syncActiveAsset(immediate)
     },
-    setView(yaw, pitch, verticalFovDegrees, viewportAspect) {
+    setQuality(tier) {
+      quality = tier
+      void syncActiveAsset()
+    },
+    setView(yaw, pitch, verticalFovDegrees, nextViewportAspect) {
       const verticalFov = verticalFovDegrees * Math.PI / 180
-      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * viewportAspect)
+      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * nextViewportAspect)
       lookOffset.set(
         -yaw / Math.max(horizontalFov, 0.001),
         pitch / Math.max(verticalFov, 0.001),
       )
-      material.uniforms.uViewportAspect!.value = viewportAspect
+      const previousOrientation = viewportAspect < 0.8
+      viewportAspect = nextViewportAspect
+      material.uniforms.uViewportAspect!.value = nextViewportAspect
+      const nextOrientation = nextViewportAspect < 0.8
+      if (currentViewpointId === 'cabo-da-roca' && previousOrientation !== nextOrientation) {
+        void syncActiveAsset()
+      }
     },
     setTint(color, strength) {
       material.uniforms.uTint!.value.set(color)
       material.uniforms.uTintStrength!.value = strength
     },
     prefetch() {
-      prefetchTextures(Object.values(ENVIRONMENT_ASSETS))
+      prefetchTextures(environmentWarmupAssets(quality, viewportAspect))
     },
     update(time) {
       lastTime = time
@@ -152,6 +189,7 @@ export function createEnvironmentLayer(): EnvironmentLayer {
       if (progress < 1 || !nextTexture) return
       currentTexture = nextTexture
       material.uniforms.uCurrent!.value = currentTexture
+      material.uniforms.uCurrentImageAspect!.value = material.uniforms.uNextImageAspect!.value
       material.uniforms.uNext!.value = currentTexture
       material.uniforms.uMix!.value = 0
       transitioning = false

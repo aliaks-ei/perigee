@@ -45,3 +45,12 @@ visualization rather than scientific analysis.
 - Modifications: Generated 1586×992 masters were resampled to 3172×1984 and exported as high-quality WebP. Each plate contains a continuous sky, atmospheric horizon, and low foreground with no celestial object or interface content.
 - Purpose: Seamless full-frame environment layers rendered inside the Three.js sky pass. Camera-linked UV motion, overscan, crossfades, and object-aware tinting keep the horizon and celestial render visually coherent.
 - Created: 2026-08-29
+
+### Cabo da Roca viewpoint
+
+- Source: [Cabo da Roca Lighthouse and coastal cliffs, Portugal — May 2025](https://commons.wikimedia.org/wiki/File:Cabo_da_Roca_Lighthouse_and_coastal_cliffs,_Portugal_-_May_2025.jpg)
+- Author: LensaCibi
+- License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- Files: `cabo-da-roca-landscape-4k.webp`, `cabo-da-roca-landscape-2k.webp`, `cabo-da-roca-landscape-safe.webp`, `cabo-da-roca-portrait-2k.webp`, `cabo-da-roca-portrait-safe.webp`
+- Modifications: The licensed geographic and architectural reference was art-directed through OpenAI image generation into clean nighttime environment plates. Interface elements, stars, and celestial objects were excluded so they remain live runtime layers. Separate landscape and portrait masters preserve the lighthouse, Atlantic horizon, and cliffs without stretching; quality-tier variants were then resized and exported as WebP.
+- Created: 2026-08-31

@@ -33,6 +33,7 @@ const progress = computed(() => {
   return ((encounterBeatIndex.value + 1) / count) * 100
 })
 const isLastBeat = computed(() => encounterBeatIndex.value === (currentEncounter.value?.beats.length ?? 1) - 1)
+const isCaboEncounter = computed(() => currentEncounter.value?.id === 'saturn-edge-of-world')
 const showLocator = computed(() => Boolean(
   currentEncounterBeat.value?.locatorLabel
   && encounterBeatRevealed.value
@@ -157,12 +158,24 @@ function toggleSource(): void {
           v-else-if="encounterBeatRevealed && !sourceOpen"
           :key="currentEncounterBeat?.id"
           ref="observation"
-          class="encounter-observation text-shadow absolute text-center"
+          class="encounter-observation text-shadow absolute"
+          :class="isCaboEncounter
+            ? 'right-auto left-4 w-11/12 translate-x-0 text-left sm:left-16 sm:w-full sm:max-w-2xl'
+            : 'text-center'"
           tabindex="-1"
           aria-live="polite"
         >
-          <p>{{ currentEncounterBeat?.observation }}</p>
-          <div class="encounter-beat-actions flex flex-wrap items-center justify-center">
+          <span
+            v-if="isCaboEncounter"
+            class="mb-3 block text-xs font-semibold uppercase tracking-widest text-accent"
+          >
+            A Perigee encounter
+          </span>
+          <p :class="{ 'sm:!text-2xl': isCaboEncounter }">{{ currentEncounterBeat?.observation }}</p>
+          <div
+            class="encounter-beat-actions flex flex-wrap items-center"
+            :class="isCaboEncounter ? 'justify-start' : 'justify-center'"
+          >
             <button
               data-encounter-primary
               class="encounter-primary-action inline-flex items-center gap-2.5 font-semibold"

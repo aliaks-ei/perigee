@@ -35,13 +35,13 @@ function seededRandom(seed: number): () => number {
   }
 }
 
-export function createSkyScene(): SkySceneBundle {
+export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
   const scene = new Scene()
 
   // No sky dome: the environment layer is an opaque full-screen backdrop that
   // covers every pixel behind the hero, so a dome would only ever be overdrawn.
   // The palette still drives star density and the backdrop's tint.
-  const environment = createEnvironmentLayer()
+  const environment = createEnvironmentLayer(initialQuality)
   scene.add(environment.mesh)
 
   const random = seededRandom(731_992)
@@ -168,6 +168,7 @@ export function createSkyScene(): SkySceneBundle {
     setQuality(tier) {
       qualityOpacity = tier === 'safe' ? 0.82 : 1
       applyStarOpacity()
+      environment.setQuality(tier)
     },
     setViewpoint(viewpointId, immediate) {
       return environment.setViewpoint(viewpointId, immediate)
