@@ -6,6 +6,11 @@ compatibility_date = "2026-09-01"
 
 [assets]
 directory = ".output/public"
+# The prerendered routes live at `/e/<slug>/index.html`, and the default
+# "auto-trailing-slash" answers `/e/<slug>` with a 307 to the slashed form —
+# while the page's own `og:url` advertises the unslashed one. Dropping the
+# slash makes the URL the encounters actually share the canonical one.
+html_handling = "drop-trailing-slash"
 # Serves the prerendered `404.html` with a real 404 status, so a mistyped
 # encounter slug gets the app's own error page. The "single-page-application"
 # setting would answer it with 200 and an empty shell instead — a soft 404

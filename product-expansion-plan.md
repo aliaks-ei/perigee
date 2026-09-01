@@ -622,6 +622,41 @@ Acceptance:
 Decision gate: do not build Release 4 unless sharing, repeat visits, or direct
 visitor feedback shows a real desire to preserve progress.
 
+### Release 5 — Interface completeness
+
+Goal: finish the reachable surfaces the encounter work did not cover.
+
+#### R5.1 Not-found page
+
+Dependencies: none
+
+The deployed 404 is still Nuxt's stock error page. It is the one surface a
+visitor can reach that does not look like Perigee, and it is reached exactly
+when a shared link has gone wrong — the moment the product can least afford to
+look broken.
+
+Tasks:
+
+- Add `app/error.vue` and style it from the existing visual system and tokens.
+- Keep the sky dominant, per principle 4.6; the page is a view, not a dialog.
+- Say what Perigee is in one or two family-readable sentences, per 4.7.
+- Offer one action back into free exploration and one into a curated encounter,
+  so a broken link still lands somewhere worth being.
+- Reuse the existing transitions rather than introducing new ones.
+- Cover reduced motion, keyboard focus order, and the 390 x 844 composition.
+
+Acceptance:
+
+- The page is recognisably Perigee without a label.
+- A visitor arriving from a broken link reaches an encounter in one action.
+- The response keeps a real 404 status and is never converted to a soft 200.
+- No horizontal overflow at supported viewports.
+- The stock Nuxt error page is no longer reachable in a production build.
+
+Excludes: a search feature, a sitemap page, or a general error-handling
+redesign of the capability and asset fallbacks, which already have their own
+surfaces.
+
 ## 8. Distribution and marketing plan
 
 ### 8.1 Product-led sharing
@@ -758,8 +793,8 @@ The current roadmap does not include:
 
 ## 13. Recommended next implementation chunk
 
-No unconditional product implementation chunk remains. Release 0, Release 1,
-Release 2, and Release 3 are complete in the local working tree.
+R5.1, the not-found page, is the next unconditional chunk. Releases 0 to 3 are
+complete and deployed at `perigee.observer`.
 
 G2 is now decided and implemented, so production measurement is live. The
 remaining actions are evidence-gated: operate the manual monthly curation
@@ -817,3 +852,4 @@ Update this section when a release chunk is completed.
 | G2 | Complete | Umami wired through the existing provider-neutral adapter. The provider attaches after the deferred script loads and replays the events already buffered, so `scene_ready` survives a late script; active time is bucketed because Umami bills each stored property as an event and groups its dashboard by exact value. Measurement is opt-in per environment, so development, tests and preview builds make no third-party call, and `createAnalytics` now also contains a tracker that throws synchronously. Verified in a real build: the website id reaches the client config and the absolute Open Graph URLs resolve against the production domain. 59-test suite passes | `36c60fa` |
 | Deploy | Complete | `perigee.observer` registered; Cloudflare Workers Static Assets configured with no `main` entry, the existing `public/_headers` cache rules preserved, and `not_found_handling` left at its default so an unknown encounter slug returns a real 404 rather than a soft 404 | `36c60fa` |
 | R4.1 | Deferred | Requires evidence at G5 | — |
+| R5.1 | Pending | Not started; the deployed 404 is still Nuxt's stock error page | — |
