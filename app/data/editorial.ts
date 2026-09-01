@@ -1,6 +1,7 @@
 import type {
   DiscoveryDefinition,
   EncounterDefinition,
+  FeaturedEncounterDefinition,
   ScienceSource,
 } from '~/types/editorial'
 
@@ -358,6 +359,29 @@ export const encountersById = Object.fromEntries(
 export const encountersBySlug = Object.fromEntries(
   encounters.map((encounter) => [encounter.slug, encounter]),
 ) as Record<string, EncounterDefinition>
+
+/**
+ * A deliberately small, manual catalogue. There is no "latest" fallback:
+ * `featureForMonth` only calls an entry current when its month matches.
+ */
+export const featuredEncounters: FeaturedEncounterDefinition[] = [
+  {
+    id: '2026-08-saturn-cabo',
+    month: '2026-08',
+    encounterId: 'saturn-edge-of-world',
+    shortTitle: 'Saturn over Cabo',
+    summary: 'Stand at the western edge of mainland Europe as Saturn crosses the Atlantic sky.',
+    reviewState: 'approved',
+  },
+  {
+    id: '2026-09-andromeda',
+    month: '2026-09',
+    encounterId: 'andromeda-hidden-galaxy',
+    shortTitle: 'Andromeda revealed',
+    summary: 'Reveal the vast disc already stretched across our sky, then bring the galaxy impossibly close.',
+    reviewState: 'approved',
+  },
+]
 
 export const discoveriesById = Object.fromEntries(
   discoveries.map((discovery) => [discovery.id, discovery]),

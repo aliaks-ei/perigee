@@ -758,10 +758,13 @@ The current roadmap does not include:
 
 ## 13. Recommended next implementation chunk
 
-Implement **R3.3 — Monthly featured encounter** only as its own chunk.
+No unconditional product implementation chunk remains. Release 0, Release 1,
+Release 2, and Release 3 are complete in the local working tree.
 
-Release 0, Release 1, Release 2, R3.1, and R3.2 are complete in the local
-working tree. R3.3 remains. Do not combine it with later return-value work.
+Next actions are decision- or evidence-gated: evaluate an analytics provider at
+G2 if production measurement is wanted, operate the manual monthly curation
+process, and revisit R4.1 only if G5 receives evidence of real save or return
+intent. Do not combine those decisions with the completed R3.3 chunk.
 
 ## 14. Research basis
 
@@ -810,5 +813,5 @@ Update this section when a release chunk is completed.
 | R2.3 | Complete | Clean scene capture with optional caption, native share with download and copy fallbacks, cancellation reported separately from failure; pre-generated 1200 × 630 social cards for all four curated routes; curated routes corrected to real prerendered HTML after a global `ssr: false` was found to override the route rule, verified in the generated static build (title, description, Open Graph image, crawler fallback body, and a shared link opening its encounter at beat 1); verified 45-test production build | Local working tree |
 | R3.1 | Complete | One optional prediction on each of the three launch encounters (Saturn rooftop, Betelgeuse, Moon); the Cabo signature stays clean. Answering records the choice and runs the next beat, so the scene is the reveal; the answered option's neutral response opens the following beat. No score, timer, failure state, or permanent surface, and the beat's own action remains the skip path. Prediction contract test added; verified 46-test production build and the Saturn encounter checked in the live scene | Local working tree |
 | R3.2 | Complete | Approved realistic Andromeda renderer with M31 photometry, optical D25 silhouette, scale-aware detail, Local-Group ladder, two sourced discoveries, synchronized thumbnail, and mobile-safe object-browser exposure. `The galaxy hiding in our sky` adds a four-beat real → 500 kly → 250 kly → 150 kly reveal at Hilltop, a stable curated route and 1200 × 630 social card, a clear simulation boundary, and a final free-exploration handoff. Desktop and 390 × 844 keyboard paths, balanced/safe tiers, route restoration, disclosure, and the verified 50-test production build pass | Local working tree |
-| R3.3 | Not started | — | — |
+| R3.3 | Complete | One quiet date-aware feature entry point beside the wordmark; September 2026 opens the approved Andromeda encounter and the collapsed archive retains August's Cabo encounter. Exact UTC-month matching prevents stale content from appearing current; every feature references an approved curated route and existing social card. Escape/outside dismissal, focus restoration, analytics events, the manual editorial checklist, 1440 × 900 and 390 × 844 composition and handoff checks, no-overflow/no-browser-error checks, and the verified 54-test production build pass | Local working tree |
 | R4.1 | Deferred | Requires evidence at G5 | — |

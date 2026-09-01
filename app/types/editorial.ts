@@ -59,6 +59,19 @@ export interface EncounterDefinition {
   reviewState: EditorialReviewState
 }
 
+/** One manually curated monthly doorway into an existing approved encounter. */
+export interface FeaturedEncounterDefinition {
+  id: string
+  /** UTC calendar month in YYYY-MM form. Missing months intentionally stay empty. */
+  month: string
+  encounterId: string
+  /** Short label for the persistent entry point at narrow viewports. */
+  shortTitle: string
+  /** One sentence shown only after the visitor opens the feature. */
+  summary: string
+  reviewState: EditorialReviewState
+}
+
 export type DiscoveryCalculation =
   | {
       kind: 'moon-widths'

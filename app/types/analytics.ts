@@ -11,6 +11,12 @@ export interface EngagementEventMap {
   encounter_exit: { encounterId: string; beatIndex: number }
   encounter_complete: { encounterId: string }
   prediction_answer: { encounterId: string; predictionId: string; optionId: string }
+  featured_encounter_open: { month: string; hasCurrent: boolean }
+  featured_encounter_select: {
+    featureId: string
+    encounterId: string
+    placement: 'current' | 'archive'
+  }
   discovery_open: { discoveryId: string }
   capture: { outcome: 'attempt' | 'complete' | 'failed' }
   share: { outcome: 'attempt' | 'complete' | 'cancelled' | 'failed' }

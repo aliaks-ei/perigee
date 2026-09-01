@@ -11,15 +11,18 @@ const {
   <header
     class="perigee-header pointer-events-none absolute z-header flex items-center justify-between gap-6 lt-sm:items-start lt-sm:gap-3"
   >
-    <button
-      class="brand pointer-events-auto inline-flex min-h-10 items-center"
-      type="button"
-      aria-label="Reset Perigee"
-      @click="resetExperience"
-    >
-      <span class="brand-mark" aria-hidden="true" />
-      <span class="brand-word text-shadow font-semibold uppercase">Perigee</span>
-    </button>
+    <div class="header-primary flex items-center gap-7 lt-sm:flex-col lt-sm:items-start lt-sm:gap-1">
+      <button
+        class="brand pointer-events-auto inline-flex min-h-10 items-center"
+        type="button"
+        aria-label="Reset Perigee"
+        @click="resetExperience"
+      >
+        <span class="brand-mark" aria-hidden="true" />
+        <span class="brand-word text-shadow font-semibold uppercase">Perigee</span>
+      </button>
+      <PerigeeFeaturedEncounter />
+    </div>
 
     <div
       class="viewpoint-switcher pointer-events-auto flex items-center gap-1"
