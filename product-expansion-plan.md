@@ -657,6 +657,34 @@ Excludes: a search feature, a sitemap page, or a general error-handling
 redesign of the capability and asset fallbacks, which already have their own
 surfaces.
 
+#### R5.2 Favicon and application icons
+
+Dependencies: none
+
+The site currently ships no icon of any kind: `/favicon.ico` returns 404 and
+nothing is declared in the document head. Every browser tab, bookmark and
+shared link therefore falls back to a blank placeholder, which undercuts the
+curated encounter routes exactly where they are meant to look considered.
+
+Tasks:
+
+- Design a mark from the existing visual system rather than a new one; the
+  angular-size arc, the hero silhouette and the wordmark are the obvious
+  starting points.
+- Produce `favicon.ico`, an SVG icon, and a 180 x 180 `apple-touch-icon`.
+- Add a web app manifest carrying the name, the icons, and the `#040810`
+  theme colour already declared in `nuxt.config.ts`.
+- Declare all of them in the document head.
+- Record the source and licence in `public/assets/ATTRIBUTIONS.md` if any
+  external material is used.
+
+Acceptance:
+
+- `/favicon.ico` returns 200 and the tab icon renders in a fresh profile.
+- The mark stays legible at 16 x 16 and is not merely the wordmark scaled down.
+- It reads correctly against both light and dark browser chrome.
+- The manifest validates and does not trigger console warnings.
+
 ## 8. Distribution and marketing plan
 
 ### 8.1 Product-led sharing
@@ -793,7 +821,7 @@ The current roadmap does not include:
 
 ## 13. Recommended next implementation chunk
 
-R5.1, the not-found page, is the next unconditional chunk. Releases 0 to 3 are
+R5.1 and R5.2, the not-found page and the favicon, are the next unconditional chunks. Releases 0 to 3 are
 complete and deployed at `perigee.observer`.
 
 G2 is now decided and implemented, so production measurement is live. The
@@ -853,3 +881,4 @@ Update this section when a release chunk is completed.
 | Deploy | Complete | `perigee.observer` registered; Cloudflare Workers Static Assets configured with no `main` entry, the existing `public/_headers` cache rules preserved, and `not_found_handling` left at its default so an unknown encounter slug returns a real 404 rather than a soft 404 | `36c60fa` |
 | R4.1 | Deferred | Requires evidence at G5 | — |
 | R5.1 | Pending | Not started; the deployed 404 is still Nuxt's stock error page | — |
+| R5.2 | Pending | Not started; `/favicon.ico` returns 404 and no icon is declared | — |
