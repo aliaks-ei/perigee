@@ -375,6 +375,31 @@ export class PerigeeScene implements PerigeeController {
     }
   }
 
+  /**
+   * The canvas is created without `preserveDrawingBuffer`, so its pixels are
+   * gone the moment the browser composites. Rendering and reading in the same
+   * task is what keeps the copy valid; anything asynchronous in between reads
+   * a cleared buffer.
+   *
+   * The copy keeps the drawing buffer's own device-pixel size, so an export
+   * carries the rendered aspect ratio and resolution rather than the CSS box.
+   */
+  captureFrame(): HTMLCanvasElement | null {
+    if (!this.renderer || !this.composer) return null
+    const source = this.renderer.domElement
+    if (source.width === 0 || source.height === 0) return null
+
+    this.composer.render(0)
+
+    const target = document.createElement('canvas')
+    target.width = source.width
+    target.height = source.height
+    const context = target.getContext('2d')
+    if (!context) return null
+    context.drawImage(source, 0, 0)
+    return target
+  }
+
   resetView(): void {
     this.cameraRig?.reset()
   }

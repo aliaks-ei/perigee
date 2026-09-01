@@ -12,9 +12,11 @@ const {
   angularDiameter,
   hazardCopy,
   busy,
+  hasInteracted,
   availableEncounter,
   inviteEncounter,
 } = usePerigee()
+const { capture, capturing } = useCapture()
 
 const discoveryOpen = ref(false)
 const freeDiscovery = computed(() => {
@@ -85,6 +87,18 @@ async function openDiscovery(): Promise<void> {
         @click="openDiscovery"
       >
         Discover this view
+      </button>
+      <!-- Held back until the viewer has composed a sky of their own, so the
+           resting first frame keeps to two actions. -->
+      <button
+        v-if="hasInteracted"
+        type="button"
+        class="encounter-invite text-shadow font-semibold uppercase lt-sm:whitespace-nowrap"
+        data-capture-trigger
+        :disabled="capturing || busy"
+        @click="capture"
+      >
+        {{ capturing ? 'Capturing…' : 'Capture this sky' }}
       </button>
     </div>
 

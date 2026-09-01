@@ -78,6 +78,11 @@ export interface PerigeeController {
   setDistance(presetId: string): Promise<void>
   setViewpoint(viewpointId: ViewpointId): Promise<void>
   getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null
+  /**
+   * Renders one fresh frame and copies it out. The drawing buffer is not
+   * preserved, so the copy has to happen in the same task as the render.
+   */
+  captureFrame(): HTMLCanvasElement | null
   resetView(): void
   setQuality(tier: QualityTier): void
   resize(width: number, height: number, dpr: number): void

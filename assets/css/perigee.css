@@ -904,6 +904,113 @@
 }
 
 /* ==========================================================================
+   Capture and share
+   ========================================================================== */
+
+/* Anchored where the discovery note sits, so the two transient panels share
+   one place on screen rather than competing for two. */
+.capture-card {
+  right: clamp(24px, 4vw, 64px);
+  bottom: clamp(118px, 17vh, 180px);
+  width: min(320px, calc(100vw - 40px));
+  padding: 14px 16px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
+  background: linear-gradient(180deg, rgba(3, 8, 15, 0.86), rgba(3, 8, 15, 0.66));
+  backdrop-filter: blur(14px);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.capture-close {
+  color: var(--ink-tertiary);
+}
+
+.capture-preview {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}
+
+.capture-caption {
+  margin: 11px 0 0;
+  color: var(--ink-primary);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.capture-actions {
+  gap: 6px 18px;
+  margin-top: 12px;
+}
+
+.capture-card .capture-actions button {
+  min-height: 34px;
+  border-bottom: 1px solid var(--hairline-strong);
+  color: var(--ink-secondary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease;
+}
+
+.capture-card .capture-actions button:not(:disabled):hover,
+.capture-card .capture-actions button:not(:disabled):focus-visible {
+  border-color: var(--accent-object);
+  color: var(--ink-primary);
+}
+
+.capture-card .capture-actions .capture-primary {
+  border-bottom-color: var(--accent-object);
+  color: var(--accent-object);
+}
+
+.capture-toggle {
+  margin-top: 12px;
+  color: var(--ink-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.capture-toggle input {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent-object);
+}
+
+/* Reserves its line, so an outcome message never nudges the panel's height. */
+.capture-message {
+  min-height: 15px;
+  margin: 8px 0 0;
+  color: var(--accent-object);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The prerendered body of a curated encounter route. Only a crawler or a
+   visitor without JavaScript ever sees it. */
+.prerender-shell {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 18vh 24px;
+  color: var(--ink-secondary);
+}
+
+.prerender-shell h1 {
+  margin: 0 0 14px;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-primary);
+}
+
+/* ==========================================================================
    Ambient states
    ========================================================================== */
 
@@ -1212,6 +1319,12 @@
     max-height: 36svh;
   }
 
+  .capture-card {
+    right: 18px;
+    bottom: 96px;
+    width: calc(100vw - 36px);
+  }
+
   .encounter-transport {
     left: 18px;
     right: 18px;
@@ -1241,7 +1354,8 @@
   .object-trigger,
   .viewpoint-switcher,
   .hazard-notice,
-  .encounter-discovery {
+  .encounter-discovery,
+  .capture-card {
     background: rgba(4, 8, 14, 0.94);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

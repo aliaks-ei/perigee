@@ -36,6 +36,11 @@ const pendingObjectId = ref<SkyObjectId | null>(null)
 const capabilityError = ref<'webgl2' | 'asset' | null>(null)
 const notice = ref<string | null>(null)
 const hintVisible = ref(true)
+/**
+ * True once the viewer has composed something of their own. The capture
+ * action waits for it, so the resting first frame keeps its two actions.
+ */
+const hasInteracted = ref(false)
 const hazardReady = ref(false)
 const controller = shallowRef<PerigeeController | null>(null)
 const encounterDirector = new EncounterDirector()
@@ -76,6 +81,11 @@ const availableEncounter = computed(() => {
     encounter.beats[0]?.selection.viewpointId === 'rooftop',
   ) ?? matching[0] ?? null
 })
+
+function recordInteraction(kind: 'object' | 'distance' | 'viewpoint' | 'encounter'): void {
+  hasInteracted.value = true
+  analytics.interaction(kind)
+}
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -161,15 +171,20 @@ function dismissHint(): void {
   hintVisible.value = false
 }
 
-async function initialize(canvas: HTMLCanvasElement): Promise<void> {
+/**
+ * `encounterSlug` comes from the curated `/e/<slug>` route. The query string
+ * carries the same thing on the SPA route, so both entry points restore an
+ * encounter through one path.
+ */
+async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Promise<void> {
   const loadStartedAt = performance.now()
   loading.value = true
   loadingProgress.value = 0
   capabilityError.value = null
 
   const selection = readSelectionFromUrl()
-  const encounterSlug = new URLSearchParams(window.location.search).get('encounter')
-  const linkedEncounter = encounterSlug ? encountersBySlug[encounterSlug] : undefined
+  const slug = encounterSlug ?? new URLSearchParams(window.location.search).get('encounter')
+  const linkedEncounter = slug ? encountersBySlug[slug] : undefined
   if (linkedEncounter) {
     applyEncounterSnapshot(encounterDirector.invite(linkedEncounter))
     applyEncounterSnapshot(encounterDirector.start())
@@ -212,7 +227,7 @@ async function selectObject(objectId: SkyObjectId): Promise<void> {
   if (encounterStatus.value !== 'idle') exitEncounter()
   objectBrowserOpen.value = false
   if (objectId === currentObjectId.value) return
-  analytics.interaction('object')
+  recordInteraction('object')
   analytics.track('object_change', { objectId })
 
   const object = skyObjectsById[objectId]
@@ -249,7 +264,7 @@ async function selectObject(objectId: SkyObjectId): Promise<void> {
 async function selectDistance(presetId: string): Promise<void> {
   if (encounterStatus.value !== 'idle') exitEncounter()
   if (presetId === currentPresetId.value) return
-  analytics.interaction('distance')
+  recordInteraction('distance')
   analytics.track('distance_change', { objectId: currentObjectId.value, presetId })
   const previousPresetId = currentPresetId.value
   currentPresetId.value = presetId
@@ -281,7 +296,7 @@ function stepDistance(direction: 1 | -1): void {
 async function selectViewpoint(viewpointId: ViewpointId): Promise<void> {
   if (encounterStatus.value !== 'idle') exitEncounter()
   if (viewpointId === currentViewpointId.value) return
-  analytics.interaction('viewpoint')
+  recordInteraction('viewpoint')
   analytics.track('viewpoint_change', { viewpointId })
   const previousViewpointId = currentViewpointId.value
   currentViewpointId.value = viewpointId
@@ -401,7 +416,7 @@ function inviteEncounter(encounterId?: string): void {
 }
 
 async function startEncounter(): Promise<void> {
-  analytics.interaction('encounter')
+  recordInteraction('encounter')
   applyEncounterSnapshot(encounterDirector.start())
   if (currentEncounter.value) analytics.track('encounter_start', { encounterId: currentEncounter.value.id })
   await runEncounterBeat()
@@ -449,10 +464,10 @@ function exitEncounter(sync = true): void {
   if (sync && exiting) analytics.track('encounter_exit', { encounterId: exiting.id, beatIndex: exitingBeat })
 }
 
-function retry(canvas: HTMLCanvasElement): Promise<void> {
+function retry(canvas: HTMLCanvasElement, encounterSlug?: string): Promise<void> {
   controller.value?.dispose()
   controller.value = null
-  return initialize(canvas)
+  return initialize(canvas, encounterSlug)
 }
 
 function pause(): void {
@@ -471,6 +486,10 @@ function resize(width: number, height: number, dpr: number): void {
 
 function getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null {
   return controller.value?.getObjectScreenPosition() ?? null
+}
+
+function captureFrame(): HTMLCanvasElement | null {
+  return controller.value?.captureFrame() ?? null
 }
 
 function dispose(): void {
@@ -510,6 +529,7 @@ export function usePerigee() {
     capabilityError: readonly(capabilityError),
     notice: readonly(notice),
     hintVisible: readonly(hintVisible),
+    hasInteracted: readonly(hasInteracted),
     initialize,
     retry,
     selectObject,
@@ -528,6 +548,7 @@ export function usePerigee() {
     replayEncounter,
     exitEncounter,
     getObjectScreenPosition,
+    captureFrame,
     pause,
     resume,
     resize,

@@ -1,12 +1,44 @@
+import { encounters } from './app/data/editorial'
+
 /** `@types/node` is not installed, so the environment is read defensively. */
-const compressedTextures = (globalThis as {
+const environment = (globalThis as {
   process?: { env?: Record<string, string | undefined> }
-}).process?.env?.VITE_KTX2_TEXTURES ?? '0'
+}).process?.env ?? {}
+const compressedTextures = environment.VITE_KTX2_TEXTURES ?? '0'
+
+/**
+ * The curated encounter routes. Nothing in the app links to them, so the
+ * prerender crawler cannot find them on its own; they are derived from the
+ * catalogue instead, and `tests/scene-capture.test.ts` checks each one has its
+ * social card on disk.
+ */
+const encounterRoutes = encounters.map((encounter) => `/e/${encounter.slug}`)
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-28',
   devtools: { enabled: false },
   ssr: false,
+  runtimeConfig: {
+    public: {
+      // Absolute URLs are what social crawlers resolve reliably. Left empty the
+      // cards fall back to root-relative paths; set `NUXT_PUBLIC_SITE_URL`
+      // before a public build.
+      siteUrl: environment.NUXT_PUBLIC_SITE_URL ?? '',
+    },
+  },
+  // The app is a client-rendered SPA everywhere except the curated encounter
+  // routes. Those are rendered once at build time so their title, description
+  // and social card are real HTML; `pages/e/[slug].vue` still mounts the live
+  // scene client-side only.
+  routeRules: {
+    '/e/**': { ssr: true, prerender: true },
+  },
+  nitro: {
+    prerender: {
+      routes: encounterRoutes,
+      crawlLinks: false,
+    },
+  },
   srcDir: 'app/',
   dir: {
     public: '../public',

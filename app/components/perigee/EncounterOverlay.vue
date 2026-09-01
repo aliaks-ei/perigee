@@ -20,6 +20,7 @@ const {
   exitEncounter,
   getObjectScreenPosition,
 } = usePerigee()
+const { capture, capturing } = useCapture()
 
 const overlay = ref<HTMLElement | null>(null)
 const observation = ref<HTMLElement | null>(null)
@@ -194,6 +195,15 @@ function toggleSource(): void {
               @click="toggleSource"
             >
               How we know
+            </button>
+            <button
+              v-if="isLastBeat"
+              type="button"
+              data-capture-trigger
+              :disabled="capturing"
+              @click="capture"
+            >
+              {{ capturing ? 'Capturing…' : 'Capture this sky' }}
             </button>
             <button v-if="isLastBeat" type="button" @click="replayEncounter">Replay encounter</button>
           </div>
