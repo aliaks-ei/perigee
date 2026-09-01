@@ -105,7 +105,9 @@ function prefersReducedMotion(): boolean {
 }
 
 function defaultPresetId(object: SkyObjectDefinition): string {
-  const preferred = object.kind === 'star' ? 'impossible' : 'moon-swap'
+  const preferred = object.kind === 'star'
+    ? 'impossible'
+    : object.kind === 'galaxy' ? 'quarter-million' : 'moon-swap'
   return object.presets.find((preset) => preset.id === preferred)?.id ?? object.presets[0]!.id
 }
 

@@ -40,6 +40,13 @@ export const scienceSources: ScienceSource[] = [
     url: 'https://science.nasa.gov/universe/what-is-betelgeuse-inside-the-strange-volatile-star/',
     reviewedOn: '2026-08-31',
   },
+  {
+    id: 'nasa-andromeda',
+    title: 'Messier 31 (The Andromeda Galaxy)',
+    publisher: 'NASA Science',
+    url: 'https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-31/',
+    reviewedOn: '2026-09-01',
+  },
 ]
 
 /**
@@ -94,6 +101,30 @@ export const discoveries: DiscoveryDefinition[] = [
     boundary: 'calculated',
     sourceIds: ['nasa-moon-facts'],
     reviewState: 'approved',
+  },
+  {
+    id: 'andromeda-moon-widths',
+    scope: { objectId: 'andromeda', presetId: 'real' },
+    glance: 'Andromeda is already about {{value}} full Moons wide, right now, tonight.',
+    detail: 'Your eye only catches the bright core, so the galaxy looks like a small smudge. The disc really does reach this far across the sky; it is simply too faint for unaided vision. Perigee uses the catalogued optical diameter and NASA\'s distance in the same angular-size calculation the scene runs.',
+    boundary: 'calculated',
+    calculation: {
+      kind: 'moon-widths',
+      objectId: 'andromeda',
+      presetId: 'real',
+      decimals: 1,
+    },
+    sourceIds: ['nasa-andromeda'],
+    reviewState: 'scientifically-checked',
+  },
+  {
+    id: 'andromeda-disc-boundary',
+    scope: { objectId: 'andromeda', presetId: 'touching' },
+    glance: 'The disc is drawn as an infinitely thin sheet in projection. Nothing about this approach is simulated.',
+    detail: 'Perigee paints the bulge, the 10 kpc ring, the arms, the dust lanes and the two bright satellites procedurally at the calculated angular size, seen through the galaxy\'s measured inclination. Disc thickness, the warp in the outer disc, galactic rotation, and anything two approaching galaxies would do to each other are outside what this scene models.',
+    boundary: 'described-not-simulated',
+    sourceIds: ['nasa-andromeda'],
+    reviewState: 'scientifically-checked',
   },
 ]
 

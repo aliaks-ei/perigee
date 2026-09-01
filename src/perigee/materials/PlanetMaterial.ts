@@ -19,6 +19,9 @@ const LIMB_COLORS: Record<SkyObjectDefinition['material'], string> = {
   'gas-giant': '#ffd9a8',
   'ice-giant': '#8fb6ff',
   'stellar': '#ffffff',
+  // Never reached: the stellar and galactic families light themselves. Present
+  // so the lookup stays exhaustive over the material union.
+  'galactic': '#ffffff',
 }
 
 /** How much skylight survives on the unlit hemisphere. */
@@ -27,6 +30,7 @@ const NIGHT_LIFT: Record<SkyObjectDefinition['material'], number> = {
   'gas-giant': 0.03,
   'ice-giant': 0.026,
   'stellar': 0,
+  'galactic': 0,
 }
 
 const SURFACE_RESPONSE: Record<SkyObjectDefinition['material'], {
@@ -41,6 +45,7 @@ const SURFACE_RESPONSE: Record<SkyObjectDefinition['material'], {
   'gas-giant': { contrast: 1.08, saturation: 0.96, detail: 0.16, specular: 0.055, specularPower: 52, warmth: 0.11 },
   'ice-giant': { contrast: 1.06, saturation: 1.04, detail: 0.1, specular: 0.075, specularPower: 58, warmth: 0 },
   'stellar': { contrast: 1, saturation: 1, detail: 0, specular: 0, specularPower: 1, warmth: 0 },
+  'galactic': { contrast: 1, saturation: 1, detail: 0, specular: 0, specularPower: 1, warmth: 0 },
 }
 
 /**

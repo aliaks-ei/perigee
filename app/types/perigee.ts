@@ -7,6 +7,7 @@ export type SkyObjectId =
   | 'betelgeuse'
   | 'sirius'
   | 'rigel'
+  | 'andromeda'
 
 export type ViewpointId = 'rooftop' | 'hilltop' | 'lakeside' | 'cabo-da-roca'
 export type QualityTier = 'high' | 'balanced' | 'safe'
@@ -34,7 +35,7 @@ export interface ShotDefinition {
 export interface SkyObjectDefinition {
   id: SkyObjectId
   label: string
-  kind: 'moon' | 'planet' | 'star'
+  kind: 'moon' | 'planet' | 'star' | 'galaxy'
   diameterKm: number
   flattening?: number
   rotationPeriodHours?: number
@@ -45,7 +46,23 @@ export interface SkyObjectDefinition {
    * texture cache loads it as data rather than colour.
    */
   normalMap?: string
-  material: 'rocky' | 'gas-giant' | 'ice-giant' | 'stellar'
+  material: 'rocky' | 'gas-giant' | 'ice-giant' | 'stellar' | 'galactic'
+  /**
+   * Orientation of a disc object as it is actually seen from Earth. The
+   * inclination foreshortens the minor axis, so the rendered ellipse comes out
+   * of measured geometry rather than art direction; the major axis still
+   * carries the full calculated angular size.
+   */
+  disc?: {
+    /** Degrees from face-on. 0 shows the full circle, 90 is edge-on. */
+    inclinationDegrees: number
+    /** Degrees the major axis is rolled within the frame. */
+    positionAngleDegrees: number
+    /** Winding of the spiral arms, in degrees. */
+    armPitchDegrees: number
+    /** Bulge, inter-arm disc, young arm light, and star-forming knots. */
+    palette: [string, string, string, string]
+  }
   presets: DistancePreset[]
   shot: ShotDefinition
   thumbnail: string

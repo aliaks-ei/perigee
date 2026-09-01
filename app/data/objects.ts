@@ -34,6 +34,21 @@ const starPresets = (realLy: number, closeAu: number) => [
   },
 ]
 
+/**
+ * A galaxy has no useful Solar-System step, so its ladder walks the Local Group
+ * inward: the true distance, then one million light years, then the halves that
+ * bring the two discs to within touching range. The last step is close, not
+ * survivable-adjacent; nothing about it endangers Earth, so it carries no
+ * hazard copy.
+ */
+const galaxyPresets = (realLy: number) => [
+  { id: 'real', label: 'Real', metadataLabel: 'True distance', distanceKm: realLy * LY_KM },
+  { id: 'one-million', label: '1 Mly', metadataLabel: 'One-million-light-year swap', distanceKm: LY_KM * 1_000_000 },
+  { id: 'half-million', label: '500 kly', metadataLabel: 'Local Group approach', distanceKm: LY_KM * 500_000 },
+  { id: 'quarter-million', label: '250 kly', metadataLabel: 'Halo crossing', distanceKm: LY_KM * 250_000 },
+  { id: 'touching', label: '150 kly', metadataLabel: 'Discs nearly touching', distanceKm: LY_KM * 150_000 },
+]
+
 export const skyObjects: SkyObjectDefinition[] = [
   {
     id: 'moon',
@@ -209,6 +224,39 @@ export const skyObjects: SkyObjectDefinition[] = [
     },
     thumbnail: '/assets/objects/thumbs/star.webp',
     attributionIds: ['solar-system-scope-textures'],
+  },
+  {
+    id: 'andromeda',
+    label: 'Andromeda',
+    kind: 'galaxy',
+    // The D25 optical major axis, about 190 arcmin, taken at NASA's 2.5 Mly
+    // distance. Paired that way the scene computes 3.16 degrees, which is the
+    // catalogued apparent size and NASA's "six times the full Moon".
+    // docs/design/andromeda/README.md records the working.
+    diameterKm: 138_000 * LY_KM,
+    material: 'galactic',
+    // Kinematic inclination and position angle measured over the 10-13 kpc
+    // ring, and the tighter of the two published arm pitches: the wider one is
+    // derived from rotation-curve shear, not from the arms you can see.
+    disc: {
+      inclinationDegrees: 77.5,
+      positionAngleDegrees: 37.7,
+      armPitchDegrees: 8,
+      palette: ['#ffd7a0', '#efe0c4', '#a6c6ff', '#ff9fb6'],
+    },
+    presets: galaxyPresets(2_500_000),
+    shot: {
+      timeOfDay: 0.03,
+      exposure: 0.78,
+      sunDirection: [0.5, 0.45, 1],
+      skyPalette: ['#010207', '#050b1c', '#141f38'],
+      objectYaw: 0.2,
+      objectPitch: 0.3,
+      environmentTint: '#9fb8f0',
+      accent: '#b7c8ff',
+    },
+    thumbnail: '/assets/objects/thumbs/andromeda.webp',
+    attributionIds: ['perigee-procedural-art'],
   },
 ]
 

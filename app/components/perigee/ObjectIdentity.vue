@@ -56,7 +56,7 @@ async function openDiscovery(): Promise<void> {
   >
     <p class="identity-kicker text-shadow items-center gap-2 font-semibold uppercase">
       <span class="kicker-dot" aria-hidden="true" />
-      {{ currentObject.kind === 'star' ? 'Star' : currentObject.kind === 'moon' ? 'Natural satellite' : 'Planet' }}
+      {{ currentObject.kind === 'star' ? 'Star' : currentObject.kind === 'galaxy' ? 'Spiral galaxy' : currentObject.kind === 'moon' ? 'Natural satellite' : 'Planet' }}
     </p>
 
     <h1 class="font-display">{{ currentObject.label }}</h1>

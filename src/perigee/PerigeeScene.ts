@@ -6,6 +6,7 @@ import {
   NoToneMapping,
   Object3D,
   PerspectiveCamera,
+  PlaneGeometry,
   Quaternion,
   RingGeometry,
   SphereGeometry,
@@ -38,6 +39,7 @@ import {
 } from './math/angularSize'
 import { createPlanetMaterial, type PlanetMaterialSet } from './materials/PlanetMaterial'
 import { createRingMaterial, type RingMaterialSet } from './materials/RingMaterial'
+import { createGalaxyMaterial, type GalaxyMaterialSet } from './materials/GalaxyMaterial'
 import { createStellarMaterial, type StellarMaterialSet } from './materials/StellarMaterial'
 import { CameraRig } from './CameraRig'
 import { createSkyScene, type SkySceneBundle } from './scenes/createSkyScene'
@@ -71,6 +73,7 @@ const RING_TEXTURE = '/assets/objects/saturn-ring-2k.webp'
  */
 let sharedSphere: SphereGeometry | null = null
 let sharedRing: RingGeometry | null = null
+let sharedGalaxyPlane: PlaneGeometry | null = null
 
 function sphereGeometry(): SphereGeometry {
   sharedSphere ??= new SphereGeometry(1, 192, 128)
@@ -80,6 +83,18 @@ function sphereGeometry(): SphereGeometry {
 function ringGeometry(): RingGeometry {
   sharedRing ??= new RingGeometry(1.24, 2.32, 256)
   return sharedRing
+}
+
+/**
+ * The carrier for a galaxy. It faces the camera and the shader does the
+ * projection, so it is a plane rather than a tilted disc. Its half-extent is
+ * 1.25 semi-major axes, which leaves room for the bulge and the halo to reach
+ * past the foreshortened disc; its rim is never seen, because the shader fades
+ * the light out before the plane ends.
+ */
+function galaxyPlaneGeometry(): PlaneGeometry {
+  sharedGalaxyPlane ??= new PlaneGeometry(2.5, 2.5)
+  return sharedGalaxyPlane
 }
 
 /**
@@ -123,6 +138,12 @@ interface HeroBundle {
   planet: PlanetMaterialSet | null
   ring: { set: RingMaterialSet, mesh: Mesh } | null
   stellar: StellarMaterialSet | null
+  galaxy: GalaxyMaterialSet | null
+  /**
+   * Radians per second of visible spin. A galaxy turns once every few hundred
+   * million years, so rendering any rotation on it would be invention.
+   */
+  spinRate: number
   animated: Array<{ value: number }>
 }
 
@@ -136,6 +157,10 @@ export class PerigeeScene implements PerigeeController {
   private heroPlanet: PlanetMaterialSet | null = null
   private heroRing: { set: RingMaterialSet, mesh: Mesh } | null = null
   private heroStellar: StellarMaterialSet | null = null
+  private heroGalaxy: GalaxyMaterialSet | null = null
+  private heroSpinRate = 0
+  /** Roll of a galaxy billboard about the view axis: its position angle. */
+  private heroGalaxyRoll = 0
   private heroTimeUniforms: Array<{ value: number }> = []
   private currentObjectId: SkyObjectId = 'saturn'
   private currentPresetId = 'moon-swap'
@@ -156,6 +181,7 @@ export class PerigeeScene implements PerigeeController {
    * compiled to warm.
    */
   private stellarWarmup: StellarMaterialSet | null = null
+  private galaxyWarmup: GalaxyMaterialSet | null = null
   /** Bumped by every object swap, so a superseded load can drop its work. */
   private generation = 0
   /** Non-null only while an object swap is still loading its textures. */
@@ -270,6 +296,8 @@ export class PerigeeScene implements PerigeeController {
     this.heroPlanet = built.planet
     this.heroRing = built.ring
     this.heroStellar = built.stellar
+    this.heroGalaxy = built.galaxy
+    this.heroSpinRate = built.spinRate
     this.heroTimeUniforms = built.animated
     this.currentObjectId = objectId
     this.currentPresetId = preset.id
@@ -410,8 +438,9 @@ export class PerigeeScene implements PerigeeController {
     const height = this.renderer?.domElement.clientHeight || window.innerHeight
     this.resize(width, height, window.devicePixelRatio)
     if (this.composer) this.composer.multisampling = tier === 'high' ? 4 : 0
-    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, skyObjectsById[this.currentObjectId].kind === 'star')
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, skyObjectsById[this.currentObjectId].kind)
     this.heroStellar?.setQuality(tier)
+    this.heroGalaxy?.setQuality(tier)
     this.sky?.setQuality(tier)
   }
 
@@ -458,10 +487,14 @@ export class PerigeeScene implements PerigeeController {
     if (this.hero) disposeObject(this.hero)
     this.stellarWarmup?.material.dispose()
     this.stellarWarmup = null
+    this.galaxyWarmup?.material.dispose()
+    this.galaxyWarmup = null
     sharedSphere?.dispose()
     sharedRing?.dispose()
+    sharedGalaxyPlane?.dispose()
     sharedSphere = null
     sharedRing = null
+    sharedGalaxyPlane = null
     disposeTextures()
     this.composer?.dispose()
     this.renderer?.dispose()
@@ -470,6 +503,7 @@ export class PerigeeScene implements PerigeeController {
     this.heroPlanet = null
     this.heroRing = null
     this.heroStellar = null
+    this.heroGalaxy = null
     this.heroTimeUniforms = []
     this.composer = null
     this.renderer = null
@@ -494,6 +528,16 @@ export class PerigeeScene implements PerigeeController {
       this.stellarWarmup = createStellarMaterial('betelgeuse')
       const probe = new Mesh(sphereGeometry(), this.stellarWarmup.material)
       void this.renderer.compileAsync(probe, this.camera, this.sky.scene)
+
+      const disc = skyObjectsById.andromeda.disc
+      if (!disc) return
+      this.galaxyWarmup = createGalaxyMaterial({
+        palette: disc.palette,
+        armPitchDegrees: disc.armPitchDegrees,
+        inclinationDegrees: disc.inclinationDegrees,
+      })
+      const discProbe = new Mesh(galaxyPlaneGeometry(), this.galaxyWarmup.material)
+      void this.renderer.compileAsync(discProbe, this.camera, this.sky.scene)
     }
     if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => warm())
     else window.setTimeout(warm, 1_200)
@@ -503,6 +547,24 @@ export class PerigeeScene implements PerigeeController {
     const group = new Group()
     group.name = `hero-${definition.id}`
     const flattening = 1 - (definition.flattening ?? 0)
+
+    if (definition.kind === 'galaxy') {
+      const disc = definition.disc
+      if (!disc) throw new Error(`Missing disc definition for ${definition.id}`)
+      const galaxy = createGalaxyMaterial({
+        palette: disc.palette,
+        armPitchDegrees: disc.armPitchDegrees,
+        inclinationDegrees: disc.inclinationDegrees,
+      })
+      galaxy.setQuality(this.quality.current)
+      // The inclination lives in the shader; the carrier only has to face the
+      // camera and carry the position angle, which is a roll about the view
+      // axis and nothing more. `render` refreshes the orientation each frame.
+      const surface = new Mesh(galaxyPlaneGeometry(), galaxy.material)
+      this.heroGalaxyRoll = (disc.positionAngleDegrees * Math.PI) / 180
+      group.add(surface)
+      return { group, surface, planet: null, ring: null, stellar: null, galaxy, spinRate: 0, animated: [] }
+    }
 
     if (definition.kind === 'star') {
       const stellar = createStellarMaterial(definition.id)
@@ -516,6 +578,8 @@ export class PerigeeScene implements PerigeeController {
         planet: null,
         ring: null,
         stellar,
+        galaxy: null,
+        spinRate: 0.018,
         animated: [stellar.material.uniforms.uTime!],
       }
     }
@@ -546,7 +610,7 @@ export class PerigeeScene implements PerigeeController {
     }
 
     group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
-    return { group, surface, planet, ring, stellar: null, animated: [] }
+    return { group, surface, planet, ring, stellar: null, galaxy: null, spinRate: 0.018, animated: [] }
   }
 
   private radiusFor(definition: SkyObjectDefinition, distanceKm: number): number {
@@ -583,21 +647,33 @@ export class PerigeeScene implements PerigeeController {
 
   private applyShot(definition: SkyObjectDefinition): void {
     const shot = definition.shot
-    const emissive = definition.kind === 'star'
+    const kind = definition.kind
+    const emissive = kind === 'star' || kind === 'galaxy'
     this.sky.setPalette(shot.skyPalette)
     this.sky.setGlow(
       emissive ? (shot.environmentTint ?? shot.accent) : '#ff9550',
-      emissive ? 0.12 : 0.035,
+      // A galaxy is self-luminous but diffuse. It throws a fraction of the
+      // ground light a close star does, so it gets its own strength rather
+      // than a star's.
+      kind === 'star' ? 0.12 : kind === 'galaxy' ? 0.05 : 0.035,
     )
 
     this.sunWorld.set(...shot.sunDirection).normalize()
-    if (this.bloom) this.bloom.intensity = this.bloomIntensity(this.quality.current, emissive)
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(this.quality.current, kind)
     if (this.renderer) this.renderer.setClearColor(shot.skyPalette[0], 1)
   }
 
-  private bloomIntensity(tier: QualityTier, emissive: boolean): number {
+  /**
+   * A star is a small hot disc that should bleed. A galaxy is the opposite
+   * case: its dust lanes and arms are the whole point, and anything past a
+   * light lift on the nucleus blurs them back into the soft field they were
+   * drawn to escape.
+   */
+  private bloomIntensity(tier: QualityTier, kind: SkyObjectDefinition['kind']): number {
     const base = tier === 'safe' ? 0.32 : tier === 'balanced' ? 0.42 : 0.52
-    return emissive ? base * 4.1 : base
+    if (kind === 'star') return base * 4.1
+    if (kind === 'galaxy') return base * 1.15
+    return base
   }
 
   /** Hero shaders light themselves, so they need the sun in their own space. */
@@ -628,7 +704,14 @@ export class PerigeeScene implements PerigeeController {
     if (this.hero) {
       // Spin the textured body, not its placement group. Rotating the group
       // makes Saturn's ring plane precess across the frame over time.
-      if (this.heroSurface) this.heroSurface.rotation.y += delta * 0.018
+      if (this.heroSurface) this.heroSurface.rotation.y += delta * this.heroSpinRate
+      // A galaxy carrier is a billboard: it faces the camera and then rolls by
+      // the position angle, so the disc keeps its measured tilt on the sky
+      // however far the viewer turns.
+      if (this.heroGalaxy && this.heroSurface) {
+        this.heroSurface.quaternion.copy(this.camera.quaternion)
+        this.heroSurface.rotateZ(this.heroGalaxyRoll)
+      }
       this.hero.updateMatrixWorld()
     }
     this.updateHeroLighting()

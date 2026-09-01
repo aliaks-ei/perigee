@@ -827,8 +827,11 @@
   letter-spacing: 0.24em;
 }
 
+/* The column count comes from the component, which picks the one that leaves
+   every row equally full. Hard-coding it here left the ninth object alone on a
+   second row the moment the list grew. */
 .browser-track {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--browser-columns, 8), minmax(0, 1fr));
 }
 
 .object-option {
@@ -1238,7 +1241,9 @@
   }
 
   .browser-track {
-    grid-template-columns: repeat(8, 92px);
+    grid-auto-flow: column;
+    grid-auto-columns: 92px;
+    grid-template-columns: none;
   }
 }
 
@@ -1302,7 +1307,7 @@
   }
 
   .browser-track {
-    grid-template-columns: repeat(8, 86px);
+    grid-auto-columns: 86px;
   }
 
   .distance-panel {

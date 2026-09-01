@@ -14,6 +14,14 @@ const {
 } = usePerigee()
 
 /**
+ * The widest the desktop track goes before the tiles start to crowd. Anything
+ * past it wraps, and the rows are balanced rather than filled: nine objects run
+ * as one row of nine, not eight and a stray.
+ */
+const MAX_COLUMNS = 9
+const columns = Math.ceil(skyObjects.length / Math.ceil(skyObjects.length / MAX_COLUMNS))
+
+/**
  * One tab stop for the whole list, moved with the arrow keys. The refs are
  * index-keyed because the panel is removed from the DOM when it closes, and a
  * push-based list keeps handing out detached buttons after the second open.
@@ -77,7 +85,10 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
     :aria-busy="busy"
   >
     <p class="browser-kicker block font-semibold uppercase">Objects</p>
-    <div class="browser-track grid lt-md:overflow-x-auto lt-md:overscroll-x-contain">
+    <div
+      class="browser-track grid lt-md:overflow-x-auto lt-md:overscroll-x-contain"
+      :style="{ '--browser-columns': columns }"
+    >
       <button
         v-for="(object, index) in skyObjects"
         :key="object.id"
@@ -111,7 +122,7 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
           />
         </span>
         <span class="object-name">{{ object.label }}</span>
-        <span class="object-kind font-semibold uppercase">{{ object.kind === 'star' ? 'Star' : object.kind === 'moon' ? 'Moon' : 'Planet' }}</span>
+        <span class="object-kind font-semibold uppercase">{{ object.kind === 'star' ? 'Star' : object.kind === 'galaxy' ? 'Galaxy' : object.kind === 'moon' ? 'Moon' : 'Planet' }}</span>
       </button>
     </div>
   </div>
