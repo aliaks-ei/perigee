@@ -113,6 +113,22 @@ export const encounters: EncounterDefinition[] = [
         actionLabel: 'Bring Saturn closer',
         transitionLabel: 'Finding Saturn at its real distance',
         locatorLabel: 'Saturn · real distance',
+        prediction: {
+          id: 'saturn-versus-moon',
+          question: 'Before we move it: at the Moon\'s distance, will Saturn look wider or narrower than the full Moon?',
+          options: [
+            {
+              id: 'wider',
+              label: 'Wider',
+              response: 'You said wider. Watch how much wider it turns out to be.',
+            },
+            {
+              id: 'narrower',
+              label: 'Narrower',
+              response: 'You said narrower. Saturn is far larger than the Moon, so watch what that does to the sky.',
+            },
+          ],
+        },
       },
       {
         id: 'saturn-reveal',
@@ -179,6 +195,22 @@ export const encounters: EncounterDefinition[] = [
         actionLabel: 'Bring Betelgeuse closer',
         transitionLabel: 'Finding Betelgeuse in the night sky',
         locatorLabel: 'Betelgeuse · real distance',
+        prediction: {
+          id: 'betelgeuse-first-step',
+          question: 'One step closer is still a hundredth of a light year away. Will the point already become a surface?',
+          options: [
+            {
+              id: 'still-a-point',
+              label: 'Still a point',
+              response: 'You expected a point. Distance on this ladder falls faster than it reads.',
+            },
+            {
+              id: 'a-surface',
+              label: 'A surface',
+              response: 'You expected a surface. See how much of one a hundredth of a light year gives you.',
+            },
+          ],
+        },
       },
       {
         id: 'betelgeuse-surface',
@@ -211,6 +243,22 @@ export const encounters: EncounterDefinition[] = [
         observation: 'Start with a familiar Moon and notice how little sky it occupies.',
         actionLabel: 'Move the Moon closer',
         transitionLabel: 'Returning to the familiar Moon',
+        prediction: {
+          id: 'moon-doubles',
+          question: 'If the Moon comes twice as close, does it look exactly twice as wide?',
+          options: [
+            {
+              id: 'exactly-twice',
+              label: 'Exactly twice',
+              response: 'You said exactly twice. Compare that with the width you are about to see.',
+            },
+            {
+              id: 'not-quite',
+              label: 'Not quite',
+              response: 'You said not quite. Angular size follows the geometry rather than the number.',
+            },
+          ],
+        },
       },
       {
         id: 'moon-half',

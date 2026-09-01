@@ -8,11 +8,14 @@ const {
   currentEncounter,
   currentEncounterBeat,
   currentDiscovery,
+  currentPrediction,
+  predictionResponse,
   encounterStatus,
   encounterBeatIndex,
   encounterTransitioning,
   encounterBeatRevealed,
   startEncounter,
+  answerPrediction,
   nextEncounter,
   previousEncounter,
   toggleEncounterPause,
@@ -172,7 +175,30 @@ function toggleSource(): void {
           >
             A Perigee encounter
           </span>
+          <p
+            v-if="predictionResponse"
+            class="prediction-response"
+          >
+            {{ predictionResponse }}
+          </p>
           <p :class="{ 'sm:!text-2xl': isCaboEncounter }">{{ currentEncounterBeat?.observation }}</p>
+          <div
+            v-if="currentPrediction"
+            class="encounter-prediction flex flex-wrap items-baseline"
+            :class="isCaboEncounter ? 'justify-start' : 'justify-center'"
+          >
+            <p class="prediction-question">{{ currentPrediction.question }}</p>
+            <button
+              v-for="option in currentPrediction.options"
+              :key="option.id"
+              class="prediction-option"
+              type="button"
+              :disabled="encounterStatus === 'paused' || encounterTransitioning"
+              @click="answerPrediction(option.id)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
           <div
             class="encounter-beat-actions flex flex-wrap items-center"
             :class="isCaboEncounter ? 'justify-start' : 'justify-center'"

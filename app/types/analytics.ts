@@ -10,6 +10,7 @@ export interface EngagementEventMap {
   encounter_beat: { encounterId: string; beatIndex: number }
   encounter_exit: { encounterId: string; beatIndex: number }
   encounter_complete: { encounterId: string }
+  prediction_answer: { encounterId: string; predictionId: string; optionId: string }
   discovery_open: { discoveryId: string }
   capture: { outcome: 'attempt' | 'complete' | 'failed' }
   share: { outcome: 'attempt' | 'complete' | 'cancelled' | 'failed' }

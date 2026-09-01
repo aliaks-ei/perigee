@@ -365,6 +365,55 @@
   opacity: 0.4;
 }
 
+/* --- Prediction ----------------------------------------------------------- */
+
+/* Optional guess before the scene answers. No score, no failure state, and no
+   permanent surface: it lives inside the beat that is already on screen. */
+.encounter-prediction {
+  gap: 8px 16px;
+  margin-top: 14px;
+}
+
+.encounter-observation .prediction-question {
+  flex: 1 0 100%;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.encounter-observation .prediction-option {
+  min-height: 40px;
+  margin-top: 0;
+  padding: 0 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease;
+}
+
+.encounter-observation .prediction-option:not(:disabled):hover,
+.encounter-observation .prediction-option:not(:disabled):focus-visible {
+  border-color: var(--accent-object);
+  color: var(--ink-primary);
+}
+
+.encounter-observation .prediction-option:disabled {
+  opacity: 0.4;
+}
+
+.encounter-observation .prediction-response {
+  margin-bottom: 10px;
+  color: var(--accent-object);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
 .encounter-transition-state {
   left: 50%;
   bottom: clamp(132px, 19vh, 196px);
