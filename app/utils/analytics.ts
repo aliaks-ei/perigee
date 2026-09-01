@@ -54,6 +54,9 @@ export function createAnalytics(options: {
   const clock = options.clock ?? new ActiveTimeClock()
   const events: EngagementEvent[] = []
   let firstInteractionRecorded = false
+  // Mutable: the real provider only exists once its third-party script has
+  // loaded, which is long after this module is evaluated.
+  let provider = options.provider
 
   function track<Name extends EngagementEventName>(
     name: Name,
@@ -66,8 +69,14 @@ export function createAnalytics(options: {
       activeTimeMs: clock.value(),
     }
     events.push(event as EngagementEvent)
-    if (!options.provider) return
-    Promise.resolve(options.provider.track(event)).catch(() => undefined)
+    if (!provider) return
+    // A third-party tracker may throw synchronously as well as reject, and
+    // neither may reach the scene.
+    try {
+      Promise.resolve(provider.track(event)).catch(() => undefined)
+    } catch {
+      // Ignored on purpose: measurement never blocks the experience.
+    }
   }
 
   function interaction(kind: EngagementEventMap['first_interaction']['kind']): void {
@@ -81,6 +90,9 @@ export function createAnalytics(options: {
     clock,
     track,
     interaction,
+    setProvider: (next: AnalyticsProvider): void => {
+      provider = next
+    },
     inspect: (): readonly EngagementEvent[] => events,
   }
 }

@@ -36,6 +36,10 @@ export default defineNuxtConfig({
       // cards fall back to root-relative paths; set `NUXT_PUBLIC_SITE_URL`
       // before a public build.
       siteUrl: environment.NUXT_PUBLIC_SITE_URL ?? '',
+      // Measurement is opt-in per environment. Empty means the Umami script
+      // is never requested, so dev and preview builds stay silent.
+      umamiWebsiteId: environment.NUXT_PUBLIC_UMAMI_WEBSITE_ID ?? '',
+      umamiSrc: environment.NUXT_PUBLIC_UMAMI_SRC ?? '',
     },
   },
   // The app is a client-rendered SPA everywhere except the curated encounter

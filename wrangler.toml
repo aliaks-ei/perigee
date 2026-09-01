@@ -1,0 +1,12 @@
+# Cloudflare Workers Static Assets. `npm run generate` produces a static
+# bundle, so there is no `main` entry point: the Worker serves the directory
+# below directly, and `public/_headers` still applies to those responses.
+name = "perigee"
+compatibility_date = "2026-09-01"
+
+[assets]
+directory = ".output/public"
+# `not_found_handling` is deliberately left at its default, which returns a
+# real 404. The "single-page-application" setting would answer every mistyped
+# encounter slug with 200 and an empty shell — a soft 404 that would undermine
+# the curated routes built for search.
