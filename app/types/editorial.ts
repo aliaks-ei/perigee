@@ -19,6 +19,20 @@ export interface EncounterSelection {
   viewpointId: ViewpointId
 }
 
+export interface EncounterPredictionOption {
+  id: string
+  label: string
+  /** Neutral and curiosity-supporting. No option is presented as wrong. */
+  response: string
+}
+
+/** Optional invitation to guess before the scene answers. Never scored. */
+export interface EncounterPrediction {
+  id: string
+  question: string
+  options: EncounterPredictionOption[]
+}
+
 export interface EncounterBeat {
   id: string
   selection: EncounterSelection
@@ -30,6 +44,8 @@ export interface EncounterBeat {
   transitionLabel?: string
   /** Adds a camera-tracked marker when the real-distance object is easy to miss. */
   locatorLabel?: string
+  /** Answering advances to the next beat, so the scene itself is the reveal. */
+  prediction?: EncounterPrediction
   discoveryId?: string
 }
 

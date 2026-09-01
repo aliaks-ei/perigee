@@ -49,6 +49,8 @@ const encounterStatus = ref<EncounterStatus>('idle')
 const encounterBeatIndex = ref(0)
 const encounterTransitioning = ref(false)
 const encounterBeatRevealed = ref(false)
+/** The prediction the viewer answered, kept so the next beat can respond. */
+const answeredPrediction = ref<{ beatId: string, optionId: string } | null>(null)
 let hazardTimer: ReturnType<typeof setTimeout> | null = null
 let hintTimer: ReturnType<typeof setTimeout> | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
@@ -70,6 +72,17 @@ const currentDiscovery = computed(() => {
   const discoveryId = currentEncounterBeat.value?.discoveryId
   const discovery = discoveryId ? discoveriesById[discoveryId] : undefined
   return discovery ? resolveDiscovery(discovery) : null
+})
+const currentPrediction = computed(() => currentEncounterBeat.value?.prediction ?? null)
+/** The response belongs to the beat after the answered one: the reveal itself. */
+const predictionResponse = computed(() => {
+  const answer = answeredPrediction.value
+  const beats = currentEncounter.value?.beats
+  if (!answer || !beats) return null
+  const answeredIndex = beats.findIndex((beat) => beat.id === answer.beatId)
+  if (answeredIndex < 0 || answeredIndex + 1 !== encounterBeatIndex.value) return null
+  return beats[answeredIndex]?.prediction?.options
+    .find((option) => option.id === answer.optionId)?.response ?? null
 })
 const availableEncounter = computed(() => {
   const matching = encounters.filter((encounter) =>
@@ -422,6 +435,24 @@ async function startEncounter(): Promise<void> {
   await runEncounterBeat()
 }
 
+/**
+ * Answering is optional and never scored. It records the choice and runs the
+ * next beat, so the scene delivers the reveal without an extra step.
+ */
+async function answerPrediction(optionId: string): Promise<void> {
+  const beat = currentEncounterBeat.value
+  const encounter = currentEncounter.value
+  if (!beat?.prediction || !encounter || encounterTransitioning.value) return
+  if (!beat.prediction.options.some((option) => option.id === optionId)) return
+  answeredPrediction.value = { beatId: beat.id, optionId }
+  analytics.track('prediction_answer', {
+    encounterId: encounter.id,
+    predictionId: beat.prediction.id,
+    optionId,
+  })
+  await nextEncounter()
+}
+
 async function nextEncounter(): Promise<void> {
   applyEncounterSnapshot(encounterDirector.next())
   syncUrl()
@@ -432,6 +463,7 @@ async function nextEncounter(): Promise<void> {
     applyEncounterSnapshot(encounterDirector.exit())
     encounterTransitioning.value = false
     encounterBeatRevealed.value = false
+    answeredPrediction.value = null
     syncUrl()
   }
 }
@@ -449,6 +481,7 @@ function toggleEncounterPause(): void {
 }
 
 async function replayEncounter(): Promise<void> {
+  answeredPrediction.value = null
   applyEncounterSnapshot(encounterDirector.replay())
   await runEncounterBeat()
 }
@@ -460,6 +493,7 @@ function exitEncounter(sync = true): void {
   applyEncounterSnapshot(encounterDirector.exit())
   encounterTransitioning.value = false
   encounterBeatRevealed.value = false
+  answeredPrediction.value = null
   if (sync) syncUrl()
   if (sync && exiting) analytics.track('encounter_exit', { encounterId: exiting.id, beatIndex: exitingBeat })
 }
@@ -517,6 +551,8 @@ export function usePerigee() {
     currentEncounter: readonly(currentEncounter),
     currentEncounterBeat,
     currentDiscovery,
+    currentPrediction,
+    predictionResponse,
     encounterStatus: readonly(encounterStatus),
     encounterBeatIndex: readonly(encounterBeatIndex),
     encounterTransitioning: readonly(encounterTransitioning),
@@ -542,6 +578,7 @@ export function usePerigee() {
     resetExperience,
     inviteEncounter,
     startEncounter,
+    answerPrediction,
     nextEncounter,
     previousEncounter,
     toggleEncounterPause,

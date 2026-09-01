@@ -689,6 +689,7 @@ passive time on the page does not count.
 - distinct objects, distances, viewpoints, and encounters explored;
 - encounter start, completion, replay, skip, and exit rates;
 - discovery open and source-view rates;
+- prediction answer rate and option split, against encounter completion;
 - capture and share attempts/completions;
 - visits arriving through shared or curated encounter links;
 - return within 30 days, as a secondary measure when the selected privacy model
@@ -757,12 +758,11 @@ The current roadmap does not include:
 
 ## 13. Recommended next implementation chunk
 
-Implement **R3.1 — Prediction and reveal beats**.
+Implement **R3.2 — First new object class**, once gate G4 has comparative
+prototypes.
 
-Release 0, Release 1, and Release 2 are complete in the local working tree.
-Next, add one optional prediction to each launch encounter, keeping it free of
-scores, timers, failure states, and permanent interface. Do not combine the
-chunk with the first new object class (R3.2) or the monthly feature (R3.3).
+Release 0, Release 1, Release 2, and R3.1 are complete in the local working
+tree. R3.2 and R3.3 remain. Do not combine them.
 
 ## 14. Research basis
 
@@ -809,7 +809,7 @@ Update this section when a release chunk is completed.
 | R2.1 | Complete | Option 1 approved; resting, silent reveal, encounter-copy, and mobile-crop targets plus camera, licensing, and performance decisions documented in `docs/design/cabo-da-roca/` | Local working tree |
 | R2.2 | Complete | Responsive Cabo landscape/portrait plates selected by quality tier; signature Saturn encounter, camera framing, URL restoration and invalid-view fallback, attribution, desktop/mobile target comparisons, and the verified 33-test production build | Local working tree |
 | R2.3 | Complete | Clean scene capture with optional caption, native share with download and copy fallbacks, cancellation reported separately from failure; pre-generated 1200 × 630 social cards for all four curated routes; curated routes corrected to real prerendered HTML after a global `ssr: false` was found to override the route rule, verified in the generated static build (title, description, Open Graph image, crawler fallback body, and a shared link opening its encounter at beat 1); verified 45-test production build | Local working tree |
-| R3.1 | Not started | — | — |
+| R3.1 | Complete | One optional prediction on each of the three launch encounters (Saturn rooftop, Betelgeuse, Moon); the Cabo signature stays clean. Answering records the choice and runs the next beat, so the scene is the reveal; the answered option's neutral response opens the following beat. No score, timer, failure state, or permanent surface, and the beat's own action remains the skip path. Prediction contract test added; verified 46-test production build and the Saturn encounter checked in the live scene | Local working tree |
 | R3.2 | Not started | — | — |
 | R3.3 | Not started | — | — |
 | R4.1 | Deferred | Requires evidence at G5 | — |
