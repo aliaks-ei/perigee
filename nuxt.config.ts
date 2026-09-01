@@ -51,6 +51,13 @@ export default defineNuxtConfig({
     '/e/**': { ssr: true, prerender: true },
   },
   nitro: {
+    // Pinned on purpose. Nitro auto-detects Cloudflare in CI and would switch
+    // to `cloudflare-module`, which emits a server entry plus a redirected
+    // wrangler config that overrides `wrangler.toml`; the deploy then fails on
+    // an `index.mjs` that `nuxt generate` never builds. Staying static also
+    // keeps every request on unmetered asset serving rather than a billed
+    // Worker invocation.
+    preset: 'static',
     prerender: {
       routes: prerenderRoutes,
       crawlLinks: false,

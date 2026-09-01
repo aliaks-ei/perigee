@@ -6,7 +6,8 @@ compatibility_date = "2026-09-01"
 
 [assets]
 directory = ".output/public"
-# `not_found_handling` is deliberately left at its default, which returns a
-# real 404. The "single-page-application" setting would answer every mistyped
-# encounter slug with 200 and an empty shell — a soft 404 that would undermine
-# the curated routes built for search.
+# Serves the prerendered `404.html` with a real 404 status, so a mistyped
+# encounter slug gets the app's own error page. The "single-page-application"
+# setting would answer it with 200 and an empty shell instead — a soft 404
+# that would undermine the curated routes built for search.
+not_found_handling = "404-page"

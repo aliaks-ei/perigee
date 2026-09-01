@@ -11,6 +11,7 @@ declare module '@nuxt/schema' {
   interface NuxtConfig {
     routeRules?: Record<string, { ssr?: boolean, prerender?: boolean }>
     nitro?: {
+      preset?: string
       prerender?: {
         routes?: string[]
         crawlLinks?: boolean
