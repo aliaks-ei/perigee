@@ -125,4 +125,23 @@ describe('editorial content model', () => {
       'The planet alone spans about 33 familiar Moons. Its rings reach farther still.',
     )
   })
+
+  it('reveals Andromeda before exposing its closest free-exploration state', () => {
+    const andromeda = encounters.find(
+      (encounter) => encounter.slug === 'the-galaxy-hiding-in-our-sky',
+    )!
+
+    expect(andromeda.reviewState).toBe('approved')
+    expect(andromeda.beats.map((beat) => beat.selection.presetId)).toEqual([
+      'real',
+      'half-million',
+      'quarter-million',
+      'touching',
+    ])
+    expect(andromeda.beats.every((beat) => beat.selection.objectId === 'andromeda')).toBe(true)
+    expect(andromeda.beats.every((beat) => beat.selection.viewpointId === 'hilltop')).toBe(true)
+    expect(andromeda.beats.at(0)?.discoveryId).toBe('andromeda-moon-widths')
+    expect(andromeda.beats.at(-1)?.discoveryId).toBe('andromeda-disc-boundary')
+    expect(andromeda.beats.at(-1)?.actionLabel).toBe('Explore this sky')
+  })
 })

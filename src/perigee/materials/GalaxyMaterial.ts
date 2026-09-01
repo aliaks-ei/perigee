@@ -124,8 +124,17 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
         if (skyRadius > 1.24) discard;
 
         vec2 plane = vec2(sky.x, sky.y / uCosInclination);
-        float radius = length(plane);
-        float angle = atan(plane.y, plane.x);
+
+        // M31 is not a diagram-perfect ellipse. Low-frequency displacement
+        // breaks the concentric geometry into the warped, filamentary outline
+        // visible in long exposures without inventing motion.
+        vec2 warp = vec2(
+          noise(plane * 2.15 + vec2(4.2, 9.1)),
+          noise(plane * 2.35 + vec2(17.7, 3.4))
+        ) - 0.5;
+        vec2 structuredPlane = plane + warp * 0.038;
+        float radius = length(structuredPlane);
+        float angle = atan(structuredPlane.y, structuredPlane.x);
 
         // Clumping, sampled in the disc's own plane so it foreshortens with it.
         // The frequencies stay low on purpose: an inclined disc squashes every
@@ -137,13 +146,13 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
         // Each octave is sampled on its own rotated, offset grid. Stacked on
         // one grid the cells line up into a dotted seam along the ring, which
         // reads as a repeating pattern rather than as clumping.
-        vec2 spun = vec2(plane.x * 0.8 - plane.y * 0.6, plane.x * 0.6 + plane.y * 0.8);
-        float coarse = noise(plane * 6.0);
+        vec2 spun = vec2(structuredPlane.x * 0.8 - structuredPlane.y * 0.6, structuredPlane.x * 0.6 + structuredPlane.y * 0.8);
+        float coarse = noise(structuredPlane * 5.2);
         float knots = coarse;
         if (uDetail > 0.25) knots = noise(spun * 15.0 + vec2(31.7, 12.4));
         float grain = knots;
-        if (uDetail > 0.75) grain = noise(plane * 33.0 + vec2(7.3, 41.2));
-        float mottle = pow(coarse * 0.44 + knots * 0.36 + grain * 0.2, 1.35);
+        if (uDetail > 0.75) grain = noise(structuredPlane * 31.0 + vec2(7.3, 41.2));
+        float mottle = pow(max(coarse * 0.5 + knots * 0.34 + grain * 0.16, 0.0), 1.5);
 
         // Logarithmic spiral: an arm sits where the angle keeps pace with the
         // logarithm of the radius. Two arms, so the phase turns twice.
@@ -153,83 +162,94 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
         // NaN into an additive HDR target, and the bloom mip chain then spreads
         // it over the whole frame: the galaxy renders black and the frame rate
         // collapses. Clamp before every pow.
-        float ridge = pow(max(0.5 + 0.5 * cos(spiral), 0.0), 1.7);
+        float ridge = pow(max(0.5 + 0.5 * cos(spiral), 0.0), 2.4);
         // M31's arms are broken rather than continuous, so the ridge is chopped
         // by the same noise that gives the disc its clumping. The inner taper
         // keeps the winding out of the bulge, where its screen frequency would
         // alias into moire.
-        float arms = ridge * (0.42 + 0.58 * mottle) * smoothstep(0.12, 0.32, radius);
+        float armBreaks = smoothstep(0.22, 0.72, coarse * 0.62 + knots * 0.38);
+        float arms = ridge * (0.2 + 0.8 * armBreaks) * smoothstep(0.16, 0.34, radius);
 
         // Exponential disc, scale length 5.3 kpc, plus the rings the arms
         // actually resolve into: the bright 10 kpc ring, the 15 kpc outer arm,
         // and the inner 5 kpc arc. M31's rings are measurably off-centre, and
         // that offset is what keeps the disc from reading as a set of perfect
         // concentric ellipses.
-        float sheet = exp(-radius / 0.30);
-        float ringRadius = length(plane - vec2(0.055, 0.03));
-        float rings = band(ringRadius, 0.47, 0.05)
-          + band(ringRadius, 0.70, 0.065) * 0.55
-          + band(ringRadius, 0.24, 0.042) * 0.4;
+        float sheet = exp(-radius / 0.34) * smoothstep(1.08, 0.90, radius);
+        float ringRadius = length(structuredPlane - vec2(0.055, 0.03));
+        float rings = band(ringRadius, 0.47, 0.075)
+          + band(ringRadius, 0.71, 0.09) * 0.32
+          + band(ringRadius, 0.25, 0.06) * 0.18;
         // A ring is a chain of star-forming segments, not a band of even light.
-        rings *= (0.28 + 0.72 * ridge) * (0.35 + 1.5 * mottle);
+        rings *= (0.08 + 0.92 * arms) * (0.22 + 1.15 * mottle);
         // The brightest of those segments are HII complexes: small, hard-edged,
         // and several times the brightness of the ring they sit in.
-        float hiiMask = smoothstep(0.74, 0.97, grain) * smoothstep(0.45, 0.78, coarse) * smoothstep(0.4, 0.7, knots);
+        float hiiMask = smoothstep(0.82, 0.985, grain)
+          * smoothstep(0.52, 0.82, coarse)
+          * smoothstep(0.48, 0.76, knots);
         float hiiKnots = hiiMask * rings;
 
         // Dust. In M31 the lanes are the dominant feature: dark arcs lying just
         // inside each bright ring. They read hardest across the near half of
         // the disc, where they sit between us and the light behind them.
-        float lanes = band(radius, 0.40, 0.038)
-          + band(radius, 0.60, 0.045) * 0.82
-          + band(radius, 0.28, 0.034) * 0.7
-          + band(radius, 0.50, 0.03) * 0.55;
+        float dustRadius = radius + (coarse - 0.5) * 0.075 + sin(angle * 3.0 + radius * 8.0) * 0.012;
+        float lanes = band(dustRadius, 0.38, 0.052)
+          + band(dustRadius, 0.59, 0.064) * 0.76
+          + band(dustRadius, 0.27, 0.045) * 0.56
+          + band(dustRadius, 0.49, 0.044) * 0.42;
         float laneRidge = pow(max(0.5 + 0.5 * cos(spiral + 1.15), 0.0), 2.0);
         float dust = clamp(
-          lanes * (0.34 + 0.66 * laneRidge) * (0.62 + 0.38 * mottle) * smoothstep(0.10, 0.24, radius),
+          lanes * (0.18 + 0.82 * laneRidge) * (0.48 + 0.52 * mottle) * smoothstep(0.10, 0.24, radius),
           0.0,
           1.0
         );
-        float nearSide = smoothstep(0.06, -0.10, sky.y);
-        dust *= mix(0.72, 1.0, nearSide);
+        float nearSide = smoothstep(0.08, -0.12, sky.y);
+        dust *= mix(0.48, 1.0, nearSide);
 
         // The bulge and the halo are spheroids, not disc features, so they are
         // measured on the sky and keep their own axis ratios instead of
         // foreshortening with the disc.
-        float bulgeRadius = max(length(vec2(sky.x, sky.y / 0.62)), 0.018);
+        float bulgeRadius = max(length(vec2(sky.x, sky.y / 0.58)), 0.018);
         // Sersic profile, n = 2.2, so the exponent is 1/n and the constant is
         // the usual 2n - 1/3. The floor on the radius and the cap on the result
         // together hold the nucleus to a bright plateau: left to run, an n=2.2
         // profile spikes into a point that reads as a foreground star.
-        float bulge = min(exp(-4.07 * (pow(bulgeRadius / 0.075, 0.4545) - 1.0)) * 0.5, 3.0);
+        float bulge = min(exp(-4.07 * (pow(bulgeRadius / 0.095, 0.4545) - 1.0)) * 0.34, 2.35);
         float haloRadius = max(length(vec2(sky.x, sky.y / 0.78)), 0.01);
-        float halo = exp(-haloRadius / 0.28) * 0.038;
+        float halo = exp(-haloRadius / 0.34) * 0.026;
 
-        vec3 color = uDisc;
-        color = mix(color, uArm, clamp(arms * 0.85 + rings * 0.45, 0.0, 1.0) * smoothstep(0.16, 0.44, radius));
+        // At the true distance the whole major axis occupies only a few dozen
+        // pixels. Derivatives describe that projected footprint, letting the
+        // unresolved view collapse naturally into a faint spindle instead of
+        // aliasing detailed rings into a miniature neon icon.
+        float pixelFootprint = length(fwidth(vSky));
+        float resolved = 1.0 - smoothstep(0.022, 0.078, pixelFootprint);
+
+        float outerPopulation = smoothstep(0.22, 0.82, radius) * (0.2 + 0.8 * arms);
+        vec3 color = mix(uDisc, uArm, outerPopulation * 0.42 * resolved);
         // The brightest knots along the rings are HII regions, and they run
         // pink rather than blue.
-        color = mix(color, uHii, hiiMask * smoothstep(0.25, 0.45, radius) * 0.45);
+        color = mix(color, uHii, hiiMask * smoothstep(0.25, 0.45, radius) * 0.18 * resolved);
 
         vec3 light = color * (
-          sheet * (0.16 + arms * 0.78)
-          + (rings + hiiKnots * 1.5) * 1.7 * exp(-radius / 0.75)
+          sheet * (0.27 + arms * 0.23 * resolved) * (0.72 + mottle * 0.28 * resolved)
+          + (rings + hiiKnots * 0.6) * 0.72 * resolved * exp(-radius / 0.72)
           + halo
-        ) * 1.3;
+        ) * (0.82 + 0.18 * smoothstep(-0.7, 0.7, structuredPlane.x));
         // Nearly total extinction in the lane cores. ACES flattens whatever
         // contrast the disc arrives with, so the lanes have to be cut deeper
         // here than they would need to be on a linear output.
-        light *= 1.0 - dust * 0.95;
+        light *= 1.0 - dust * mix(0.28, 0.88, resolved);
         // The near-side lanes cross in front of the bulge too, which is what
         // splits M31's core in a long exposure.
-        light += uCore * bulge * (1.0 - dust * nearSide * 0.55);
+        light += uCore * bulge * (1.0 - dust * nearSide * 0.48 * resolved);
 
         // M32 and M110, at their real offsets from the centre resolved into the
         // major and minor axes and divided by M31's 95 arcmin semi-major axis.
         // They are in every photograph of the galaxy, and leaving them out is
         // what makes a rendered M31 read as a generic spiral.
-        light += uCore * companion(sky, vec2(-0.204, 0.153), 0.032, 0.75) * 0.5;
-        light += uDisc * companion(sky, vec2(0.036, -0.384), 0.075, 0.5) * 0.26;
+        light += uCore * companion(sky, vec2(-0.204, 0.153), 0.032, 0.75) * 0.2 * resolved;
+        light += uDisc * companion(sky, vec2(0.036, -0.384), 0.075, 0.5) * 0.11 * resolved;
 
         // Insurance against the carrier's own rim: the disc is faded out well
         // before the plane ends.
@@ -240,7 +260,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
         // bright enough to look right unmapped reaches the screen as a white
         // smear with the lanes flattened out of it. Everything but the nucleus
         // is kept in the lower half of the curve, where contrast survives.
-        gl_FragColor = vec4(light * 0.45 * uOpacity, 1.0);
+        gl_FragColor = vec4(light * 0.34 * uOpacity, 1.0);
       }
     `,
   })

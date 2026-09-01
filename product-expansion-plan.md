@@ -752,17 +752,16 @@ The current roadmap does not include:
 | G1 | Passed | Encounter UI direction | Three visual targets reviewed; Direction B, `Celestial Cut`, selected and verified in the live scene at desktop and 390 × 844 |
 | G2 | Pending | Analytics provider | Privacy, static-hosting fit, cost, consent, and data ownership reviewed |
 | G3 | Passed | Cabo production approach | Option 1 and its four final targets approved; exact camera, licensed source, landscape/portrait plate strategy, and performance estimate documented in `docs/design/cabo-da-roca/` |
-| G4 | Pending | First new object class | Andromeda selected, prototyped in the engine and reviewed live at desktop; assumptions documented in `docs/design/andromeda/`. The reported object-browser freeze was a measurement artifact, not a defect. Awaiting sign-off, a 390 x 844 review, and the tier comparison |
+| G4 | Passed | First new object class | Andromeda's realistic visible-light direction was approved after live review. The procedural galaxy, quality tiers, 390 x 844 composition, object-browser exposure, four-beat guided encounter, curated route, source disclosure, final free-exploration handoff, and social card are verified; assumptions are documented in `docs/design/andromeda/` |
 | G5 | Deferred | Observatory Log | Observed repeat/save intent or direct visitor evidence |
 | G6 | Deferred | Sound layer | Demonstrated improvement to the encounter without sensory or performance harm |
 
 ## 13. Recommended next implementation chunk
 
-Implement **R3.2 — First new object class**, once gate G4 has comparative
-prototypes.
+Implement **R3.3 — Monthly featured encounter** only as its own chunk.
 
-Release 0, Release 1, Release 2, and R3.1 are complete in the local working
-tree. R3.2 and R3.3 remain. Do not combine them.
+Release 0, Release 1, Release 2, R3.1, and R3.2 are complete in the local
+working tree. R3.3 remains. Do not combine it with later return-value work.
 
 ## 14. Research basis
 
@@ -810,6 +809,6 @@ Update this section when a release chunk is completed.
 | R2.2 | Complete | Responsive Cabo landscape/portrait plates selected by quality tier; signature Saturn encounter, camera framing, URL restoration and invalid-view fallback, attribution, desktop/mobile target comparisons, and the verified 33-test production build | Local working tree |
 | R2.3 | Complete | Clean scene capture with optional caption, native share with download and copy fallbacks, cancellation reported separately from failure; pre-generated 1200 × 630 social cards for all four curated routes; curated routes corrected to real prerendered HTML after a global `ssr: false` was found to override the route rule, verified in the generated static build (title, description, Open Graph image, crawler fallback body, and a shared link opening its encounter at beat 1); verified 45-test production build | Local working tree |
 | R3.1 | Complete | One optional prediction on each of the three launch encounters (Saturn rooftop, Betelgeuse, Moon); the Cabo signature stays clean. Answering records the choice and runs the next beat, so the scene is the reveal; the answered option's neutral response opens the following beat. No score, timer, failure state, or permanent surface, and the beat's own action remains the skip path. Prediction contract test added; verified 46-test production build and the Saturn encounter checked in the live scene | Local working tree |
-| R3.2 | In progress | Andromeda built as a procedural galaxy: a camera-facing carrier whose shader does the projection itself, M31's measured photometry (Sersic bulge, 5.3 kpc disc, the 10 kpc ring, 8-degree arms, dust lanes, HII knots, M32 and M110), a Local-Group distance ladder, two discoveries with sources, and a shader-derived thumbnail. Verified 49-test production build and reviewed live at the real, 250 kly and 150 kly presets. Not complete: the tier comparison, a 390 x 844 review, the guided encounter, and free-exploration exposure | Local working tree |
+| R3.2 | Complete | Approved realistic Andromeda renderer with M31 photometry, optical D25 silhouette, scale-aware detail, Local-Group ladder, two sourced discoveries, synchronized thumbnail, and mobile-safe object-browser exposure. `The galaxy hiding in our sky` adds a four-beat real → 500 kly → 250 kly → 150 kly reveal at Hilltop, a stable curated route and 1200 × 630 social card, a clear simulation boundary, and a final free-exploration handoff. Desktop and 390 × 844 keyboard paths, balanced/safe tiers, route restoration, disclosure, and the verified 50-test production build pass | Local working tree |
 | R3.3 | Not started | — | — |
 | R4.1 | Deferred | Requires evidence at G5 | — |

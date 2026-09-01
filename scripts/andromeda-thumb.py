@@ -19,17 +19,17 @@ import math
 import sys
 
 SIZE = 160
-INCLINATION = math.radians(77.5)
+INCLINATION = math.radians(71.5)
 POSITION_ANGLE = math.radians(37.7)
 ARM_PITCH = math.radians(8.0)
 WINDING = 1.0 / math.tan(ARM_PITCH)
 COS_INCLINATION = math.cos(INCLINATION)
 
 # The palette, linearised the way three converts an sRGB hex to a Color.
-CORE = (1.0, 0.6795, 0.3564)
-DISC = (0.8963, 0.7605, 0.5647)
-ARM = (0.3813, 0.5776, 1.0)
-HII = (1.0, 0.3467, 0.4735)
+CORE = (0.8070, 0.5776, 0.3372)
+DISC = (0.4851, 0.4179, 0.3231)
+ARM = (0.2423, 0.3185, 0.4179)
+HII = (0.4735, 0.2705, 0.2502)
 
 
 def fract(value):
@@ -89,78 +89,85 @@ def sample(sx, sy):
 
     px = sx
     py = sy / COS_INCLINATION
-    radius = math.hypot(px, py)
-    angle = math.atan2(py, px)
+    warp_x = noise(px * 2.15 + 4.2, py * 2.15 + 9.1) - 0.5
+    warp_y = noise(px * 2.35 + 17.7, py * 2.35 + 3.4) - 0.5
+    structured_x = px + warp_x * 0.038
+    structured_y = py + warp_y * 0.038
+    radius = math.hypot(structured_x, structured_y)
+    angle = math.atan2(structured_y, structured_x)
 
-    spun_x = px * 0.8 - py * 0.6
-    spun_y = px * 0.6 + py * 0.8
-    coarse = noise(px * 6.0, py * 6.0)
+    spun_x = structured_x * 0.8 - structured_y * 0.6
+    spun_y = structured_x * 0.6 + structured_y * 0.8
+    coarse = noise(structured_x * 5.2, structured_y * 5.2)
     knots = noise(spun_x * 15.0 + 31.7, spun_y * 15.0 + 12.4)
-    grain = noise(px * 33.0 + 7.3, py * 33.0 + 41.2)
-    mottle = (coarse * 0.44 + knots * 0.36 + grain * 0.2) ** 1.35
+    grain = noise(structured_x * 31.0 + 7.3, structured_y * 31.0 + 41.2)
+    mottle = max(coarse * 0.5 + knots * 0.34 + grain * 0.16, 0.0) ** 1.5
 
     spiral = 2.0 * angle - WINDING * math.log(max(radius, 0.03))
-    ridge = max(0.5 + 0.5 * math.cos(spiral), 0.0) ** 1.7
-    arms = ridge * (0.42 + 0.58 * mottle) * smoothstep(0.12, 0.32, radius)
+    ridge = max(0.5 + 0.5 * math.cos(spiral), 0.0) ** 2.4
+    arm_breaks = smoothstep(0.22, 0.72, coarse * 0.62 + knots * 0.38)
+    arms = ridge * (0.2 + 0.8 * arm_breaks) * smoothstep(0.16, 0.34, radius)
 
-    sheet = math.exp(-radius / 0.30)
-    ring_radius = math.hypot(px - 0.055, py - 0.03)
+    sheet = math.exp(-radius / 0.34) * smoothstep(1.08, 0.90, radius)
+    ring_radius = math.hypot(structured_x - 0.055, structured_y - 0.03)
     rings = (
-        band(ring_radius, 0.47, 0.05)
-        + band(ring_radius, 0.70, 0.065) * 0.55
-        + band(ring_radius, 0.24, 0.042) * 0.4
+        band(ring_radius, 0.47, 0.075)
+        + band(ring_radius, 0.71, 0.09) * 0.32
+        + band(ring_radius, 0.25, 0.06) * 0.18
     )
-    rings *= (0.28 + 0.72 * ridge) * (0.35 + 1.5 * mottle)
+    rings *= (0.08 + 0.92 * arms) * (0.22 + 1.15 * mottle)
     hii_mask = (
-        smoothstep(0.74, 0.97, grain)
-        * smoothstep(0.45, 0.78, coarse)
-        * smoothstep(0.4, 0.7, knots)
+        smoothstep(0.82, 0.985, grain)
+        * smoothstep(0.52, 0.82, coarse)
+        * smoothstep(0.48, 0.76, knots)
     )
     hii_knots = hii_mask * rings
 
+    dust_radius = radius + (coarse - 0.5) * 0.075 + math.sin(angle * 3.0 + radius * 8.0) * 0.012
     lanes = (
-        band(radius, 0.40, 0.038)
-        + band(radius, 0.60, 0.045) * 0.82
-        + band(radius, 0.28, 0.034) * 0.7
-        + band(radius, 0.50, 0.03) * 0.55
+        band(dust_radius, 0.38, 0.052)
+        + band(dust_radius, 0.59, 0.064) * 0.76
+        + band(dust_radius, 0.27, 0.045) * 0.56
+        + band(dust_radius, 0.49, 0.044) * 0.42
     )
     lane_ridge = max(0.5 + 0.5 * math.cos(spiral + 1.15), 0.0) ** 2.0
     dust = min(
         max(
             lanes
-            * (0.34 + 0.66 * lane_ridge)
-            * (0.62 + 0.38 * mottle)
+            * (0.18 + 0.82 * lane_ridge)
+            * (0.48 + 0.52 * mottle)
             * smoothstep(0.10, 0.24, radius),
             0.0,
         ),
         1.0,
     )
-    near_side = smoothstep(0.06, -0.10, sy)
-    dust *= 0.72 + 0.28 * near_side
+    near_side = smoothstep(0.08, -0.12, sy)
+    dust *= 0.48 + 0.52 * near_side
 
-    bulge_radius = max(math.hypot(sx, sy / 0.62), 0.018)
-    bulge = min(math.exp(-4.07 * ((bulge_radius / 0.075) ** 0.4545 - 1.0)) * 0.5, 3.0)
+    bulge_radius = max(math.hypot(sx, sy / 0.58), 0.018)
+    bulge = min(math.exp(-4.07 * ((bulge_radius / 0.095) ** 0.4545 - 1.0)) * 0.34, 2.35)
     halo_radius = max(math.hypot(sx, sy / 0.78), 0.01)
-    halo = math.exp(-halo_radius / 0.28) * 0.038
+    halo = math.exp(-halo_radius / 0.34) * 0.026
 
     color = DISC
-    color = mix(color, ARM, min(max(arms * 0.85 + rings * 0.45, 0.0), 1.0) * smoothstep(0.16, 0.44, radius))
-    color = mix(color, HII, hii_mask * smoothstep(0.25, 0.45, radius) * 0.45)
+    outer_population = smoothstep(0.22, 0.82, radius) * (0.2 + 0.8 * arms)
+    color = mix(color, ARM, outer_population * 0.42)
+    color = mix(color, HII, hii_mask * smoothstep(0.25, 0.45, radius) * 0.18)
 
     field = (
-        sheet * (0.16 + arms * 0.78)
-        + (rings + hii_knots * 1.5) * 1.7 * math.exp(-radius / 0.75)
+        sheet * (0.27 + arms * 0.23) * (0.72 + mottle * 0.28)
+        + (rings + hii_knots * 0.6) * 0.72 * math.exp(-radius / 0.72)
         + halo
-    ) * 1.3
-    field *= 1.0 - dust * 0.95
+    ) * (0.82 + 0.18 * smoothstep(-0.7, 0.7, structured_x))
+    field *= 1.0 - dust * 0.88
     light = [channel * field for channel in color]
 
-    core_light = bulge * (1.0 - dust * near_side * 0.55)
-    m32 = companion(sx, sy, -0.204, 0.153, 0.032, 0.75) * 0.5
-    m110 = companion(sx, sy, 0.036, -0.384, 0.075, 0.5) * 0.26
+    core_light = bulge * (1.0 - dust * near_side * 0.48)
+    m32 = companion(sx, sy, -0.204, 0.153, 0.032, 0.75) * 0.2
+    m110 = companion(sx, sy, 0.036, -0.384, 0.075, 0.5) * 0.11
     for i in range(3):
         light[i] += CORE[i] * (core_light + m32) + DISC[i] * m110
-        light[i] *= smoothstep(1.24, 1.02, sky_radius) * 0.45
+        light[i] *= smoothstep(1.24, 1.02, sky_radius) * 0.34
     return light
 
 
@@ -183,8 +190,7 @@ def main():
             r, g, b = sample(vx * cos_pa + vy * sin_pa, vy * cos_pa - vx * sin_pa)
             # The scene tone-maps with ACES; matching it here keeps the icon
             # the same colour as the object it stands for. The lift stands in
-            # for the bloom the icon does not get, which is what carries the
-            # blue of the ring at the 64 px the browser draws it at.
+            # for the light nucleus bloom the icon does not get.
             rows.extend(
                 min(255, int(255.0 * aces(channel * 1.45) ** (1.0 / 2.2) + 0.5))
                 for channel in (r, g, b)

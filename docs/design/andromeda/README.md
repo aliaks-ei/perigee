@@ -1,6 +1,6 @@
 # Andromeda: first new object class
 
-Status: prototype built and reviewed in the live scene, gate G4 awaiting sign-off
+Status: complete, realistic direction approved and gate G4 passed
 
 Chunk: R3.2, first stage
 
@@ -76,7 +76,7 @@ rather than tuned.
 | --- | --- | --- |
 | Distance | 2,500,000 ly | NASA Science, Messier 31 |
 | Diameter | 138,000 ly | The catalogued D25 optical major axis, about 190 arcmin, expressed as a length at that distance |
-| Inclination | 77.5 degrees from face-on | Kinematic value measured over the 10-13 kpc ring |
+| Inclination | 71.5 degrees from face-on | Optical D25 axis ratio of about 0.32, used for the visible-light silhouette |
 | Position angle | 37.7 degrees | Measured over the same radial range |
 | Arm pitch | 8 degrees | The two symmetric arms are quoted at 7.7 and 8.0 degrees |
 | Bulge | Sersic n = 2.2, effective radius 1.0 kpc | Published photometric decomposition |
@@ -91,16 +91,18 @@ size and matches NASA's own phrasing, "six times the apparent diameter of the
 full Moon". `tests/preset-ladders.test.ts` asserts that the scene reaches this
 from the diameter and distance alone.
 
-### Two things worth flagging
+### Four things worth flagging
 
 1. **Disc size depends on where you stop measuring.** NASA also describes the
    disc as spanning about 260,000 ly, which includes faint outer structure well
    beyond the D25 isophote. Perigee uses the isophotal figure because that is
    the one the catalogued apparent size is measured against.
-2. **Two published inclinations disagree.** The kinematic value, 77.5 degrees,
-   gives a rendered axis ratio near 0.22. The optical D25 axis ratio is closer
-   to 0.32, which corresponds to about 72 degrees. Perigee renders 77.5 degrees.
-   The result is slightly thinner than a long-exposure photograph.
+2. **Two published inclinations describe different measurements.** The
+   kinematic value, 77.5 degrees, describes the inner ring and gives an
+   infinitely thin sheet an axis ratio near 0.22. The optical D25 ellipse is
+   closer to 0.32, corresponding to 71.5 degrees. Perigee uses the optical
+   value because this renderer depicts the visible-light silhouette; the
+   kinematic value made the galaxy read as an implausibly thin luminous ring.
 3. **Two published arm pitches disagree, by a factor of three.** One line of
    work derives 24.7 degrees from rotation-curve shear; another measures 7.7 and
    8.0 degrees from the arms themselves. Because M31 is so highly inclined, the
@@ -133,16 +135,20 @@ galaxy reads as an object in a sky rather than as a wash over the whole frame.
 
 Recorded as the `andromeda-disc-boundary` discovery and repeated here:
 
-- **Rendered:** the Sersic bulge, the exponential disc, the 10 kpc ring and the
-  two outer arcs, the logarithmic arms broken along their length, the dust
-  lanes, the HII knots, the stellar halo, and M32 and M110. All procedural,
-  none photographic.
+- **Rendered:** the Sersic bulge, the exponential disc, fragmented traces of
+  the 10 kpc ring and outer arcs, logarithmic arms broken along their length,
+  irregular dust filaments, restrained HII regions, the stellar halo, and M32
+  and M110. All procedural, none photographic. Projected pixel size suppresses
+  unresolved detail at the real-distance preset so it collapses into a faint
+  spindle instead of a miniature long exposure.
 - **Calculated:** the angular size at every step, and the Moon-width comparison.
-- **Not simulated:** disc thickness, the warp in the outer disc, galactic
-  rotation, and everything two approaching galaxies would do to each other. The
-  disc is an infinitely thin sheet seen in projection. It does not turn, because
-  a real one turns once every few hundred million years and any visible rotation
-  would be invention.
+- **Not simulated:** three-dimensional disc thickness, physical galactic
+  rotation, and everything two approaching galaxies would do to each other.
+  The visible silhouette uses the measured optical axis ratio, and a restrained
+  procedural displacement suggests the observed outer warp and filamentary
+  dust without claiming a volumetric model. It does not turn, because a real
+  galaxy rotates over hundreds of millions of years and visible motion would be
+  invention.
 
 ## Defects found
 
@@ -162,11 +168,15 @@ call put NaN into the additive HDR target, the bloom mip chain spread it over
 the whole frame, and the galaxy rendered black while the frame rate collapsed.
 Every `pow` base is now clamped, in the shader and in the thumbnail script.
 
-## Open items before R3.2 closes
+## Completion evidence
 
-1. Performance comparison at the balanced and safe tiers. The closest preset
-   fills the frame with a shader that runs three noise octaves per pixel.
-2. Review at 390 x 844. The desktop review is done, across the rooftop and
-   lakeside viewpoints at the real, 250 kly and 150 kly presets.
-3. One guided encounter, authored after the visual is approved. The expansion
-   plan requires it before the object is exposed in free exploration.
+- The realistic direction passed visual sign-off after desktop and 390 x 844
+  reviews at the real and 150 kly presets. Balanced and safe tiers preserve the
+  bulge, diffuse disc, dust structure, and companions; their reduced octave
+  counts remove fine mottling first.
+- `The galaxy hiding in our sky` reveals the real-distance core, the diffuse
+  disc at 500 kly, dust filaments at 250 kly, and the full 150 kly view. Its
+  source disclosure and final handoff to free exploration work on desktop and
+  through the complete 390 x 844 keyboard path.
+- `/e/the-galaxy-hiding-in-our-sky` restores beat 1 and carries a generated
+  1200 x 630 social card. The verified production suite contains 50 tests.

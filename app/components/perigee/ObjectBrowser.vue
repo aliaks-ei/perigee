@@ -35,7 +35,12 @@ function setItemRef(element: unknown, index: number): void {
 
 async function focusActive(): Promise<void> {
   await nextTick()
-  itemRefs.value[activeIndex.value]?.focus({ preventScroll: true })
+  const item = itemRefs.value[activeIndex.value]
+  item?.focus({ preventScroll: true })
+  // The mobile track is horizontal. Preventing the focus scroll protects the
+  // page position, but it also used to leave a selected ninth object beyond
+  // the right edge. Scroll only the nearest overflow container into view.
+  item?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }
 
 function syncActiveToSelection(): void {

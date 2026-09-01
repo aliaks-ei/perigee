@@ -235,14 +235,15 @@ export const skyObjects: SkyObjectDefinition[] = [
     // docs/design/andromeda/README.md records the working.
     diameterKm: 138_000 * LY_KM,
     material: 'galactic',
-    // Kinematic inclination and position angle measured over the 10-13 kpc
-    // ring, and the tighter of the two published arm pitches: the wider one is
-    // derived from rotation-curve shear, not from the arms you can see.
+    // The optical D25 ellipse is the quantity this visible-light rendering
+    // needs: its 0.32 minor/major ratio corresponds to about 71.5 degrees.
+    // Kinematic work on the inner ring gives 77.5 degrees, but applying that to
+    // an infinitely thin visible disc made M31 look like a luminous ring.
     disc: {
-      inclinationDegrees: 77.5,
+      inclinationDegrees: 71.5,
       positionAngleDegrees: 37.7,
       armPitchDegrees: 8,
-      palette: ['#ffd7a0', '#efe0c4', '#a6c6ff', '#ff9fb6'],
+      palette: ['#e8c89d', '#b9ad9a', '#8799ad', '#b78e89'],
     },
     presets: galaxyPresets(2_500_000),
     shot: {

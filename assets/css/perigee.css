@@ -1307,7 +1307,7 @@
   }
 
   .browser-track {
-    grid-auto-columns: 86px;
+    grid-template-columns: repeat(var(--browser-columns, 8), 86px);
   }
 
   .distance-panel {
