@@ -14,10 +14,22 @@ const compressedTextures = environment.VITE_KTX2_TEXTURES ?? '0'
  */
 const encounterRoutes = encounters.map((encounter) => `/e/${encounter.slug}`)
 
+/**
+ * `/` is listed as well, and only to keep `index.html` in the output. Its rule
+ * is `ssr: false`, so what lands there is the same empty SPA shell as
+ * `200.html`; without the entry a static host has no file to serve at the root.
+ */
+const prerenderRoutes = ['/', ...encounterRoutes]
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-28',
   devtools: { enabled: false },
-  ssr: false,
+  // Server rendering is on at the config level only so the curated encounter
+  // routes below can opt into it. A global `ssr: false` wins over every route
+  // rule — Nuxt drops the prerendered HTML with "not prerendered because
+  // ssr: false was set" — so the switch has to be inverted: on globally, off
+  // for every route except `/e/**`.
+  ssr: true,
   runtimeConfig: {
     public: {
       // Absolute URLs are what social crawlers resolve reliably. Left empty the
@@ -31,11 +43,12 @@ export default defineNuxtConfig({
   // and social card are real HTML; `pages/e/[slug].vue` still mounts the live
   // scene client-side only.
   routeRules: {
+    '/**': { ssr: false },
     '/e/**': { ssr: true, prerender: true },
   },
   nitro: {
     prerender: {
-      routes: encounterRoutes,
+      routes: prerenderRoutes,
       crawlLinks: false,
     },
   },

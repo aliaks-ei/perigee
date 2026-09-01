@@ -2,7 +2,7 @@
 
 Status: living plan
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 Scope: product depth, portfolio impact, audience growth, and selective educational value
 
@@ -48,22 +48,35 @@ Perigee currently offers:
 
 - eight celestial objects;
 - five distance states per object;
-- Rooftop, Hilltop, and Lakeside viewpoints;
+- Rooftop, Hilltop, Lakeside, and Cabo da Roca viewpoints;
 - exact apparent-angular-size calculation;
 - free camera movement and cinematic transitions;
-- shareable selection state in the URL;
+- four guided encounters with state-aware contextual discoveries;
+- scene capture with native share, download, and copy-link fallbacks;
+- shareable selection state in the URL, plus four prerendered curated
+  encounter routes carrying their own titles and social cards;
 - responsive, keyboard, reduced-motion, and WebGL fallback behavior.
 
-The current core loop is:
+The loop as it stood before Release 1 was:
 
 1. Select an object.
 2. Change its distance.
 3. Change the viewpoint.
 4. Repeat until the available combinations feel exhausted.
 
-This loop creates a strong first reaction but has no explicit sense of
+That loop created a strong first reaction but had no explicit sense of
 progression, discovery, completion, preservation, or return. More objects alone
-would lengthen the same loop without changing it.
+would have lengthened the same loop without changing it. Releases 0 to 2 were
+scoped against that problem, and the loop now reads:
+
+1. Arrive in free exploration, or open a curated encounter link directly.
+2. Follow a guided encounter, or select an object, distance, and viewpoint.
+3. Open the discovery attached to the current state.
+4. Capture the view, share it, or return to free exploration.
+
+Progression, discovery, and preservation are now present. Return is not:
+nothing brings a visitor back beyond the link somebody sent them. That is the
+gap Releases 3 and 4 address.
 
 ## 4. Product principles
 
@@ -744,12 +757,12 @@ The current roadmap does not include:
 
 ## 13. Recommended next implementation chunk
 
-Implement **R2.3 — Capture and share**.
+Implement **R3.1 — Prediction and reveal beats**.
 
-Release 0, Release 1, R2.1, and R2.2 are complete in the local working tree.
-Next, add clean scene capture, native share/download/copy fallbacks, curated
-social images, and shared-link restoration without combining the chunk with
-catalogue expansion, analytics provisioning, or the Observatory Log.
+Release 0, Release 1, and Release 2 are complete in the local working tree.
+Next, add one optional prediction to each launch encounter, keeping it free of
+scores, timers, failure states, and permanent interface. Do not combine the
+chunk with the first new object class (R3.2) or the monthly feature (R3.3).
 
 ## 14. Research basis
 
@@ -795,7 +808,7 @@ Update this section when a release chunk is completed.
 | R1.4 | Complete | State-aware glance, detail, source, and simulation-boundary disclosures in encounters and free exploration, with predictable close focus | Local working tree |
 | R2.1 | Complete | Option 1 approved; resting, silent reveal, encounter-copy, and mobile-crop targets plus camera, licensing, and performance decisions documented in `docs/design/cabo-da-roca/` | Local working tree |
 | R2.2 | Complete | Responsive Cabo landscape/portrait plates selected by quality tier; signature Saturn encounter, camera framing, URL restoration and invalid-view fallback, attribution, desktop/mobile target comparisons, and the verified 33-test production build | Local working tree |
-| R2.3 | Not started | — | — |
+| R2.3 | Complete | Clean scene capture with optional caption, native share with download and copy fallbacks, cancellation reported separately from failure; pre-generated 1200 × 630 social cards for all four curated routes; curated routes corrected to real prerendered HTML after a global `ssr: false` was found to override the route rule, verified in the generated static build (title, description, Open Graph image, crawler fallback body, and a shared link opening its encounter at beat 1); verified 45-test production build | Local working tree |
 | R3.1 | Not started | — | — |
 | R3.2 | Not started | — | — |
 | R3.3 | Not started | — | — |
