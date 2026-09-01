@@ -750,7 +750,7 @@ The current roadmap does not include:
 | Gate | Status | Decision | Evidence required or completed |
 | --- | --- | --- | --- |
 | G1 | Passed | Encounter UI direction | Three visual targets reviewed; Direction B, `Celestial Cut`, selected and verified in the live scene at desktop and 390 × 844 |
-| G2 | Pending | Analytics provider | Privacy, static-hosting fit, cost, consent, and data ownership reviewed |
+| G2 | Passed | Analytics provider | Umami selected and implemented. It was the only candidate offering custom event properties on a free tier, which every event in the R0.2 contract requires. It sets no cookie and no persistent identifier, so the consent requirement is met without a banner, and the MIT self-hosted path preserves data ownership. Plausible gates properties behind its Business tier, Cloudflare Web Analytics has no custom events at all, Fathom has neither a free tier nor custom dimensions, and PostHog needs a consent banner by default |
 | G3 | Passed | Cabo production approach | Option 1 and its four final targets approved; exact camera, licensed source, landscape/portrait plate strategy, and performance estimate documented in `docs/design/cabo-da-roca/` |
 | G4 | Passed | First new object class | Andromeda's realistic visible-light direction was approved after live review. The procedural galaxy, quality tiers, 390 x 844 composition, object-browser exposure, four-beat guided encounter, curated route, source disclosure, final free-exploration handoff, and social card are verified; assumptions are documented in `docs/design/andromeda/` |
 | G5 | Deferred | Observatory Log | Observed repeat/save intent or direct visitor evidence |
@@ -761,10 +761,10 @@ The current roadmap does not include:
 No unconditional product implementation chunk remains. Release 0, Release 1,
 Release 2, and Release 3 are complete in the local working tree.
 
-Next actions are decision- or evidence-gated: evaluate an analytics provider at
-G2 if production measurement is wanted, operate the manual monthly curation
+G2 is now decided and implemented, so production measurement is live. The
+remaining actions are evidence-gated: operate the manual monthly curation
 process, and revisit R4.1 only if G5 receives evidence of real save or return
-intent. Do not combine those decisions with the completed R3.3 chunk.
+intent. G6 stays deferred until the encounter loop justifies a sound layer.
 
 ## 14. Research basis
 
@@ -814,4 +814,6 @@ Update this section when a release chunk is completed.
 | R3.1 | Complete | One optional prediction on each of the three launch encounters (Saturn rooftop, Betelgeuse, Moon); the Cabo signature stays clean. Answering records the choice and runs the next beat, so the scene is the reveal; the answered option's neutral response opens the following beat. No score, timer, failure state, or permanent surface, and the beat's own action remains the skip path. Prediction contract test added; verified 46-test production build and the Saturn encounter checked in the live scene | Local working tree |
 | R3.2 | Complete | Approved realistic Andromeda renderer with M31 photometry, optical D25 silhouette, scale-aware detail, Local-Group ladder, two sourced discoveries, synchronized thumbnail, and mobile-safe object-browser exposure. `The galaxy hiding in our sky` adds a four-beat real → 500 kly → 250 kly → 150 kly reveal at Hilltop, a stable curated route and 1200 × 630 social card, a clear simulation boundary, and a final free-exploration handoff. Desktop and 390 × 844 keyboard paths, balanced/safe tiers, route restoration, disclosure, and the verified 50-test production build pass | Local working tree |
 | R3.3 | Complete | One quiet date-aware feature entry point beside the wordmark; September 2026 opens the approved Andromeda encounter and the collapsed archive retains August's Cabo encounter. Exact UTC-month matching prevents stale content from appearing current; every feature references an approved curated route and existing social card. Escape/outside dismissal, focus restoration, analytics events, the manual editorial checklist, 1440 × 900 and 390 × 844 composition and handoff checks, no-overflow/no-browser-error checks, and the verified 54-test production build pass | `0475404` |
+| G2 | Complete | Umami wired through the existing provider-neutral adapter. The provider attaches after the deferred script loads and replays the events already buffered, so `scene_ready` survives a late script; active time is bucketed because Umami bills each stored property as an event and groups its dashboard by exact value. Measurement is opt-in per environment, so development, tests and preview builds make no third-party call, and `createAnalytics` now also contains a tracker that throws synchronously. Verified in a real build: the website id reaches the client config and the absolute Open Graph URLs resolve against the production domain. 59-test suite passes | `36c60fa` |
+| Deploy | Complete | `perigee.observer` registered; Cloudflare Workers Static Assets configured with no `main` entry, the existing `public/_headers` cache rules preserved, and `not_found_handling` left at its default so an unknown encounter slug returns a real 404 rather than a soft 404 | `36c60fa` |
 | R4.1 | Deferred | Requires evidence at G5 | — |
