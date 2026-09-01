@@ -15,7 +15,8 @@ npx vitest run -t 'settles the promise'       # single test by name
 npm run generate     # static output to .output/public (the `dist` symlink points there)
 ```
 
-Node >= 20.19 (`.nvmrc` pins 20.19.5).
+Node >= 24 (`.nvmrc` pins 24.20.0). Node 20 reached end of life on 30 April
+2026; Node 24 is the Active LTS line, and Wrangler requires Node >= 22.
 
 ## Architecture
 

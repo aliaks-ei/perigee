@@ -13,7 +13,7 @@ Perigee is a Nuxt 3 client-side application. Keep Vue-facing code in `app/`: com
 - `npm run build` produces the production application; `npm run generate` creates static output.
 - `npm run verify` runs type checking, tests, and the production build. Run this before opening a pull request.
 
-Use Node `20.19.5` from `.nvmrc` (the package requires Node `>=20.19.0`).
+Use Node `24.20.0` from `.nvmrc` (the package requires Node `>=24.0.0`).
 
 ## Coding Style & Naming Conventions
 
