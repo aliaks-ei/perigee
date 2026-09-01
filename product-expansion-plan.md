@@ -821,8 +821,9 @@ The current roadmap does not include:
 
 ## 13. Recommended next implementation chunk
 
-R5.1 and R5.2, the not-found page and the favicon, are the next unconditional chunks. Releases 0 to 3 are
-complete and deployed at `perigee.observer`.
+R5.2, the favicon and application icons, is the next unconditional chunk. R5.1
+is complete in the local working tree and should ship with the next deployment;
+Releases 0 to 3 are complete and deployed at `perigee.observer`.
 
 G2 is now decided and implemented, so production measurement is live. The
 remaining actions are evidence-gated: operate the manual monthly curation
@@ -880,5 +881,5 @@ Update this section when a release chunk is completed.
 | G2 | Complete | Umami wired through the existing provider-neutral adapter. The provider attaches after the deferred script loads and replays the events already buffered, so `scene_ready` survives a late script; active time is bucketed because Umami bills each stored property as an event and groups its dashboard by exact value. Measurement is opt-in per environment, so development, tests and preview builds make no third-party call, and `createAnalytics` now also contains a tracker that throws synchronously. Verified in a real build: the website id reaches the client config and the absolute Open Graph URLs resolve against the production domain. 59-test suite passes | `36c60fa` |
 | Deploy | Complete | `perigee.observer` registered; Cloudflare Workers Static Assets configured with no `main` entry, the existing `public/_headers` cache rules preserved, and `not_found_handling` left at its default so an unknown encounter slug returns a real 404 rather than a soft 404 | `36c60fa` |
 | R4.1 | Deferred | Requires evidence at G5 | — |
-| R5.1 | Pending | Not started; the deployed 404 is still Nuxt's stock error page | — |
+| R5.1 | Complete | Cinematic custom error page with a fully visible lost-orbit composition, a clear home recovery path, and a one-action Cabo encounter handoff; crawlable fallback links with Nuxt error clearing; generic non-404 copy; reduced-motion treatment; visible keyboard focus; 1440 × 900 and exact 390 × 844 compositions, matching mobile viewport/document widths, 48 px mobile actions, and working destinations verified in-browser; generated `404.html`, Cloudflare `404-page` status contract, and the 59-test production build verified. The live site awaits deployment | Local working tree |
 | R5.2 | Pending | Not started; `/favicon.ico` returns 404 and no icon is declared | — |

@@ -57,6 +57,22 @@
   animation: dock-rise 780ms 440ms var(--ease-out) backwards;
 }
 
+.perigee-error .error-brand {
+  animation: interface-rise 720ms 80ms var(--ease-out) backwards;
+}
+
+.perigee-error .error-copy {
+  animation: interface-rise 880ms 180ms var(--ease-out) backwards;
+}
+
+.perigee-error .error-signoff {
+  animation: interface-rise 760ms 340ms var(--ease-out) backwards;
+}
+
+.perigee-error .error-orbit {
+  animation: orbit-turn 28s linear infinite;
+}
+
 /* --- Vue transitions ------------------------------------------------------
 
    This sheet loads AFTER `perigee.css` (see `nuxt.config.ts`). A class like

@@ -1351,6 +1351,185 @@
 }
 
 /* ==========================================================================
+   Error page
+   ========================================================================== */
+
+.perigee-error {
+  min-height: 100svh;
+}
+
+.error-sky {
+  background:
+    linear-gradient(90deg, rgba(1, 4, 9, 0.36) 0, rgba(1, 4, 9, 0.06) 62%, rgba(1, 4, 9, 0.22) 100%),
+    url('/assets/environments/rooftop-cinematic-4k.webp') center bottom / cover no-repeat;
+  transform: scale(1.012);
+}
+
+.error-scrim {
+  background:
+    linear-gradient(180deg, rgba(1, 4, 9, 0.52) 0, transparent 24%),
+    linear-gradient(0deg, rgba(1, 4, 9, 0.66) 0, transparent 30%),
+    radial-gradient(ellipse 66% 72% at 18% 48%, rgba(1, 4, 9, 0.72), rgba(1, 4, 9, 0.08) 72%, transparent 100%);
+}
+
+/* A quiet body slipping beyond the frame turns the dead end into a small
+   celestial moment without pretending the static fallback is the live scene. */
+.error-orbit {
+  top: clamp(82px, 11vh, 126px);
+  right: clamp(24px, 5vw, 76px);
+  width: clamp(310px, 34vw, 540px);
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 16%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    inset 8px 0 34px color-mix(in srgb, var(--accent-object) 4%, transparent),
+    -1px 0 28px color-mix(in srgb, var(--accent-object) 5%, transparent);
+}
+
+.error-orbit::before {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, rgba(22, 31, 44, 0.68), rgba(1, 4, 9, 0.86) 68%);
+  box-shadow: -10px 0 48px color-mix(in srgb, var(--accent-object) 9%, transparent);
+}
+
+.error-orbit span {
+  position: absolute;
+  top: 50%;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-object);
+  box-shadow: 0 0 16px 3px color-mix(in srgb, var(--accent-object) 42%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.error-content {
+  padding:
+    clamp(24px, 4.4vh, 46px)
+    clamp(30px, 3.7vw, 62px)
+    clamp(28px, 5vh, 54px);
+}
+
+.error-brand {
+  font-size: 12px;
+  letter-spacing: 0.48em;
+  text-indent: 0.42em;
+  text-shadow: var(--shadow-text);
+}
+
+.perigee-error .error-brand:hover,
+.perigee-error .error-brand:focus-visible {
+  color: var(--ink-primary);
+  text-decoration: none;
+  opacity: 0.68;
+}
+
+.error-copy {
+  width: min(690px, 67vw);
+  margin-top: clamp(-24px, -2.4vh, 0px);
+}
+
+.error-kicker {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+}
+
+.error-copy h1 {
+  margin: 0;
+  font-size: clamp(52px, 6.6vw, 102px);
+  font-weight: 300;
+  line-height: 0.94;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+  text-shadow: 0 8px 48px rgba(0, 0, 0, 0.72);
+}
+
+.error-description {
+  font-size: 15px;
+  line-height: 1.7;
+  text-wrap: balance;
+  text-shadow: var(--shadow-text);
+}
+
+.perigee-error .error-primary,
+.perigee-error .error-secondary {
+  font-size: 11px;
+  letter-spacing: 0.055em;
+  text-decoration: none;
+}
+
+.perigee-error .error-primary {
+  color: #05080e;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+  transition:
+    transform var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-fast) ease;
+}
+
+.perigee-error .error-primary:hover,
+.perigee-error .error-primary:focus-visible {
+  color: #05080e;
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.4);
+}
+
+.perigee-error .error-secondary {
+  text-decoration: none;
+}
+
+.perigee-error .error-secondary::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  left: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--accent-object) 55%, transparent);
+  transform: scaleX(0.18);
+  transform-origin: left;
+  transition: transform var(--speed-base) var(--ease-out);
+}
+
+.perigee-error .error-secondary:hover,
+.perigee-error .error-secondary:focus-visible {
+  color: var(--ink-primary);
+  text-decoration: none;
+}
+
+.perigee-error .error-secondary:hover::after,
+.perigee-error .error-secondary:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.error-primary svg,
+.error-secondary svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  transition: transform var(--speed-base) var(--ease-out);
+}
+
+.error-primary:hover svg,
+.error-primary:focus-visible svg,
+.error-secondary:hover svg,
+.error-secondary:focus-visible svg {
+  transform: translateX(3px);
+}
+
+.error-signoff {
+  font-size: 8px;
+  letter-spacing: 0.25em;
+  text-shadow: var(--shadow-text);
+}
+
+/* ==========================================================================
    Responsive
    --------------------------------------------------------------------------
    Anything expressible as a utility carries an `lt-lg:`, `lt-md:` or `lt-sm:`
@@ -1401,6 +1580,33 @@
 }
 
 @media (max-width: 640px) {
+  .error-brand {
+    font-size: 10px;
+    letter-spacing: 0.32em;
+  }
+
+  .error-copy h1 {
+    max-width: 340px;
+    font-size: clamp(43px, 13.5vw, 58px);
+    line-height: 0.96;
+  }
+
+  .error-description {
+    max-width: 340px;
+    font-size: 13px;
+    line-height: 1.62;
+  }
+
+  .error-orbit {
+    top: 72px;
+    right: 18px;
+    width: 270px;
+  }
+
+  .error-sky {
+    background-position: 58% bottom;
+  }
+
   .brand-word {
     font-size: 10px;
     letter-spacing: 0.32em;
