@@ -22,7 +22,14 @@ Node >= 20.19 (`.nvmrc` pins 20.19.5).
 Two layers with a one-way dependency rule in mind: Vue owns state and controls, `src/perigee/` owns
 rendering. They meet at the `PerigeeController` interface in `app/types/perigee.ts`.
 
-**`app/` — Nuxt SPA shell** (`srcDir: 'app/'`, `ssr: false`, public dir remapped to `../public`)
+**`app/` — Nuxt SPA shell** (`srcDir: 'app/'`, public dir remapped to `../public`)
+
+Rendering is a hybrid, and the switch is inverted on purpose: `ssr: true` at the config level,
+`'/**': { ssr: false }` in `routeRules`, and `'/e/**': { ssr: true, prerender: true }` on top. A
+global `ssr: false` beats every route rule — Nuxt drops the HTML with "not prerendered because
+`ssr: false` was set" — so the curated encounter routes would ship an empty shell with no title,
+description or social card. `/` is listed in `nitro.prerender.routes` only to keep an `index.html`
+in the output for static hosts; it is the same empty shell as `200.html`.
 
 - `composables/usePerigee.ts` holds module-level refs, so state is a singleton shared by all
   components, not per-instance. It owns the controller handle and the `transitioning` lock that

@@ -5,9 +5,10 @@ planet or famous star impossibly close, and see its apparent size calculated
 from real geometry rather than hand-tuned for the frame.
 
 The experience combines a live Three.js scene with a minimal Nuxt interface.
-Rooftop, Hilltop, and Lakeside viewpoints each respond to the selected object;
-planetary surfaces use attributed source maps, stars use procedural shaders,
-and absurd scenarios stay explicit about their consequences.
+Rooftop, Hilltop, Lakeside, and Cabo da Roca viewpoints each respond to the
+selected object; planetary surfaces use attributed source maps, stars use
+procedural shaders, and absurd scenarios stay explicit about their
+consequences.
 
 ## Run locally
 
