@@ -524,6 +524,10 @@ function getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } 
   return controller.value?.getObjectScreenPosition() ?? null
 }
 
+function subscribeFrame(listener: () => void): () => void {
+  return controller.value?.subscribeFrame(listener) ?? (() => undefined)
+}
+
 function captureFrame(): HTMLCanvasElement | null {
   return controller.value?.captureFrame() ?? null
 }
@@ -587,6 +591,7 @@ export function usePerigee() {
     replayEncounter,
     exitEncounter,
     getObjectScreenPosition,
+    subscribeFrame,
     captureFrame,
     pause,
     resume,

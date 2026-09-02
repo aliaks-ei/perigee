@@ -175,7 +175,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
         // and the inner 5 kpc arc. M31's rings are measurably off-centre, and
         // that offset is what keeps the disc from reading as a set of perfect
         // concentric ellipses.
-        float sheet = exp(-radius / 0.34) * smoothstep(1.08, 0.90, radius);
+        float sheet = exp(-radius / 0.34) * (1.0 - smoothstep(0.90, 1.08, radius));
         float ringRadius = length(structuredPlane - vec2(0.055, 0.03));
         float rings = band(ringRadius, 0.47, 0.075)
           + band(ringRadius, 0.71, 0.09) * 0.32
@@ -203,7 +203,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
           0.0,
           1.0
         );
-        float nearSide = smoothstep(0.08, -0.12, sky.y);
+        float nearSide = 1.0 - smoothstep(-0.12, 0.08, sky.y);
         dust *= mix(0.48, 1.0, nearSide);
 
         // The bulge and the halo are spheroids, not disc features, so they are
@@ -253,7 +253,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
 
         // Insurance against the carrier's own rim: the disc is faded out well
         // before the plane ends.
-        light *= smoothstep(1.24, 1.02, skyRadius);
+        light *= 1.0 - smoothstep(1.02, 1.24, skyRadius);
 
         // One exposure for the whole object, set against the tone curve rather
         // than the raw buffer. ACES lifts its mid-tones hard, so a galaxy

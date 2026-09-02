@@ -41,11 +41,14 @@ import { createPlanetMaterial, type PlanetMaterialSet } from './materials/Planet
 import { createRingMaterial, type RingMaterialSet } from './materials/RingMaterial'
 import { createGalaxyMaterial, type GalaxyMaterialSet } from './materials/GalaxyMaterial'
 import { createStellarMaterial, type StellarMaterialSet } from './materials/StellarMaterial'
+import { createGlareMaterial } from './materials/GlareMaterial'
+import { FilmEffect } from './effects/FilmEffect'
 import { CameraRig } from './CameraRig'
 import { createSkyScene, type SkySceneBundle } from './scenes/createSkyScene'
 import { environmentWarmupAssets } from './scenes/environmentAssets'
 import { QualityManager } from './QualityManager'
 import { ShotDirector } from './ShotDirector'
+import { surfaceMapFor } from './AssetManifest'
 import { configureTextureCache, disposeTextures, loadTexture, prefetchTextures } from './TextureCache'
 
 /**
@@ -74,6 +77,7 @@ const RING_TEXTURE = '/assets/objects/saturn-ring-2k.webp'
 let sharedSphere: SphereGeometry | null = null
 let sharedRing: RingGeometry | null = null
 let sharedGalaxyPlane: PlaneGeometry | null = null
+let sharedGlarePlane: PlaneGeometry | null = null
 
 function sphereGeometry(): SphereGeometry {
   sharedSphere ??= new SphereGeometry(1, 192, 128)
@@ -95,6 +99,12 @@ function ringGeometry(): RingGeometry {
 function galaxyPlaneGeometry(): PlaneGeometry {
   sharedGalaxyPlane ??= new PlaneGeometry(2.5, 2.5)
   return sharedGalaxyPlane
+}
+
+/** The carrier for a star's glare: six radii across, behind the disc. */
+function glarePlaneGeometry(): PlaneGeometry {
+  sharedGlarePlane ??= new PlaneGeometry(6, 6)
+  return sharedGlarePlane
 }
 
 /**
@@ -139,6 +149,8 @@ interface HeroBundle {
   ring: { set: RingMaterialSet, mesh: Mesh } | null
   stellar: StellarMaterialSet | null
   galaxy: GalaxyMaterialSet | null
+  /** The additive halo behind a star; a billboard that tracks the camera. */
+  glare: Mesh | null
   /**
    * Radians per second of visible spin. A galaxy turns once every few hundred
    * million years, so rendering any rotation on it would be invention.
@@ -158,6 +170,7 @@ export class PerigeeScene implements PerigeeController {
   private heroRing: { set: RingMaterialSet, mesh: Mesh } | null = null
   private heroStellar: StellarMaterialSet | null = null
   private heroGalaxy: GalaxyMaterialSet | null = null
+  private heroGlare: Mesh | null = null
   private heroSpinRate = 0
   /** Roll of a galaxy billboard about the view axis: its position angle. */
   private heroGalaxyRoll = 0
@@ -173,8 +186,12 @@ export class PerigeeScene implements PerigeeController {
   private disposed = false
   private reducedMotion = false
   private quality = new QualityManager()
-  private bloom: BloomEffect | null = null
   private dprCap = 2
+  private bloom: BloomEffect | null = null
+  private bloomPass: EffectPass | null = null
+  private smaaPass: EffectPass | null = null
+  private finalPass: EffectPass | null = null
+  private film: FilmEffect | null = null
   /**
    * Held for the session on purpose. three refcounts compiled programs against
    * their materials, so releasing this one would delete the very program it was
@@ -187,8 +204,10 @@ export class PerigeeScene implements PerigeeController {
   /** Non-null only while an object swap is still loading its textures. */
   private pendingPresetId: string | null = null
   private readonly director = new ShotDirector()
+  private readonly frameListeners = new Set<() => void>()
   private readonly sunWorld = new Vector3(0, 0, 1)
   private readonly scratchVector = new Vector3()
+  private readonly scratchVector2 = new Vector3()
   private readonly scratchQuaternion = new Quaternion()
 
   async initialize(canvas: HTMLCanvasElement, options: PerigeeInitOptions = {}): Promise<void> {
@@ -224,11 +243,13 @@ export class PerigeeScene implements PerigeeController {
 
     this.currentViewpointId = viewpointId
     this.sky = createSkyScene(this.quality.current)
-    await this.sky.setViewpoint(viewpointId, true)
-    report(0.55)
 
     const skyPass = new RenderPass(this.sky.scene, this.camera)
 
+    // Bloom sits in a pass of its own so it can be switched off for the
+    // planets, whose exposures never cross its threshold: for them the whole
+    // mip chain ran and contributed nothing. The mipmap chain already starts at
+    // half resolution.
     this.bloom = new BloomEffect({
       intensity: 0.52,
       luminanceThreshold: 0.98,
@@ -236,12 +257,20 @@ export class PerigeeScene implements PerigeeController {
       mipmapBlur: true,
       levels: 6,
     })
+    this.bloomPass = new EffectPass(this.camera, this.bloom)
+
     const vignette = new VignetteEffect({ darkness: 0.38, offset: 0.26 })
-    const smaa = new SMAAEffect()
-    const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })
+    // AgX keeps a hue where it is as it brightens; ACES walked the star's red
+    // toward orange and flattened the galaxy's lanes, which the galaxy shader
+    // had to work against by hand.
+    const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.AGX })
+    this.film = new FilmEffect()
+    const finalPass = new EffectPass(this.camera, vignette, toneMapping, this.film)
+    this.finalPass = finalPass
+
     // SMAA detects edges on luma, so it runs last, after tone mapping has
     // brought the HDR frame into the range its thresholds were tuned for.
-    const effectPass = new EffectPass(this.camera, this.bloom, vignette, toneMapping, smaa)
+    this.smaaPass = new EffectPass(this.camera, new SMAAEffect())
 
     this.composer = new EffectComposer(this.renderer, {
       frameBufferType: HalfFloatType,
@@ -249,11 +278,25 @@ export class PerigeeScene implements PerigeeController {
       multisampling: 0,
     })
     this.composer.addPass(skyPass)
-    this.composer.addPass(effectPass)
+    this.composer.addPass(this.bloomPass)
+    this.composer.addPass(finalPass)
+    this.composer.addPass(this.smaaPass)
 
     this.setQuality(this.quality.current)
-    await this.setObject(definition.id, preset.id, true)
-    report(0.9)
+    report(0.2)
+
+    // The backdrop and the hero's maps are independent downloads. Awaited in
+    // series they added up; started together the first frame waits for the
+    // longer of the two.
+    let landed = 0
+    const advance = (): void => {
+      landed += 1
+      report(0.2 + landed * 0.35)
+    }
+    await Promise.all([
+      this.sky.setViewpoint(viewpointId, true).then(advance),
+      this.setObject(definition.id, preset.id, true).then(advance),
+    ])
 
     await this.renderer.compileAsync(this.sky.scene, this.camera)
     report(1)
@@ -275,7 +318,6 @@ export class PerigeeScene implements PerigeeController {
       disposeObject(built.group)
       return
     }
-
     // A distance picked during the load is folded in here rather than dropped.
     const preset = definition.presets.find((candidate) => candidate.id === this.pendingPresetId)
       ?? definition.presets[0]!
@@ -297,6 +339,7 @@ export class PerigeeScene implements PerigeeController {
     this.heroRing = built.ring
     this.heroStellar = built.stellar
     this.heroGalaxy = built.galaxy
+    this.heroGlare = built.glare
     this.heroSpinRate = built.spinRate
     this.heroTimeUniforms = built.animated
     this.currentObjectId = objectId
@@ -403,6 +446,13 @@ export class PerigeeScene implements PerigeeController {
     }
   }
 
+  subscribeFrame(listener: () => void): () => void {
+    this.frameListeners.add(listener)
+    return () => {
+      this.frameListeners.delete(listener)
+    }
+  }
+
   /**
    * The canvas is created without `preserveDrawingBuffer`, so its pixels are
    * gone the moment the browser composites. Rendering and reading in the same
@@ -438,7 +488,13 @@ export class PerigeeScene implements PerigeeController {
     const height = this.renderer?.domElement.clientHeight || window.innerHeight
     this.resize(width, height, window.devicePixelRatio)
     if (this.composer) this.composer.multisampling = tier === 'high' ? 4 : 0
-    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, skyObjectsById[this.currentObjectId].kind)
+    const kind = skyObjectsById[this.currentObjectId].kind
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind)
+    // A star or a galaxy is the only thing bright enough to bloom. The safe
+    // tier drops the chain altogether, and its anti-aliasing with it.
+    if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && (kind === 'star' || kind === 'galaxy')
+    this.setAntialiasing(tier !== 'safe')
+    this.film?.setGrain(tier === 'safe' ? 0 : 0.018)
     this.heroStellar?.setQuality(tier)
     this.heroGalaxy?.setQuality(tier)
     this.sky?.setQuality(tier)
@@ -482,6 +538,7 @@ export class PerigeeScene implements PerigeeController {
     this.disposed = true
     this.pause()
     this.director.kill()
+    this.frameListeners.clear()
     this.cameraRig?.dispose()
     this.sky?.dispose()
     if (this.hero) disposeObject(this.hero)
@@ -492,9 +549,11 @@ export class PerigeeScene implements PerigeeController {
     sharedSphere?.dispose()
     sharedRing?.dispose()
     sharedGalaxyPlane?.dispose()
+    sharedGlarePlane?.dispose()
     sharedSphere = null
     sharedRing = null
     sharedGalaxyPlane = null
+    sharedGlarePlane = null
     disposeTextures()
     this.composer?.dispose()
     this.renderer?.dispose()
@@ -504,21 +563,48 @@ export class PerigeeScene implements PerigeeController {
     this.heroRing = null
     this.heroStellar = null
     this.heroGalaxy = null
+    this.heroGlare = null
     this.heroTimeUniforms = []
     this.composer = null
     this.renderer = null
+    this.bloomPass = null
+    this.smaaPass = null
+    this.finalPass = null
+    this.film = null
   }
 
-  /** Pulls the rest of the session's assets in while the main thread is idle. */
+  /**
+   * The composer sends only its last pass to the screen. When SMAA steps out,
+   * the pass before it has to take over, or the frame is drawn into a buffer
+   * nobody reads and the canvas stays black.
+   */
+  private setAntialiasing(enabled: boolean): void {
+    if (!this.smaaPass || !this.finalPass) return
+    this.smaaPass.enabled = enabled
+    this.smaaPass.renderToScreen = enabled
+    this.finalPass.renderToScreen = !enabled
+  }
+
+  /**
+   * Pulls the rest of the session's assets in while the main thread is idle.
+   * Sized by tier: high takes the extra backdrops, balanced keeps the full
+   * object maps without them, and safe only warms shaders.
+   */
   private warmCaches(): void {
-    const urls = skyObjects
-      .flatMap((object) => [object.texture, object.normalMap])
-      .filter((url): url is string => Boolean(url))
-    prefetchTextures([
-      ...urls,
-      RING_TEXTURE,
-      ...environmentWarmupAssets(this.quality.current, this.camera.aspect),
-    ])
+    const tier = this.quality.current
+    if (tier !== 'safe') {
+      const urls = skyObjects
+        .flatMap((object) => [
+          object.texture ? surfaceMapFor(object.texture, tier) : null,
+          object.normalMap,
+        ])
+        .filter((url): url is string => Boolean(url))
+      prefetchTextures([
+        ...urls,
+        RING_TEXTURE,
+        ...(tier === 'high' ? environmentWarmupAssets(tier, this.camera.aspect) : []),
+      ])
+    }
 
     // The first switch to a star otherwise stalls for seconds while the noise
     // shader compiles. Every star shares one program, so compiling it once here
@@ -563,13 +649,20 @@ export class PerigeeScene implements PerigeeController {
       const surface = new Mesh(galaxyPlaneGeometry(), galaxy.material)
       this.heroGalaxyRoll = (disc.positionAngleDegrees * Math.PI) / 180
       group.add(surface)
-      return { group, surface, planet: null, ring: null, stellar: null, galaxy, spinRate: 0, animated: [] }
+      return { group, surface, planet: null, ring: null, stellar: null, galaxy, glare: null, spinRate: 0, animated: [] }
     }
 
     if (definition.kind === 'star') {
       const stellar = createStellarMaterial(definition.id)
       stellar.setQuality(this.quality.current)
       const surface = new Mesh(sphereGeometry(), stellar.material)
+      surface.renderOrder = 2
+      // The halo is a billboard behind the disc. It draws after the star field
+      // and before the surface, so the disc covers its centre.
+      const glareSet = createGlareMaterial(definition.shot.environmentTint ?? definition.shot.accent, 1)
+      const glare = new Mesh(glarePlaneGeometry(), glareSet.material)
+      glare.renderOrder = 1
+      group.add(glare)
       group.add(surface)
       group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
       return {
@@ -579,8 +672,9 @@ export class PerigeeScene implements PerigeeController {
         ring: null,
         stellar,
         galaxy: null,
+        glare,
         spinRate: 0.018,
-        animated: [stellar.material.uniforms.uTime!],
+        animated: [stellar.material.uniforms.uTime!, glareSet.material.uniforms.uTime!],
       }
     }
 
@@ -589,7 +683,7 @@ export class PerigeeScene implements PerigeeController {
     // Every map at once. Loading them in series added a whole round trip to
     // each swap that needs more than one.
     const [texture, ringTexture, normalMap] = await Promise.all([
-      loadTexture(definition.texture),
+      loadTexture(surfaceMapFor(definition.texture, this.quality.current)),
       needsRing ? loadTexture(RING_TEXTURE) : Promise.resolve(null),
       definition.normalMap ? loadTexture(definition.normalMap) : Promise.resolve(null),
     ])
@@ -598,7 +692,6 @@ export class PerigeeScene implements PerigeeController {
     const surface = new Mesh(sphereGeometry(), planet.surface)
     surface.scale.y = flattening
     group.add(surface)
-
     let ring: { set: RingMaterialSet, mesh: Mesh } | null = null
     if (ringTexture) {
       const ringSet = createRingMaterial(ringTexture)
@@ -610,7 +703,7 @@ export class PerigeeScene implements PerigeeController {
     }
 
     group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
-    return { group, surface, planet, ring, stellar: null, galaxy: null, spinRate: 0.018, animated: [] }
+    return { group, surface, planet, ring, stellar: null, galaxy: null, glare: null, spinRate: 0.018, animated: [] }
   }
 
   private radiusFor(definition: SkyObjectDefinition, distanceKm: number): number {
@@ -656,10 +749,19 @@ export class PerigeeScene implements PerigeeController {
       // ground light a close star does, so it gets its own strength rather
       // than a star's.
       kind === 'star' ? 0.12 : kind === 'galaxy' ? 0.05 : 0.035,
+      // The halo the backdrop paints around the hero. A star floods the sky
+      // in its own colour; a sunlit planet only lifts the air near it a
+      // little, in its own reflected tint.
+      {
+        color: emissive ? (shot.environmentTint ?? shot.accent) : shot.accent,
+        strength: kind === 'star' ? 0.85 : kind === 'galaxy' ? 0.14 : 0.035,
+      },
     )
 
     this.sunWorld.set(...shot.sunDirection).normalize()
-    if (this.bloom) this.bloom.intensity = this.bloomIntensity(this.quality.current, kind)
+    const tier = this.quality.current
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind)
+    if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && emissive
     if (this.renderer) this.renderer.setClearColor(shot.skyPalette[0], 1)
   }
 
@@ -667,11 +769,12 @@ export class PerigeeScene implements PerigeeController {
    * A star is a small hot disc that should bleed. A galaxy is the opposite
    * case: its dust lanes and arms are the whole point, and anything past a
    * light lift on the nucleus blurs them back into the soft field they were
-   * drawn to escape.
+   * drawn to escape. The star's halo is now drawn as geometry, so bloom only
+   * adds the fine bleed at the limb.
    */
   private bloomIntensity(tier: QualityTier, kind: SkyObjectDefinition['kind']): number {
     const base = tier === 'safe' ? 0.32 : tier === 'balanced' ? 0.42 : 0.52
-    if (kind === 'star') return base * 4.1
+    if (kind === 'star') return base * 2.2
     if (kind === 'galaxy') return base * 1.15
     return base
   }
@@ -685,8 +788,19 @@ export class PerigeeScene implements PerigeeController {
     if (this.heroRing) {
       this.heroRing.mesh.getWorldQuaternion(this.scratchQuaternion)
       this.scratchVector.copy(this.sunWorld).applyQuaternion(this.scratchQuaternion.invert())
-      this.heroRing.set.setSunDirection(this.scratchVector)
+      this.scratchVector2.copy(this.sunWorld).transformDirection(this.camera.matrixWorldInverse)
+      this.heroRing.set.setSunDirection(this.scratchVector, this.scratchVector2)
     }
+  }
+
+  /** Tells the backdrop where the hero is, so its light can land around it. */
+  private updateHeroScreen(): void {
+    if (!this.hero) return
+    const projected = this.scratchVector.copy(this.hero.position).project(this.camera)
+    const distance = this.scratchVector2.copy(this.hero.position).length()
+    const halfHeight = distance * Math.tan((this.camera.fov * Math.PI) / 360)
+    const radius = (this.hero.userData.radius as number) / Math.max(halfHeight, 0.0001) / 2
+    this.sky.setHeroScreen((projected.x + 1) / 2, (projected.y + 1) / 2, radius)
   }
 
   private readonly render = (now: number): void => {
@@ -712,16 +826,21 @@ export class PerigeeScene implements PerigeeController {
         this.heroSurface.quaternion.copy(this.camera.quaternion)
         this.heroSurface.rotateZ(this.heroGalaxyRoll)
       }
+      // A star's glare is a billboard inside a rotated group, so it takes the
+      // group's rotation out before it takes the camera's on.
+      if (this.heroGlare) {
+        this.heroGlare.quaternion.copy(this.hero.quaternion).invert().multiply(this.camera.quaternion)
+      }
       this.hero.updateMatrixWorld()
     }
     this.updateHeroLighting()
+    this.updateHeroScreen()
     // Collected once per swap. Traversing the hero every frame to find the same
     // handful of uniforms was pure overhead.
     this.heroTimeUniforms.forEach((uniform) => { uniform.value = elapsed })
+    this.frameListeners.forEach((listener) => listener())
 
     this.composer.render(delta)
-    const retier = this.quality.sample(delta * 1_000)
-    if (retier) this.setQuality(retier)
     this.frameId = requestAnimationFrame(this.render)
   }
 }

@@ -803,12 +803,10 @@
   border: 1px solid var(--hairline-strong);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 48%),
-    rgba(3, 8, 15, 0.66);
+    rgba(3, 8, 15, 0.84);
   box-shadow:
     0 16px 46px rgba(0, 0, 0, 0.42),
     inset 0 1px rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(14px) saturate(1.32);
-  -webkit-backdrop-filter: blur(14px) saturate(1.32);
   transition:
     background-color var(--speed-fast) ease,
     border-color var(--speed-fast) ease,
@@ -909,8 +907,6 @@
     inset 0 0 0 1px color-mix(in srgb, var(--accent-object) 36%, transparent),
     0 10px 30px rgba(0, 0, 0, 0.24),
     0 0 22px color-mix(in srgb, var(--accent-object) 12%, transparent);
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
   transform: translateX(var(--indicator-x, 0));
   transition:
     transform var(--speed-base) var(--ease-in-out),
@@ -1225,9 +1221,7 @@
   min-height: 44px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-pill);
-  background: rgba(3, 8, 15, 0.42);
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  background: rgba(3, 8, 15, 0.72);
   transition:
     border-color var(--speed-fast) ease,
     background-color var(--speed-fast) ease;
@@ -1235,7 +1229,7 @@
 
 .ambient-sound.audible {
   border-color: color-mix(in srgb, var(--accent-object) 38%, var(--hairline));
-  background: color-mix(in srgb, var(--accent-object) 7%, rgba(3, 8, 15, 0.48));
+  background: color-mix(in srgb, var(--accent-object) 7%, rgba(3, 8, 15, 0.76));
 }
 
 .ambient-toggle {
@@ -1912,6 +1906,11 @@
    User preferences
    ========================================================================== */
 
+/* Glass is kept for the transient panels only. Every `backdrop-filter` over
+   the canvas makes the compositor read back and blur that region on every
+   frame the canvas changes, which is every frame, so the elements that rest
+   on screen (the object trigger, the distance indicator, the sound toggle)
+   carry an opaque-enough fill instead. */
 @media (prefers-reduced-transparency: reduce) {
   .control-panel,
   .object-trigger,

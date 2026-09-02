@@ -22,6 +22,7 @@ const {
   replayEncounter,
   exitEncounter,
   getObjectScreenPosition,
+  subscribeFrame,
 } = usePerigee()
 const { capture, capturing } = useCapture()
 
@@ -44,7 +45,9 @@ const showLocator = computed(() => Boolean(
   && !encounterTransitioning.value
   && encounterStatus.value === 'active',
 ))
-let locatorFrame: number | null = null
+let unsubscribeLocator: (() => void) | null = null
+let locatorX = -1
+let locatorY = -1
 
 watch(encounterStatus, async () => {
   sourceOpen.value = false
@@ -61,29 +64,38 @@ watch(encounterBeatRevealed, async (revealed) => {
 })
 
 watch(showLocator, async (show) => {
-  if (locatorFrame !== null) cancelAnimationFrame(locatorFrame)
-  locatorFrame = null
+  unsubscribeLocator?.()
+  unsubscribeLocator = null
   if (!show) return
   await nextTick()
+  locatorX = -1
+  locatorY = -1
   updateLocator()
+  // Driven by the scene's own frame rather than a second animation loop, so
+  // the style write lands once per rendered frame and only when it moved.
+  unsubscribeLocator = subscribeFrame(updateLocator)
 })
 
 onBeforeUnmount(() => {
-  if (locatorFrame !== null) cancelAnimationFrame(locatorFrame)
+  unsubscribeLocator?.()
+  unsubscribeLocator = null
 })
 
 function updateLocator(): void {
   const element = locator.value
   const point = getObjectScreenPosition()
-  if (element && point) {
-    const x = Math.min(Math.max(point.x, 0.04), 0.96)
-    const y = Math.min(Math.max(point.y, 0.06), 0.78)
-    element.style.setProperty('--locator-x', `${x * 100}%`)
-    element.style.setProperty('--locator-y', `${y * 100}%`)
-    element.classList.toggle('off-screen', !point.onScreen)
-    element.classList.toggle('align-left', x > 0.72)
-  }
-  locatorFrame = requestAnimationFrame(updateLocator)
+  if (!element || !point) return
+  const x = Math.min(Math.max(point.x, 0.04), 0.96)
+  const y = Math.min(Math.max(point.y, 0.06), 0.78)
+  // A style write forces a style recalculation; skip it under a pixel of movement.
+  const threshold = 1 / Math.max(window.innerWidth, 1)
+  if (Math.abs(x - locatorX) < threshold && Math.abs(y - locatorY) < threshold) return
+  locatorX = x
+  locatorY = y
+  element.style.setProperty('--locator-x', `${x * 100}%`)
+  element.style.setProperty('--locator-y', `${y * 100}%`)
+  element.classList.toggle('off-screen', !point.onScreen)
+  element.classList.toggle('align-left', x > 0.72)
 }
 
 function leaveEncounter(): void {

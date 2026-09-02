@@ -8,6 +8,7 @@ import {
 } from 'three'
 import type { QualityTier, ViewpointId } from '../../../app/types/perigee'
 import { loadTexture, prefetchTextures } from '../TextureCache'
+import { FLIP_V } from '../materials/shaderChunks'
 import {
   environmentAssetFor,
   environmentWarmupAssets,
@@ -22,6 +23,14 @@ export interface EnvironmentLayer {
   setQuality: (tier: QualityTier) => void
   setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
   setTint: (color: string, strength: number) => void
+  /**
+   * Light the hero throws into the sky and onto the ground. `strength` is the
+   * peak lift at the object; the falloff is in units of the object's own
+   * projected radius.
+   */
+  setGlow: (color: string, strength: number) => void
+  /** Where the hero sits on the frame, in frame UV, and its radius as a fraction of frame height. */
+  setHeroScreen: (x: number, y: number, radius: number) => void
   /** Warms the backdrops the viewer has not switched to yet. */
   prefetch: () => void
   update: (time: number) => void
@@ -30,6 +39,7 @@ export interface EnvironmentLayer {
 
 export function createEnvironmentLayer(initialQuality: QualityTier): EnvironmentLayer {
   const lookOffset = new Vector2()
+  const heroScreen = new Vector2(0.5, 0.5)
   const material = new ShaderMaterial({
     uniforms: {
       uCurrent: { value: null as Texture | null },
@@ -42,6 +52,10 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
       uZoom: { value: 0.79 },
       uTint: { value: new Color('#22334b') },
       uTintStrength: { value: 0.08 },
+      uGlowColor: { value: new Color('#ff9550') },
+      uGlowStrength: { value: 0 },
+      uHeroScreen: { value: heroScreen },
+      uHeroRadius: { value: 0.1 },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -62,7 +76,12 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
       uniform float uZoom;
       uniform vec3 uTint;
       uniform float uTintStrength;
+      uniform vec3 uGlowColor;
+      uniform float uGlowStrength;
+      uniform vec2 uHeroScreen;
+      uniform float uHeroRadius;
       varying vec2 vUv;
+      ${FLIP_V}
 
       vec2 environmentUv(vec2 uv, float imageAspect) {
         vec2 cover = vec2(1.0);
@@ -74,7 +93,7 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
 
         vec2 centered = (uv - 0.5) * cover * uZoom;
         centered += uLookOffset * cover * uZoom;
-        return centered + 0.5;
+        return mapUv(centered + 0.5);
       }
 
       vec3 gradeEnvironment(vec3 color, vec2 uv) {
@@ -84,16 +103,27 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
         color = mix(color, tinted, uTintStrength);
         color += uTint * atmosphere * uTintStrength * 0.055;
 
-        float edge = smoothstep(0.82, 0.18, distance(uv, vec2(0.5)));
+        // The hero's light: a halo in the sky around it, and a lift on the
+        // ground that lands first on whatever the plate already shows as lit,
+        // which is how upward-facing edges and windows catch a bright object.
+        vec2 offset = (uv - uHeroScreen) * vec2(uViewportAspect, 1.0);
+        float reach = uHeroRadius * 2.6 + 0.03;
+        float halo = uGlowStrength / (1.0 + pow(length(offset) / reach, 2.0));
+        color += uGlowColor * halo * (0.28 + 1.4 * luminance);
+
+        float edge = 1.0 - smoothstep(0.18, 0.82, distance(uv, vec2(0.5)));
         return color * mix(0.83, 1.0, edge);
       }
 
       void main() {
         vec2 currentUv = environmentUv(vUv, uCurrentImageAspect);
-        vec2 nextUv = environmentUv(vUv, uNextImageAspect);
-        vec3 current = texture2D(uCurrent, currentUv).rgb;
-        vec3 next = texture2D(uNext, nextUv).rgb;
-        vec3 color = mix(current, next, smoothstep(0.0, 1.0, uMix));
+        vec3 color = texture2D(uCurrent, currentUv).rgb;
+        // The second plate is only worth a fetch while a crossfade is running.
+        if (uMix > 0.0) {
+          vec2 nextUv = environmentUv(vUv, uNextImageAspect);
+          vec3 next = texture2D(uNext, nextUv).rgb;
+          color = mix(color, next, smoothstep(0.0, 1.0, uMix));
+        }
         gl_FragColor = vec4(gradeEnvironment(color, vUv), 1.0);
       }
     `,
@@ -177,6 +207,14 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
     setTint(color, strength) {
       material.uniforms.uTint!.value.set(color)
       material.uniforms.uTintStrength!.value = strength
+    },
+    setGlow(color, strength) {
+      material.uniforms.uGlowColor!.value.set(color)
+      material.uniforms.uGlowStrength!.value = strength
+    },
+    setHeroScreen(x, y, radius) {
+      heroScreen.set(x, y)
+      material.uniforms.uHeroRadius!.value = radius
     },
     prefetch() {
       prefetchTextures(environmentWarmupAssets(quality, viewportAspect))

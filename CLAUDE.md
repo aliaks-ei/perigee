@@ -38,20 +38,28 @@ Rendering is a hybrid and the switch is inverted on purpose:
   `usePerigee.initialize()` so Three.js stays out of the first bundle.
 - One scene, one camera, one composer. `createSkyScene` holds an opaque full-screen backdrop
   (`createEnvironmentLayer`, a photographic plate per viewpoint), the star field, and the hero
-  object. Effects run last: bloom, vignette, ACES tone mapping, then SMAA — SMAA is last on purpose,
-  because its edge detection is tuned for tone-mapped luma, not raw HDR.
+  object. Effects run last, in three passes: bloom (its own pass, enabled only for stars and the
+  galaxy), then vignette, AgX tone mapping and the film dither/grain, then SMAA — SMAA is last on
+  purpose, because its edge detection is tuned for tone-mapped luma, not raw HDR. High quality also
+  uses 4x composer multisampling to preserve crisp hero silhouettes; balanced and safe do not.
 - `TextureCache.ts` owns every texture: one per URL for the life of the session, decoded off the main
-  thread with `Image.decode()`, prefetched on idle after the first frame. It also carries the optional
-  KTX2/Basis path (`scripts/textures.sh`, `VITE_KTX2_TEXTURES`), which is tree-shaken out of the
-  bundle while it is off.
+  thread into an `ImageBitmap`, uploaded to the GPU on load (`renderer.initTexture`) so no shot pays
+  for it, prefetched on idle after the first frame by tier. Every texture leaves the cache with
+  `flipY` off and the materials flip V once when they sample (`FLIP_V` in `materials/shaderChunks.ts`),
+  so ImageBitmap and KTX2 uploads behave the same. It also carries the KTX2/Basis path
+  (`scripts/textures.sh`, `VITE_KTX2_TEXTURES`, opt-in), which is tree-shaken out of the bundle when
+  the flag is off. `AssetManifest.surfaceMapFor` swaps the 4K maps for their 2K siblings only on the
+  safe tier.
 - `ShotDirector.ts` owns the single running GSAP timeline and returns the promise the UI awaits to
   unlock controls. `tests/shot-director.test.ts` covers its exit paths.
-- `QualityManager.ts` picks a starting tier from device memory/cores, downgrades after sustained slow
-  frames, and allows exactly one recovery back up so a transient stall does not demote the session
-  for good. `setQuality` re-derives the DPR cap, composer multisampling, bloom intensity, star
-  opacity and the stellar shader's octave count.
+- `QualityManager.ts` chooses a fixed session tier from device memory/cores. Runtime frame deltas are
+  deliberately not used as GPU timings. `setQuality` re-derives the DPR cap, composer multisampling,
+  bloom intensity, star opacity and the stellar shader's octave count.
 - `materials/` are hand-written `ShaderMaterial`s. Hero materials light themselves, so
   `updateHeroLighting()` feeds them the sun direction transformed into their own space.
+- The backdrop takes the hero's projected position and radius each frame and paints its glow into
+  the sky and onto the lit parts of the plate. A star's halo is a billboard (`GlareMaterial`), not
+  bloom.
 - Surface relief has two paths. The rocky bodies carry a normal map built from real elevation data
   (`scripts/normal-maps.py`); everything else falls back to a gradient read out of the albedo. Both
   use the tangent frame `SHARED_VERTEX` derives from the sphere's equirectangular mapping, where +x
@@ -61,7 +69,8 @@ Rendering is a hybrid and the switch is inverted on purpose:
 
 - **The device pixel ratio is capped inside `PerigeeScene.resize`, never at the call site.** The
   resize observer reports the raw ratio; clamping anywhere else lets an ordinary window resize undo
-  the quality tier's cap and render a low-end phone at 3x.
+  the quality tier's cap and render a low-end phone at 3x. Caps are fixed at 2x for high, 1.5x for
+  balanced and 1x for safe.
 - **Textures and geometry are shared, so `disposeObject` only releases materials.** Anything that
   disposes a cached texture or the shared sphere/ring geometry breaks every later swap.
 - **Every shot must be interruptible, and its promise must settle on every exit path** — completion,
@@ -92,14 +101,26 @@ relicensed by this repo. Any new asset needs an entry in `public/assets/ATTRIBUT
 `thumbnail` must point at `public/assets/objects/thumbs/` (160x160 WebP), never at a full surface
 map — the object browser renders all of them at once.
 
+The star field's brightness distribution comes from the Yale Bright Star Catalog packed into
+`public/assets/stars/bsc5.bin` by `scripts/star-catalogue.py`; a procedural field stands in until it
+loads and if it fails.
+
 Normal maps must be named `*-normal.*`. The texture cache keys colour space off that suffix, so a
 map named anything else is decoded through sRGB and its slopes come out bent.
 `scripts/normal-maps.py` builds them from LOLA/MOLA elevation grids; the source DEMs are ~32 MB each
 and are deliberately not kept in the repository.
 
-`scripts/textures.sh` converts the surface maps to KTX2/Basis. It is opt-in: run it, then set
-`VITE_KTX2_TEXTURES=1` (see `.env.example`) and rebuild. Without the flag the loader uses the
-JPEG/WebP files and the transcoder is not shipped.
+`scripts/textures.sh` converts the object maps to KTX2/Basis with the `basisu` encoder
+(`brew install basis_universal imagemagick`), and the `.ktx2` files are checked in beside their
+sources. The codec is chosen per map: ETC1S for the noisy rocky albedos (Moon, Mars), UASTC for
+the gas giants, whose smooth banding ETC1S would band, and for the normal maps. The backdrops stay
+WebP on purpose. JPEG/WebP is the default because those files are substantially smaller on the
+wire. Set `VITE_KTX2_TEXTURES=1` (see `.env.example`) only when GPU memory and upload stalls matter
+more than initial transfer size. Rerun
+the script whenever a source texture changes, or the stale `.ktx2` wins. The transcoder is served
+from `public/assets/basis/` as a byte copy of three's; `tests/basis-transcoder.test.ts` fails when
+a three upgrade leaves it behind (copy the two files from
+`node_modules/three/examples/jsm/libs/basis/`).
 
 ## Notes
 
