@@ -1,4 +1,8 @@
 import { NoColorSpace, SRGBColorSpace, Texture, WebGLRenderer } from 'three'
+import {
+  configureCompressedTextures,
+  loadCompressedTexture,
+} from '#perigee-texture-compression'
 
 /**
  * One texture per URL, shared for the life of the session.
@@ -6,49 +10,55 @@ import { NoColorSpace, SRGBColorSpace, Texture, WebGLRenderer } from 'three'
  * Hero swaps used to load and dispose their own copies, so returning to an
  * object paid the full download and decode again. Nothing here is disposed on
  * a swap — only `disposeTextures()` at teardown releases them.
+ *
+ * Every texture leaves here with `flipY` off, so the image is stored top row
+ * first whichever path decoded it: ImageBitmap uploads ignore the flip flag,
+ * and KTX2 textures never had one. The materials flip once when they sample
+ * (see `FLIP_V` in `materials/shaderChunks.ts`).
  */
-
-/**
- * Opt-in, set at build time by `.env` after running `scripts/textures.sh`.
- * It is a build constant so that the KTX2 loader and its 500 kB transcoder are
- * dropped from the bundle entirely while compressed textures are off.
- */
-const compressedTextures = import.meta.env.VITE_KTX2_TEXTURES === '1'
 
 const cache = new Map<string, Promise<Texture>>()
 let renderer: WebGLRenderer | null = null
 let maxAnisotropy = 8
-let ktx2Loader: Promise<{ loadAsync: (url: string) => Promise<Texture> } | null> | null = null
 
 export function configureTextureCache(activeRenderer: WebGLRenderer): void {
   renderer = activeRenderer
   maxAnisotropy = activeRenderer.capabilities.getMaxAnisotropy()
-
-  if (compressedTextures) {
-    // three resolves its own transcoder through `import.meta.url`, so the
-    // bundler emits and fingerprints it. Nothing to copy into `public/`.
-    ktx2Loader = import('three/examples/jsm/loaders/KTX2Loader.js')
-      .then(({ KTX2Loader }) => new KTX2Loader().detectSupport(activeRenderer))
-      .catch(() => null)
-  }
-}
-
-function compressedUrlFor(url: string): string {
-  return url.replace(/\.(jpg|jpeg|png|webp)$/i, '.ktx2')
+  configureCompressedTextures(activeRenderer)
 }
 
 /**
- * Decodes off the main thread. `Image.decode()` is used rather than
- * `createImageBitmap`, which needs `imageOrientation: 'flipY'` to keep three's
- * texture orientation and silently returns an upside-down bitmap on browsers
- * that ignore the option.
+ * Decodes off the main thread and uploads as a straight copy. `Image.decode()`
+ * only caches its bitmap briefly, so a texture uploaded a little later was
+ * decoded a second time on the main thread, in the middle of a shot. An
+ * ImageBitmap is decoded once and stays decoded. The orientation option that
+ * made this path unreliable is not used: the bitmap is uploaded as stored and
+ * the shaders flip.
  */
 async function decodeImage(url: string): Promise<Texture> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const response = await fetch(url, { credentials: 'same-origin' })
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`)
+      const blob = await response.blob()
+      const bitmap = await createImageBitmap(blob, {
+        premultiplyAlpha: 'none',
+        colorSpaceConversion: 'none',
+      })
+      const texture = new Texture(bitmap)
+      texture.flipY = false
+      texture.needsUpdate = true
+      return texture
+    } catch {
+      // Fall through to the element path; an old Safari rejects the options.
+    }
+  }
+
   const image = new Image()
-  image.crossOrigin = 'anonymous'
   image.src = url
   await image.decode()
   const texture = new Texture(image)
+  texture.flipY = false
   texture.needsUpdate = true
   return texture
 }
@@ -62,17 +72,26 @@ function isDataTexture(url: string): boolean {
   return /-normal\.[a-z0-9]+$/i.test(url)
 }
 
-async function load(url: string): Promise<Texture> {
-  let texture: Texture | null = null
+/**
+ * Anisotropic filtering only pays for surfaces seen at a grazing angle. The
+ * backdrop is a full-screen plate viewed head-on and the ring strip is sampled
+ * along one row, so both had been paying sixteen taps for nothing.
+ */
+function anisotropyFor(url: string): number {
+  if (url.includes('/environments/') || url.includes('saturn-ring')) return 1
+  return Math.min(8, maxAnisotropy)
+}
 
-  if (compressedTextures && ktx2Loader) {
-    const loader = await ktx2Loader
-    texture = await loader?.loadAsync(compressedUrlFor(url)).catch(() => null) ?? null
-  }
+async function load(url: string): Promise<Texture> {
+  let texture = await loadCompressedTexture(url)
   if (!texture) texture = await decodeImage(url)
 
   texture.colorSpace = isDataTexture(url) ? NoColorSpace : SRGBColorSpace
-  texture.anisotropy = Math.min(16, maxAnisotropy)
+  texture.anisotropy = anisotropyFor(url)
+  // Upload now, while nothing is animating. Left to the first draw, the upload
+  // and its mipmap generation landed on the first frame of the shot that
+  // needed the texture, which is exactly where a stall shows.
+  renderer?.initTexture(texture)
   return texture
 }
 

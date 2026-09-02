@@ -101,6 +101,12 @@ export interface PerigeeController {
    */
   captureFrame(): HTMLCanvasElement | null
   resetView(): void
+  /**
+   * Runs `listener` once per rendered frame, after the camera has moved and
+   * before the frame is drawn. Returns the unsubscribe. Overlays that follow
+   * the hero read its position here instead of running their own frame loop.
+   */
+  subscribeFrame(listener: () => void): () => void
   setQuality(tier: QualityTier): void
   resize(width: number, height: number, dpr: number): void
   pause(): void

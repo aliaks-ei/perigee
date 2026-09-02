@@ -105,7 +105,10 @@ export default defineNuxtConfig({
         { name: 'color-scheme', content: 'dark' },
       ],
       // The first frame cannot be drawn until these two land, and they are
-      // otherwise only discovered after the engine chunk has parsed.
+      // otherwise only discovered after the engine chunk has parsed. The
+      // texture cache pulls them with `fetch()`, so the hints are `as: 'fetch'`
+      // with anonymous credentials: a hint whose mode differs from the real
+      // request is discarded and the file is downloaded twice.
       link: [
         { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
         { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -113,13 +116,19 @@ export default defineNuxtConfig({
         { rel: 'manifest', href: '/site.webmanifest' },
         {
           rel: 'preload',
-          as: 'image',
+          as: 'fetch',
+          crossorigin: 'anonymous',
           href: '/assets/environments/rooftop-cinematic-4k.webp',
         },
         {
           rel: 'preload',
-          as: 'image',
-          href: '/assets/objects/saturn-atmosphere-v2.webp',
+          as: 'fetch',
+          crossorigin: 'anonymous',
+          // The file the loader will actually ask for: the compressed map
+          // while KTX2 is on, the WebP otherwise.
+          href: compressedTextures === '1'
+            ? '/assets/objects/saturn-atmosphere-v2.ktx2'
+            : '/assets/objects/saturn-atmosphere-v2.webp',
         },
       ],
     },
@@ -131,13 +140,18 @@ export default defineNuxtConfig({
   experimental: {
     appManifest: false,
   },
+  alias: {
+    // Select the implementation at build time. A runtime guard around a
+    // dynamic import still makes Rollup emit the KTX2 transcoder chunk, even
+    // when the guard is a false literal.
+    '#perigee-texture-compression': new URL(
+      compressedTextures === '1'
+        ? './src/perigee/TextureCompression.ktx2.ts'
+        : './src/perigee/TextureCompression.ts',
+      import.meta.url,
+    ).pathname,
+  },
   vite: {
-    define: {
-      // A literal, so the KTX2 loader and its 500 kB transcoder are tree-shaken
-      // out of the bundle whenever compressed textures are off. See
-      // `scripts/textures.sh` and `.env.example`.
-      'import.meta.env.VITE_KTX2_TEXTURES': JSON.stringify(compressedTextures),
-    },
     server: {
       allowedHosts: ['terminal.local'],
     },

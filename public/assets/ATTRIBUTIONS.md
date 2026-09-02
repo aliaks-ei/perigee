@@ -5,8 +5,8 @@
 - Source: [Solar System Scope textures](https://edu.solarsystemscope.com/textures/)
 - Author: INOVE / Solar System Scope
 - License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
-- Files: `moon.jpg`, `mars.jpg`, `jupiter.jpg`, `neptune.jpg`, `saturn-ring-2k.webp`, and the derived thumbnails in `thumbs/`
-- Modifications: Moon and Mars resampled to 4096×2048; Jupiter retained at 4096×2048. Saturn's ring downsampled from the source 8192×500 to 2048×64 as `saturn-ring-2k.webp`: the shader samples a single row of the strip, so the original's height was never read and its width cost 16 MB of GPU memory. The unmodified `saturn.jpg`, `saturn-ring.png` and `star-surface.jpg` were removed once nothing loaded them — Saturn renders from the enhanced map below, and stars are procedural. Runtime treatment adds color-managed lighting, fine-detail recovery, restrained surface response, and slow rotation.
+- Files: `moon.jpg`, `mars.jpg`, `jupiter.jpg`, `neptune.jpg`, `saturn-ring-2k.webp`, the 2048×1024 siblings `moon-2k.jpg`, `mars-2k.jpg`, `jupiter-2k.jpg`, and the derived thumbnails in `thumbs/`
+- Modifications: Moon and Mars resampled to 4096×2048; Jupiter retained at 4096×2048. The `-2k` siblings are the same maps resampled to 2048×1024 for the balanced and safe quality tiers, where the disc never resolves more than that. Saturn's ring downsampled from the source 8192×500 to 2048×64 as `saturn-ring-2k.webp`: the shader samples a single row of the strip, so the original's height was never read and its width cost 16 MB of GPU memory. The unmodified `saturn.jpg`, `saturn-ring.png` and `star-surface.jpg` were removed once nothing loaded them — Saturn renders from the enhanced map below, and stars are procedural. Runtime treatment adds color-managed lighting, fine-detail recovery, restrained surface response, and slow rotation.
 - Downloaded: 2026-08-28
 
 ### Interface thumbnails
@@ -23,7 +23,7 @@ visualization rather than scientific analysis.
 ### Saturn atmosphere enhancement
 
 - Source: Original AI-assisted texture generated for Perigee with OpenAI image generation, art-directed from the supplied Cassini-style reference
-- File: `saturn-atmosphere-v2.webp`
+- Files: `saturn-atmosphere-v2.webp`, and `saturn-atmosphere-v2-2k.webp` (the same map at 2048×1024 for the lower quality tiers)
 - Modifications: Generated as a lighting-neutral 1774×887 equirectangular diffuse map, resampled to 4096×2048, and exported as high-quality WebP. Directional lighting, limb falloff, and highlights remain runtime shader effects rather than baked into the asset.
 - Created: 2026-08-29
 
@@ -68,3 +68,20 @@ visualization rather than scientific analysis.
   only object asset on disk. The encounter card is a clean frame from the same
   live renderer with Perigee's standard restrained caption treatment.
 - Created: 2026-09-01
+
+## Bright star catalogue
+
+- Source: [Yale Bright Star Catalog, 5th revised edition (BSC5)](http://tdc-www.harvard.edu/catalogs/bsc5.html) — Hoffleit, D. and Warren, W. H. Jr., 1991
+- License: Public domain (catalogue data distributed by the Harvard-Smithsonian Center for Astrophysics)
+- File: `stars/bsc5.bin`
+- Modifications: `scripts/star-catalogue.py` reads the fixed-column catalogue and packs right ascension, declination, visual magnitude and B−V colour index into an 8-byte record per star, sorted by magnitude. Stars without a magnitude are dropped. 9,096 stars in 73 kB.
+- Purpose: The star field's brightness distribution and colours. A generated field has a flat brightness distribution, which is what makes it read as generated; the catalogue carries the real few-bright, many-faint law. Positions are used as catalogued, on the equatorial sphere, without matching the viewpoint's latitude or the time of night.
+- Downloaded: 2026-09-02
+
+## Basis Universal transcoder
+
+- Source: [three.js `examples/jsm/libs/basis`](https://github.com/mrdoob/three.js/tree/dev/examples/jsm/libs/basis), built from [Binomial LLC's Basis Universal](https://github.com/BinomialLLC/basis_universal)
+- License: Apache License 2.0
+- Files: `basis/basis_transcoder.js`, `basis/basis_transcoder.wasm`
+- Modifications: None. Byte copies of the files shipped with the pinned three.js release, kept in step by `tests/basis-transcoder.test.ts`.
+- Purpose: Decodes the `.ktx2` object maps on the GPU's own compressed format at runtime.

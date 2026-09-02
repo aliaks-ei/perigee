@@ -10,13 +10,24 @@ import {
 import type { QualityTier } from '../../../app/types/perigee'
 import type { ViewpointId } from '../../../app/types/perigee'
 import { createEnvironmentLayer } from './createEnvironmentLayer'
+import {
+  colorForIndex,
+  fluxForMagnitude,
+  loadStarCatalogue,
+  type CatalogueStar,
+} from './starCatalogue'
 
 export interface SkySceneBundle {
   scene: Scene
   stars: Points
   setPalette: (palette: [string, string, string]) => void
-  /** Warm sky-glow thrown up from the ground, matched to the viewpoint. */
-  setGlow: (color: string, strength: number) => void
+  /**
+   * Warm sky-glow thrown up from the ground, matched to the viewpoint, and the
+   * light the hero itself throws into the sky around it.
+   */
+  setGlow: (color: string, strength: number, glow: { color: string, strength: number }) => void
+  /** Where the hero sits on the frame, for the glow the backdrop paints around it. */
+  setHeroScreen: (x: number, y: number, radius: number) => void
   /** Warms the other viewpoints' backdrops while the main thread is idle. */
   prefetch: () => void
   setPixelRatio: (pixelRatio: number) => void
@@ -35,6 +46,122 @@ function seededRandom(seed: number): () => number {
   }
 }
 
+interface StarRecord {
+  direction: Vector3
+  color: [number, number, number]
+  flux: number
+  /** Point size in CSS pixels before the pixel ratio and perspective terms. */
+  size: number
+}
+
+/**
+ * Magnitude drawn so that counts grow by about a factor of three per
+ * magnitude, which is the law a real sky follows. Used for the faint
+ * background stars the catalogue does not carry, and for the whole field
+ * when the catalogue cannot be loaded.
+ */
+function sampleMagnitude(random: () => number, faintest: number, brightest: number): number {
+  const magnitude = faintest + 2 * Math.log10(Math.max(random(), 1e-6))
+  return Math.max(brightest, magnitude)
+}
+
+function starRecordFromMagnitude(direction: Vector3, magnitude: number, colorIndex: number): StarRecord {
+  const flux = fluxForMagnitude(magnitude)
+  const bright = magnitude < 1.5
+  return {
+    direction,
+    color: colorForIndex(colorIndex),
+    flux,
+    size: bright
+      ? 2.6 + (1.5 - magnitude) * 0.9
+      : 0.7 + 1.7 * Math.min(1, Math.max(0, (5.5 - magnitude) / 7)),
+  }
+}
+
+function directionFromEquatorial(rightAscensionDegrees: number, declinationDegrees: number): Vector3 {
+  const ra = (rightAscensionDegrees * Math.PI) / 180
+  const dec = (declinationDegrees * Math.PI) / 180
+  return new Vector3(Math.cos(dec) * Math.cos(ra), Math.sin(dec), Math.cos(dec) * Math.sin(ra))
+}
+
+/** The Milky Way band: faint stars packed along a tilted great circle. */
+function backgroundStars(random: () => number, count: number): StarRecord[] {
+  const bandAxis = new Vector3(0.7, 0.15, 0.32).normalize()
+  const records: StarRecord[] = []
+  for (let index = 0; index < count; index += 1) {
+    const inBand = random() < 0.55
+    const theta = random() * Math.PI * 2
+    const latitude = inBand
+      ? (random() + random() + random() - 1.5) * 0.16
+      : Math.asin(random() * 2 - 1)
+    const direction = new Vector3(
+      Math.cos(latitude) * Math.cos(theta),
+      Math.sin(latitude),
+      Math.cos(latitude) * Math.sin(theta),
+    )
+    if (inBand) direction.applyAxisAngle(bandAxis, 0.7)
+    // Fainter than the catalogue's limit, so the two sets do not overlap.
+    const magnitude = sampleMagnitude(random, 7.6, 6.2)
+    records.push(starRecordFromMagnitude(direction, magnitude, random() * 1.4 - 0.2))
+  }
+  return records
+}
+
+function fallbackStars(random: () => number, count: number): StarRecord[] {
+  const records: StarRecord[] = []
+  for (let index = 0; index < count; index += 1) {
+    const theta = random() * Math.PI * 2
+    const latitude = Math.asin(random() * 2 - 1)
+    const direction = new Vector3(
+      Math.cos(latitude) * Math.cos(theta),
+      Math.sin(latitude),
+      Math.cos(latitude) * Math.sin(theta),
+    )
+    records.push(starRecordFromMagnitude(direction, sampleMagnitude(random, 6.5, -1.5), random() * 1.6 - 0.3))
+  }
+  return records
+}
+
+function catalogueStars(entries: CatalogueStar[]): StarRecord[] {
+  return entries.map((star) => starRecordFromMagnitude(
+    directionFromEquatorial(star.rightAscension, star.declination),
+    star.magnitude,
+    star.colorIndex,
+  ))
+}
+
+function buildGeometry(records: StarRecord[], random: () => number): BufferGeometry {
+  const count = records.length
+  const positions = new Float32Array(count * 3)
+  const colors = new Float32Array(count * 3)
+  const sizes = new Float32Array(count)
+  const phases = new Float32Array(count)
+
+  records.forEach((record, index) => {
+    const radius = 900 + random() * 180
+    const offset = index * 3
+    positions[offset] = record.direction.x * radius
+    positions[offset + 1] = record.direction.y * radius
+    positions[offset + 2] = record.direction.z * radius
+    // Brightness compresses the flux range: a real Sirius is a thousand times
+    // a faint star, which a point sprite cannot show, so the curve keeps the
+    // order without the ratio.
+    const brightness = Math.min(4.2, 0.3 + 3.2 * record.flux ** 0.42)
+    colors[offset] = record.color[0] * brightness
+    colors[offset + 1] = record.color[1] * brightness
+    colors[offset + 2] = record.color[2] * brightness
+    sizes[index] = record.size
+    phases[index] = random() * Math.PI * 2
+  })
+
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new BufferAttribute(positions, 3))
+  geometry.setAttribute('color', new BufferAttribute(colors, 3))
+  geometry.setAttribute('aSize', new BufferAttribute(sizes, 1))
+  geometry.setAttribute('aPhase', new BufferAttribute(phases, 1))
+  return geometry
+}
+
 export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
   const scene = new Scene()
 
@@ -45,51 +172,10 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
   scene.add(environment.mesh)
 
   const random = seededRandom(731_992)
-  const starCount = 5_200
-  const positions = new Float32Array(starCount * 3)
-  const colors = new Float32Array(starCount * 3)
-  const sizes = new Float32Array(starCount)
-  const phases = new Float32Array(starCount)
-  const spectralColors = [
-    new Color('#fff4dc'),
-    new Color('#dbe9ff'),
-    new Color('#ffffff'),
-    new Color('#ffd9b2'),
-    new Color('#b9d2ff'),
-  ]
-  const position = new Vector3()
+  const background = backgroundStars(random, 3_600)
+  let geometry = buildGeometry([...fallbackStars(random, 1_600), ...background], random)
+  let disposed = false
 
-  for (let index = 0; index < starCount; index += 1) {
-    const inMilkyWay = random() < 0.38
-    const theta = random() * Math.PI * 2
-    const latitude = inMilkyWay
-      ? (random() + random() + random() - 1.5) * 0.16
-      : Math.asin(random() * 1.72 - 0.72)
-    const radius = 900 + random() * 180
-    position.set(
-      Math.cos(latitude) * Math.cos(theta),
-      Math.sin(latitude),
-      Math.cos(latitude) * Math.sin(theta),
-    )
-    if (inMilkyWay) position.applyAxisAngle(new Vector3(0.7, 0.15, 0.32).normalize(), 0.7)
-    const offset = index * 3
-    positions[offset] = position.x * radius
-    positions[offset + 1] = position.y * radius
-    positions[offset + 2] = position.z * radius
-    const color = spectralColors[Math.floor(random() * spectralColors.length)]!
-    const brightness = random() > 0.985 ? 2.4 + random() * 1.8 : 0.42 + random() * 0.88
-    colors[offset] = color.r * brightness
-    colors[offset + 1] = color.g * brightness
-    colors[offset + 2] = color.b * brightness
-    sizes[index] = random() > 0.985 ? 3.2 + random() * 2.2 : 0.72 + random() * 1.45
-    phases[index] = random() * Math.PI * 2
-  }
-
-  const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(positions, 3))
-  geometry.setAttribute('color', new BufferAttribute(colors, 3))
-  geometry.setAttribute('aSize', new BufferAttribute(sizes, 1))
-  geometry.setAttribute('aPhase', new BufferAttribute(phases, 1))
   const pointsMaterial = new ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
@@ -135,6 +221,20 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
   const stars = new Points(geometry, pointsMaterial)
   scene.add(stars)
 
+  // The catalogue replaces the placeholder bright stars once it arrives. The
+  // faint background keeps its place under it either way.
+  if (typeof fetch === 'function') {
+    loadStarCatalogue()
+      .then((entries) => {
+        if (disposed) return
+        const rebuilt = buildGeometry([...catalogueStars(entries), ...background], seededRandom(19_771))
+        stars.geometry = rebuilt
+        geometry.dispose()
+        geometry = rebuilt
+      })
+      .catch(() => undefined)
+  }
+
   // Star opacity has two independent inputs. Keeping them apart stops the
   // quality factor from compounding on repeated calls, or from being wiped by
   // the next palette change.
@@ -153,11 +253,15 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
       applyStarOpacity()
       environment.setTint(nextPalette[2], 0.09)
     },
-    setGlow(color, strength) {
+    setGlow(color, strength, glow) {
       const environmentStrength = strength > 0.08
         ? Math.min(0.58, strength * 4.6)
         : Math.min(0.11, 0.045 + strength)
       environment.setTint(color, environmentStrength)
+      environment.setGlow(glow.color, glow.strength)
+    },
+    setHeroScreen(x, y, radius) {
+      environment.setHeroScreen(x, y, radius)
     },
     setPixelRatio(pixelRatio) {
       pointsMaterial.uniforms.uPixelRatio!.value = pixelRatio
@@ -182,6 +286,7 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
       environment.update(time)
     },
     dispose() {
+      disposed = true
       environment.dispose()
       geometry.dispose()
       pointsMaterial.dispose()
