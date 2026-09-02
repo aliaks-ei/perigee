@@ -101,6 +101,9 @@ tests when changing scientific calculations, editorial contracts, presets, or
 scene direction. Visual changes should include desktop and mobile evidence and
 must retain keyboard, focus, reduced-motion, and capability-fallback behavior.
 
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development workflow and
+[`SECURITY.md`](SECURITY.md) for private vulnerability reporting.
+
 New runtime assets require complete provenance in
 `public/assets/ATTRIBUTIONS.md` before they ship.
 
