@@ -320,13 +320,14 @@ Black holes and supernovae remain later candidates. Both promise substantial
 wow value but require a higher scientific-art-direction burden than the first
 expansion should carry.
 
-### 6.7 Ambient sound, later and optional
+### 6.7 Ambient sound, next and optional
 
 An understated sound layer could materially deepen the portfolio experience:
 Atlantic wind at Cabo da Roca, distant surf, subtle environmental transitions,
 and restrained musical texture.
 
-It is deferred until the encounter loop is validated. If introduced:
+This is the next implementation step. It remains optional for visitors and
+must preserve the encounter loop rather than compete with it. When introduced:
 
 - start muted or only after explicit visitor interaction;
 - provide a persistent mute control;
@@ -817,18 +818,16 @@ The current roadmap does not include:
 | G3 | Passed | Cabo production approach | Option 1 and its four final targets approved; exact camera, licensed source, landscape/portrait plate strategy, and performance estimate documented in `docs/design/cabo-da-roca/` |
 | G4 | Passed | First new object class | Andromeda's realistic visible-light direction was approved after live review. The procedural galaxy, quality tiers, 390 x 844 composition, object-browser exposure, four-beat guided encounter, curated route, source disclosure, final free-exploration handoff, and social card are verified; assumptions are documented in `docs/design/andromeda/` |
 | G5 | Deferred | Observatory Log | Observed repeat/save intent or direct visitor evidence |
-| G6 | Deferred | Sound layer | Demonstrated improvement to the encounter without sensory or performance harm |
+| G6 | Next | Sound layer | Selected as the next implementation step; validate explicit activation, mute behavior, licensing, sensory comfort, and performance before release |
 
 ## 13. Recommended next implementation chunk
 
-There is no remaining unconditional implementation chunk. R5.1 and R5.2 are
-complete in the local working tree and should ship with the next deployment;
-Releases 0 to 3 are complete and deployed at `perigee.observer`.
+Ambient sound is the next implementation step. R5.1 and R5.2 are deployed and
+verified at `perigee.observer`; Releases 0 to 3 remain complete and deployed.
 
-G2 is now decided and implemented, so production measurement is live. The
-remaining actions are evidence-gated: operate the manual monthly curation
-process, and revisit R4.1 only if G5 receives evidence of real save or return
-intent. G6 stays deferred until the encounter loop justifies a sound layer.
+The manual monthly curation process and ongoing analytics collection/review
+have been handed to the product owner and are marked complete as roadmap work.
+R4.1 remains deferred until G5 receives evidence of real save or return intent.
 
 ## 14. Research basis
 
@@ -879,7 +878,9 @@ Update this section when a release chunk is completed.
 | R3.2 | Complete | Approved realistic Andromeda renderer with M31 photometry, optical D25 silhouette, scale-aware detail, Local-Group ladder, two sourced discoveries, synchronized thumbnail, and mobile-safe object-browser exposure. `The galaxy hiding in our sky` adds a four-beat real → 500 kly → 250 kly → 150 kly reveal at Hilltop, a stable curated route and 1200 × 630 social card, a clear simulation boundary, and a final free-exploration handoff. Desktop and 390 × 844 keyboard paths, balanced/safe tiers, route restoration, disclosure, and the verified 50-test production build pass | Local working tree |
 | R3.3 | Complete | One quiet date-aware feature entry point beside the wordmark; September 2026 opens the approved Andromeda encounter and the collapsed archive retains August's Cabo encounter. Exact UTC-month matching prevents stale content from appearing current; every feature references an approved curated route and existing social card. Escape/outside dismissal, focus restoration, analytics events, the manual editorial checklist, 1440 × 900 and 390 × 844 composition and handoff checks, no-overflow/no-browser-error checks, and the verified 54-test production build pass | `0475404` |
 | G2 | Complete | Umami wired through the existing provider-neutral adapter. The provider attaches after the deferred script loads and replays the events already buffered, so `scene_ready` survives a late script; active time is bucketed because Umami bills each stored property as an event and groups its dashboard by exact value. Measurement is opt-in per environment, so development, tests and preview builds make no third-party call, and `createAnalytics` now also contains a tracker that throws synchronously. Verified in a real build: the website id reaches the client config and the absolute Open Graph URLs resolve against the production domain. 59-test suite passes | `36c60fa` |
-| Deploy | Complete | `perigee.observer` registered; Cloudflare Workers Static Assets configured with no `main` entry, the existing `public/_headers` cache rules preserved, and `not_found_handling` left at its default so an unknown encounter slug returns a real 404 rather than a soft 404 | `36c60fa` |
+| Deploy | Complete | `perigee.observer` registered; Cloudflare Workers Static Assets configured with no `main` entry, the existing `public/_headers` cache rules preserved, and `not_found_handling` left at its default so an unknown encounter slug returns a real 404 rather than a soft 404. The production deployment containing R5.1 and R5.2 was verified by the product owner | `36c60fa`, `5d4149a` |
+| Monthly curation | Complete | The manual curation, review, preview, and archive process is implemented and handed to the product owner for ongoing operation | User confirmed |
+| Analytics review | Complete | Production measurement is live; ongoing baseline collection and review are handed to the product owner | User confirmed |
 | R4.1 | Deferred | Requires evidence at G5 | — |
-| R5.1 | Complete | Cinematic custom error page with a fully visible lost-orbit composition, a clear home recovery path, and a one-action Cabo encounter handoff; crawlable fallback links with Nuxt error clearing; generic non-404 copy; reduced-motion treatment; visible keyboard focus; 1440 × 900 and exact 390 × 844 compositions, matching mobile viewport/document widths, 48 px mobile actions, and working destinations verified in-browser; generated `404.html`, Cloudflare `404-page` status contract, and the 59-test production build verified. The live site awaits deployment | `02615cd` |
-| R5.2 | Complete | Perigee's orbit-and-body motif carried into a legible 16/32/48 px ICO, scalable SVG, and opaque 180 px Apple touch icon; valid dark-theme web app manifest and document-head declarations added. All files return HTTP 200 with the intended MIME types in the generated static build; Chrome renders every image format with no browser warnings or errors; the 61-test Node 24.20.0 production build passes | `0d700f4` |
+| R5.1 | Complete | Cinematic custom error page with a fully visible lost-orbit composition, a clear home recovery path, and a one-action Cabo encounter handoff; crawlable fallback links with Nuxt error clearing; generic non-404 copy; reduced-motion treatment; visible keyboard focus; 1440 × 900 and exact 390 × 844 compositions, matching mobile viewport/document widths, 48 px mobile actions, and working destinations verified in-browser; generated `404.html`, Cloudflare `404-page` status contract, the 59-test production build, and the live deployment verified | `02615cd` |
+| R5.2 | Complete | Perigee's orbit-and-body motif carried into a legible 16/32/48 px ICO, scalable SVG, and opaque 180 px Apple touch icon; valid dark-theme web app manifest and document-head declarations added. All files return HTTP 200 with the intended MIME types in the generated static build; Chrome renders every image format with no browser warnings or errors; the 61-test Node 24.20.0 production build and live deployment verified | `0d700f4` |
