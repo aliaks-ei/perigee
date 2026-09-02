@@ -13,8 +13,6 @@ Perigee is a Nuxt 3 client-side application. Keep Vue-facing code in `app/`: com
 - `npm run build` produces the production application; `npm run generate` creates static output.
 - `npm run verify` runs type checking, tests, and the production build. Run this before opening a pull request.
 
-Use Node `24.20.0` from `.nvmrc` (the package requires Node `>=24.0.0`).
-
 ## Coding Style & Naming Conventions
 
 Follow `.editorconfig`: UTF-8, LF line endings, two-space indentation, final newlines, and no trailing whitespace. TypeScript is strict; preserve explicit types at public boundaries and handle unchecked indexed access. Match the existing style: single quotes, no semicolons, `PascalCase` for Vue components and scene classes, `camelCase` for functions and composables, and descriptive filenames such as `angularSize.ts`. There is no standalone lint or formatter command, so keep diffs consistent with nearby code.
