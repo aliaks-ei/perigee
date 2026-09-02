@@ -151,6 +151,7 @@ onBeforeUnmount(() => {
     </Transition>
     <PerigeeEncounterOverlay />
     <PerigeeCaptureCard />
+    <PerigeeAmbientSoundControl v-if="!loading && !capabilityError" />
 
     <Transition name="hint">
       <p
