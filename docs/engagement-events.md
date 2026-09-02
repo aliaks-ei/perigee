@@ -12,5 +12,6 @@ load duration. They must never contain free-form text, precise location, or a
 persistent visitor identifier.
 
 Active time stops when the document is hidden and after 60 seconds without an
-interaction. A provider may be connected only after privacy, consent, static
-hosting, data ownership, and cost are reviewed at decision gate G2.
+interaction. Production measurement uses Umami through the provider-neutral
+adapter. Revisit privacy, consent, static hosting, data ownership, and cost
+before changing providers or expanding the event contract.

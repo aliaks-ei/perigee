@@ -232,7 +232,6 @@ export const skyObjects: SkyObjectDefinition[] = [
     // The D25 optical major axis, about 190 arcmin, taken at NASA's 2.5 Mly
     // distance. Paired that way the scene computes 3.16 degrees, which is the
     // catalogued apparent size and NASA's "six times the full Moon".
-    // docs/design/andromeda/README.md records the working.
     diameterKm: 138_000 * LY_KM,
     material: 'galactic',
     // The optical D25 ellipse is the quantity this visible-light rendering

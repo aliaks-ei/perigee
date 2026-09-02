@@ -25,10 +25,3 @@ entry as if it were current.
 The current feature uses an exact UTC month match. If no approved entry exists
 for the month, the interface says `Featured skies` and exposes only the past
 archive. It never carries the most recent record forward under `This month`.
-
-## September 2026 preview
-
-- Current: `The galaxy hiding in our sky`.
-- Archive: `Saturn at the edge of the world` from August 2026.
-- Current and archived selections open the existing encounter invitation; they
-  do not duplicate encounter state, metadata, sources, or share assets.
