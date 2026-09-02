@@ -56,6 +56,12 @@ export interface StellarMaterialSet {
    * is the cheapest way to buy back a whole tier's worth of fill rate.
    */
   setQuality: (tier: QualityTier) => void
+  /**
+   * 0 at the real distance, 1 at the impossible close pass. A hot star this
+   * close is a blinding source with limb detail, not a readable texture, so
+   * the centre burns out toward the high tone as it comes near.
+   */
+  setProximity: (value: number) => void
 }
 
 export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet {
@@ -75,6 +81,7 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
       uWarp: { value: look.warp },
       uLimbDarkening: { value: look.limbDarkening },
       uMarbled: { value: look.style === 'marbled' ? 1 : 0 },
+      uProximity: { value: 0 },
     },
     vertexShader: `
       varying vec3 vNormal;
@@ -97,6 +104,7 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
       uniform float uWarp;
       uniform float uLimbDarkening;
       uniform float uMarbled;
+      uniform float uProximity;
       varying vec3 vNormal;
       varying vec3 vPosition;
 
@@ -165,7 +173,11 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
           float hotCell = smoothstep(0.68, 0.94, mottle * 0.7 + granules * 0.42);
           marbled = mix(marbled, uHigh, hotCell * 0.72);
           marbled *= mix(0.35, 1.3, pow(mu, 0.34));
-          gl_FragColor = vec4(marbled * 2.18, uOpacity);
+          // Close in, the photosphere overexposes from the centre outward
+          // and only the limb keeps its mottling.
+          float burn = uProximity * smoothstep(0.12, 0.9, mu);
+          marbled = mix(marbled, uHigh * 1.2, burn * 0.72);
+          gl_FragColor = vec4(marbled * (2.18 + uProximity * 0.5), uOpacity);
           return;
         }
 
@@ -199,8 +211,11 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
         // photosphere's cooler upper layers, so it is dimmer and redder.
         float limb = 1.0 - uLimbDarkening * (1.0 - mu);
         color = mix(color, uLow, (1.0 - mu) * 0.45) * limb;
+        // A red supergiant stays a readable surface even up close; it only
+        // brightens toward its hottest cells.
+        color = mix(color, uHigh, uProximity * 0.22 * smoothstep(0.3, 1.0, mu) * smoothstep(0.5, 0.94, heat));
 
-        gl_FragColor = vec4(color * 1.45, uOpacity);
+        gl_FragColor = vec4(color * (1.45 + uProximity * 0.2), uOpacity);
       }
     `,
   })
@@ -209,6 +224,9 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
     material,
     setQuality(tier) {
       material.uniforms.uDetail!.value = tier === 'high' ? 1 : tier === 'balanced' ? 0.5 : 0
+    },
+    setProximity(value) {
+      material.uniforms.uProximity!.value = Math.min(Math.max(value, 0), 1)
     },
   }
 }

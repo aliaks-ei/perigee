@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "perigee-dev", "url": "http://localhost:3000" },
+    { "name": "perigee-static", "runtimeExecutable": "npx", "runtimeArgs": ["serve", ".output/public", "-l", "3100", "-s"], "port": 3100 }
+  ]
+}

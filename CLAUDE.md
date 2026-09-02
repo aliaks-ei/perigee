@@ -25,8 +25,9 @@ Rendering is a hybrid and the switch is inverted on purpose:
   empty shell as `200.html`.
 
 - `composables/usePerigee.ts` holds module-level refs, so state is a singleton shared by all
-  components, not per-instance. It owns the controller handle and the `transitioning` lock that
-  gates every user action while a shot runs.
+  components, not per-instance. It owns the controller handle, the `busy` lock that marks a
+  running shot, and the disclosure `stage` that reveals the interface in steps (see
+  `app/CLAUDE.md`, "Staged disclosure").
 - `data/objects.ts` is the single source of truth for objects: real diameters, real distances, the
   five-step distance ladder (`planetPresets` / `starPresets`), and the `shot` definition (sky
   palette, sun direction, accent) used by both the UI and the renderer.

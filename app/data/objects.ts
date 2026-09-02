@@ -180,8 +180,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#ff5d2f',
       accent: '#ed6a38',
     },
-    thumbnail: '/assets/objects/thumbs/star.webp',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: '/assets/objects/thumbs/betelgeuse.webp',
+    attributionIds: ['perigee-procedural-art'],
   },
   {
     id: 'sirius',
@@ -201,8 +201,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#b7d5ff',
       accent: '#b9d6ff',
     },
-    thumbnail: '/assets/objects/thumbs/star.webp',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: '/assets/objects/thumbs/sirius.webp',
+    attributionIds: ['perigee-procedural-art'],
   },
   {
     id: 'rigel',
@@ -222,8 +222,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#a8c8ff',
       accent: '#abcaff',
     },
-    thumbnail: '/assets/objects/thumbs/star.webp',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: '/assets/objects/thumbs/rigel.webp',
+    attributionIds: ['perigee-procedural-art'],
   },
   {
     id: 'andromeda',

@@ -3,6 +3,11 @@
  * The whole experience. It lives in a component rather than in `app.vue` so the
  * curated `/e/<slug>` routes, which are prerendered with server rendering on so
  * their social cards are real HTML, can mount it client-side only.
+ *
+ * The interface arrives in stages (see `utils/disclosureStages.ts`): the
+ * shell carries the current stage as a class, tells the state layer when the
+ * viewer looks around or is idle, and mounts each layer in its own place so
+ * nothing that appears later moves what is already there.
  */
 const props = defineProps<{
   /** Set by a curated encounter route; opens that encounter at its first beat. */
@@ -18,19 +23,25 @@ const {
   loadingProgress,
   capabilityError,
   objectBrowserOpen,
+  moreOpen,
   hintVisible,
   notice,
+  stage,
+  chromeIdle,
+  revealed,
   currentEncounter,
   encounterStatus,
   encounterTransitioning,
   retry,
   toggleObjectBrowser,
+  toggleMore,
   initialize,
   pause,
   resume,
   resize,
   stepDistance,
-  dismissHint,
+  noteActivity,
+  noteLook,
   dismissNotice,
   nextEncounter,
   previousEncounter,
@@ -57,8 +68,14 @@ if (!props.encounterSlug) {
 }
 
 const loadingPercent = computed(() => Math.round(loadingProgress.value * 100))
+/** The one-time nudge toward the ladder, between the drag hint and the first change. */
+const railHintVisible = computed(() =>
+  revealed('orient') && !revealed('explore') && !hintVisible.value
+  && !objectBrowserOpen.value && !loading.value && !capabilityError.value,
+)
 
 function handleKeydown(event: KeyboardEvent): void {
+  noteActivity()
   if (encounterStatus.value !== 'idle') {
     if (event.key === 'Escape') {
       exitEncounter()
@@ -81,6 +98,11 @@ function handleKeydown(event: KeyboardEvent): void {
     nextTick(() => document.querySelector<HTMLButtonElement>('[data-object-trigger]')?.focus())
     return
   }
+  if (event.key === 'Escape' && moreOpen.value) {
+    toggleMore(false)
+    nextTick(() => document.querySelector<HTMLButtonElement>('[data-more-trigger]')?.focus())
+    return
+  }
   if (event.metaKey || event.ctrlKey || event.altKey) return
   // Only when the viewer is not inside a control, so the rail's own arrow-key
   // handling keeps working.
@@ -90,6 +112,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (event.key === ']' || event.key === 'ArrowRight') stepDistance(1)
   else if (event.key === '[' || event.key === 'ArrowLeft') stepDistance(-1)
   else return
+  noteLook()
   event.preventDefault()
 }
 
@@ -104,6 +127,8 @@ function handleVisibility(): void {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('pointermove', noteActivity, { passive: true })
+  window.addEventListener('pointerdown', noteActivity, { passive: true })
   document.addEventListener('visibilitychange', handleVisibility)
   const canvas = sceneCanvas.value
   if (!canvas) return
@@ -124,6 +149,8 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   if (resizeTimer) clearTimeout(resizeTimer)
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('pointermove', noteActivity)
+  window.removeEventListener('pointerdown', noteActivity)
   document.removeEventListener('visibilitychange', handleVisibility)
   dispose()
 })
@@ -132,7 +159,11 @@ onBeforeUnmount(() => {
 <template>
   <main
     class="perigee-shell relative isolate h-full w-full overflow-hidden bg-surface-void text-ink-primary"
-    :class="[`encounter-${encounterStatus}`, { 'browser-open': objectBrowserOpen, 'scene-ready': !loading }]"
+    :class="[`encounter-${encounterStatus}`, `stage-${stage}`, {
+      'browser-open': objectBrowserOpen,
+      'scene-ready': !loading,
+      'chrome-idle': chromeIdle,
+    }]"
     :style="{ '--accent-object': currentObject.shot.accent }"
   >
     <canvas
@@ -140,7 +171,7 @@ onBeforeUnmount(() => {
       class="absolute inset-0 z-canvas block h-full w-full cursor-grab touch-none active:cursor-grabbing"
       aria-label="Interactive view of the selected celestial object above the current landscape"
       tabindex="-1"
-      @pointerdown="dismissHint"
+      @pointerdown="noteLook"
     />
     <div class="scene-scrim pointer-events-none absolute inset-0 z-scrim" aria-hidden="true" />
     <Transition name="chrome">
@@ -150,8 +181,10 @@ onBeforeUnmount(() => {
       <PerigeeObjectIdentity v-if="encounterStatus === 'idle'" />
     </Transition>
     <PerigeeEncounterOverlay />
+    <PerigeeDiscoveryNote />
     <PerigeeCaptureCard />
-    <PerigeeAmbientSoundControl v-if="!loading && !capabilityError" />
+    <PerigeeTonightsSky v-if="!loading && !capabilityError" />
+    <PerigeeMoreSheet v-if="!loading && !capabilityError" />
 
     <Transition name="hint">
       <p
@@ -159,6 +192,17 @@ onBeforeUnmount(() => {
         class="drag-hint text-shadow pointer-events-none absolute z-identity items-center font-semibold uppercase"
       >
         <span>Drag to look around</span>
+      </p>
+    </Transition>
+
+    <Transition name="hint">
+      <p
+        v-if="railHintVisible"
+        class="drag-hint rail-hint text-shadow pointer-events-none absolute z-identity items-center font-semibold uppercase"
+      >
+        <span>Step the distance</span>
+        <kbd aria-hidden="true">←</kbd>
+        <kbd aria-hidden="true">→</kbd>
       </p>
     </Transition>
 
@@ -203,7 +247,7 @@ onBeforeUnmount(() => {
     </Transition>
 
     <Transition name="chrome">
-      <PerigeeDistanceRail v-if="encounterStatus === 'idle'" />
+      <PerigeeDistanceRail v-if="encounterStatus === 'idle' && revealed('orient')" />
     </Transition>
   </main>
 </template>

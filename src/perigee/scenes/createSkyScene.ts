@@ -189,11 +189,16 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
       attribute float aPhase;
       varying vec3 vColor;
       varying float vTwinkle;
+      varying float vAltitude;
 
       void main() {
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         vColor = color;
         vTwinkle = 0.92 + sin(uTime * (0.55 + fract(aPhase) * 0.5) + aPhase) * 0.08;
+        // Height above the world horizon, which the plates put in the lower
+        // third of the frame. Stars are drawn over the opaque backdrop, so
+        // without this they shone through the ground and the skyline.
+        vAltitude = normalize(position).y;
         float perspective = clamp(720.0 / max(-mvPosition.z, 1.0), 0.62, 2.4);
         gl_PointSize = aSize * uPixelRatio * perspective;
         gl_Position = projectionMatrix * mvPosition;
@@ -203,14 +208,18 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
       uniform float uOpacity;
       varying vec3 vColor;
       varying float vTwinkle;
+      varying float vAltitude;
 
       void main() {
         vec2 point = gl_PointCoord - vec2(0.5);
         float distanceToCenter = length(point);
         if (distanceToCenter > 0.5) discard;
+        // Extinction toward the horizon, then nothing below it.
+        float aboveHorizon = smoothstep(0.0, 0.12, vAltitude);
+        if (aboveHorizon <= 0.0) discard;
         float core = 1.0 - smoothstep(0.04, 0.5, distanceToCenter);
         float halo = 1.0 - smoothstep(0.12, 0.5, distanceToCenter);
-        float alpha = (core * 0.82 + halo * 0.26) * uOpacity * vTwinkle;
+        float alpha = (core * 0.82 + halo * 0.26) * uOpacity * vTwinkle * aboveHorizon;
         gl_FragColor = vec4(vColor, alpha);
       }
     `,

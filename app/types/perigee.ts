@@ -72,8 +72,9 @@ export interface SkyObjectDefinition {
 export interface ViewpointDefinition {
   id: ViewpointId
   label: string
-  shortLabel?: string
   description: string
+  /** A 320x180 crop of the plate, for the landscape chooser and the pill. */
+  thumbnail: string
 }
 
 export interface PerigeeSelection {

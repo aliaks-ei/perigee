@@ -52,5 +52,6 @@ describe('monthly featured encounters', () => {
 
   it('formats editorial months without depending on the local timezone', () => {
     expect(formatFeatureMonth('2026-09')).toBe('September 2026')
+    expect(formatFeatureMonth('2026-09', 'short')).toBe('Sep 2026')
   })
 })

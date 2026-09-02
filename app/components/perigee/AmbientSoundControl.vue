@@ -1,45 +1,20 @@
 <script setup lang="ts">
-import { PhCaretUp, PhSpeakerHigh, PhSpeakerSlash } from '@phosphor-icons/vue'
+import { PhSpeakerHigh, PhSpeakerSlash } from '@phosphor-icons/vue'
 
+/**
+ * Ambient sound as one row of the "more" sheet: a toggle with its state, and
+ * the volume beneath it while the sound is on. It used to be a lone circle in
+ * the corner in the quietest ink, which nobody found.
+ */
 const { currentViewpointId } = usePerigee()
 const { status, volume, toggle, setVolume } = useAmbientSound(currentViewpointId)
-const root = ref<HTMLElement | null>(null)
-const disclosure = ref<HTMLButtonElement | null>(null)
-const volumeOpen = ref(false)
 const audible = computed(() => status.value === 'starting' || status.value === 'playing')
-const buttonLabel = computed(() => audible.value ? 'Turn ambient sound off' : 'Turn ambient sound on')
-const statusLabel = computed(() => {
-  if (status.value === 'starting') return 'Starting ambient sound'
-  if (status.value === 'unavailable') return 'Ambient sound unavailable'
-  if (status.value === 'suspended') return 'Ambient sound paused'
-  return audible.value ? 'Ambient sound on' : 'Ambient sound off'
+const stateLabel = computed(() => {
+  if (status.value === 'starting') return 'Starting'
+  if (status.value === 'unavailable') return 'Unavailable'
+  if (status.value === 'suspended') return 'Paused'
+  return audible.value ? 'On' : 'Off'
 })
-
-watch(audible, (isAudible) => {
-  if (!isAudible) volumeOpen.value = false
-})
-
-onMounted(() => {
-  document.addEventListener('pointerdown', handleOutside)
-  document.addEventListener('keydown', handleKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', handleOutside)
-  document.removeEventListener('keydown', handleKeydown)
-})
-
-function handleOutside(event: PointerEvent): void {
-  if (!volumeOpen.value || root.value?.contains(event.target as Node)) return
-  volumeOpen.value = false
-}
-
-function handleKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape' || !volumeOpen.value) return
-  volumeOpen.value = false
-  nextTick(() => disclosure.value?.focus({ preventScroll: true }))
-  event.preventDefault()
-}
 
 function handleVolume(event: Event): void {
   setVolume(Number((event.target as HTMLInputElement).value) / 100)
@@ -47,62 +22,40 @@ function handleVolume(event: Event): void {
 </script>
 
 <template>
-  <Transition name="chrome">
-    <div
-      ref="root"
-      class="ambient-sound pointer-events-auto absolute z-encounter flex items-center"
-      :class="{ audible, unavailable: status === 'unavailable' }"
+  <div class="ambient-sound" :class="{ audible, unavailable: status === 'unavailable' }">
+    <button
+      type="button"
+      class="more-item flex w-full items-center justify-between gap-4 text-left"
+      :aria-pressed="audible"
+      :disabled="status === 'unavailable'"
+      @click="toggle"
     >
-      <Transition name="dock">
-        <div
-          v-if="volumeOpen"
-          id="ambient-volume-panel"
-          class="ambient-volume-panel absolute"
-        >
-          <label class="flex items-center justify-between gap-8" for="ambient-volume">
-            <span>Ambient volume</span>
-            <output :for="'ambient-volume'">{{ Math.round(volume * 100) }}%</output>
+      <span class="flex items-center gap-3">
+        <PhSpeakerHigh v-if="audible" :size="16" weight="regular" aria-hidden="true" />
+        <PhSpeakerSlash v-else :size="16" weight="regular" aria-hidden="true" />
+        Ambient sound
+      </span>
+      <span class="more-state font-semibold uppercase">{{ stateLabel }}</span>
+    </button>
+
+    <Transition name="collapse">
+      <div v-if="audible" class="collapsible">
+        <div>
+          <label class="ambient-volume flex items-center gap-3" for="ambient-volume">
+            <span class="sr-only">Ambient volume</span>
+            <input
+              id="ambient-volume"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              :value="Math.round(volume * 100)"
+              @input="handleVolume"
+            >
+            <output for="ambient-volume">{{ Math.round(volume * 100) }}%</output>
           </label>
-          <input
-            id="ambient-volume"
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            :value="Math.round(volume * 100)"
-            @input="handleVolume"
-          >
         </div>
-      </Transition>
-
-      <button
-        type="button"
-        class="ambient-toggle grid place-items-center rounded-full"
-        :aria-label="buttonLabel"
-        :aria-pressed="audible"
-        :title="statusLabel"
-        @click="toggle"
-      >
-        <Transition name="fade" mode="out-in">
-          <PhSpeakerHigh v-if="audible" key="on" :size="17" weight="regular" aria-hidden="true" />
-          <PhSpeakerSlash v-else key="off" :size="17" weight="regular" aria-hidden="true" />
-        </Transition>
-      </button>
-
-      <Transition name="fade">
-        <button
-          v-if="audible"
-          ref="disclosure"
-          type="button"
-          class="ambient-volume-trigger grid place-items-center"
-          aria-label="Adjust ambient sound volume"
-          :aria-expanded="volumeOpen"
-          aria-controls="ambient-volume-panel"
-          @click="volumeOpen = !volumeOpen"
-        >
-          <PhCaretUp :size="10" weight="bold" aria-hidden="true" :class="{ rotated: volumeOpen }" />
-        </button>
-      </Transition>
-    </div>
-  </Transition>
+      </div>
+    </Transition>
+  </div>
 </template>

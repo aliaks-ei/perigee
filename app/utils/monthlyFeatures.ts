@@ -26,11 +26,11 @@ export function featureArchive(
     .toSorted((left, right) => right.month.localeCompare(left.month))
 }
 
-export function formatFeatureMonth(month: string): string {
+export function formatFeatureMonth(month: string, style: 'long' | 'short' = 'long'): string {
   const [year, numericMonth] = month.split('-').map(Number)
   if (!year || !numericMonth || numericMonth < 1 || numericMonth > 12) return month
   return new Intl.DateTimeFormat('en', {
-    month: 'long',
+    month: style,
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, numericMonth - 1, 1)))
