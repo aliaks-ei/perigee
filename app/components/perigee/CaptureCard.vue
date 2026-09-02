@@ -23,9 +23,18 @@ watch(captureOpen, async (open) => {
   card.value?.querySelector<HTMLButtonElement>('[data-capture-primary]')?.focus({ preventScroll: true })
 })
 
+/**
+ * Focus goes back to whatever opened the card: the capture item while the
+ * "more" sheet is still open, an encounter's capture button, or else the
+ * "more" control the sheet closed behind.
+ */
 function dismiss(): void {
   close()
-  nextTick(() => document.querySelector<HTMLButtonElement>('[data-capture-trigger]')?.focus())
+  nextTick(() => {
+    const target = document.querySelector<HTMLButtonElement>('[data-capture-trigger]')
+      ?? document.querySelector<HTMLButtonElement>('[data-more-trigger]')
+    target?.focus({ preventScroll: true })
+  })
 }
 
 function handleKeydown(event: KeyboardEvent): void {

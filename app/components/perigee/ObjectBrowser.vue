@@ -2,6 +2,7 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { PhCircleNotch } from '@phosphor-icons/vue'
 import type { SkyObjectId } from '~/types/perigee'
+import { groupObjects } from '~/utils/objectGroups'
 
 const {
   skyObjects,
@@ -14,12 +15,12 @@ const {
 } = usePerigee()
 
 /**
- * The widest the desktop track goes before the tiles start to crowd. Anything
- * past it wraps, and the rows are balanced rather than filled: nine objects run
- * as one row of nine, not eight and a stray.
+ * Three groups rather than one flat row, so a viewer knows what lies beyond
+ * the edge of a phone-width track and a new object joins its family. The
+ * keyboard still walks one flat list across the groups.
  */
-const MAX_COLUMNS = 9
-const columns = Math.ceil(skyObjects.length / Math.ceil(skyObjects.length / MAX_COLUMNS))
+const groups = groupObjects(skyObjects)
+const indexOf = (objectId: SkyObjectId): number => skyObjects.findIndex((object) => object.id === objectId)
 
 /**
  * One tab stop for the whole list, moved with the arrow keys. The refs are
@@ -27,7 +28,7 @@ const columns = Math.ceil(skyObjects.length / Math.ceil(skyObjects.length / MAX_
  * push-based list keeps handing out detached buttons after the second open.
  */
 const itemRefs = ref<Array<HTMLButtonElement | null>>([])
-const activeIndex = ref(Math.max(skyObjects.findIndex((object) => object.id === currentObjectId.value), 0))
+const activeIndex = ref(Math.max(indexOf(currentObjectId.value), 0))
 
 function setItemRef(element: unknown, index: number): void {
   itemRefs.value[index] = element instanceof HTMLButtonElement ? element : null
@@ -44,7 +45,7 @@ async function focusActive(): Promise<void> {
 }
 
 function syncActiveToSelection(): void {
-  activeIndex.value = Math.max(skyObjects.findIndex((object) => object.id === currentObjectId.value), 0)
+  activeIndex.value = Math.max(indexOf(currentObjectId.value), 0)
   void focusActive()
 }
 
@@ -89,46 +90,51 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
     aria-label="Celestial objects"
     :aria-busy="busy"
   >
-    <p class="browser-kicker block font-semibold uppercase">Objects</p>
-    <div
-      class="browser-track grid lt-md:overflow-x-auto lt-md:overscroll-x-contain"
-      :style="{ '--browser-columns': columns }"
-    >
-      <button
-        v-for="(object, index) in skyObjects"
-        :key="object.id"
-        :ref="(element) => setItemRef(element, index)"
-        type="button"
-        role="option"
-        :tabindex="index === activeIndex ? 0 : -1"
-        :aria-selected="currentObjectId === object.id"
-        :class="['object-option relative flex min-w-0 flex-col items-center gap-2', `object-${object.id}`, {
-          selected: currentObjectId === object.id,
-          pending: pendingObjectId === object.id,
-        }]"
-        :style="{ '--option-accent': object.shot.accent }"
-        @click="selectObjectAndRestoreFocus(object.id)"
-        @keydown="onKeydown($event, index)"
+    <div class="browser-track flex items-start lt-md:overflow-x-auto lt-md:overscroll-x-contain">
+      <section
+        v-for="group in groups"
+        :key="group.id"
+        class="browser-group flex shrink-0 flex-col"
+        :aria-label="group.label"
       >
-        <span class="object-thumbnail relative block overflow-hidden rounded-full" aria-hidden="true">
-          <img
-            class="block h-full w-full object-cover"
-            :src="object.thumbnail"
-            alt=""
-            width="160"
-            height="160"
-            decoding="async"
+        <p class="browser-kicker block font-semibold uppercase">{{ group.label }}</p>
+        <div class="group-tiles flex items-start">
+          <button
+            v-for="object in group.objects"
+            :key="object.id"
+            :ref="(element) => setItemRef(element, indexOf(object.id))"
+            type="button"
+            role="option"
+            :tabindex="indexOf(object.id) === activeIndex ? 0 : -1"
+            :aria-selected="currentObjectId === object.id"
+            :class="['object-option relative flex min-w-0 shrink-0 flex-col items-center gap-2', `object-${object.id}`, {
+              selected: currentObjectId === object.id,
+              pending: pendingObjectId === object.id,
+            }]"
+            :style="{ '--option-accent': object.shot.accent }"
+            @click="selectObjectAndRestoreFocus(object.id)"
+            @keydown="onKeydown($event, indexOf(object.id))"
           >
-          <PhCircleNotch
-            v-if="pendingObjectId === object.id"
-            :size="18"
-            weight="bold"
-            class="thumbnail-spinner absolute left-1/2 top-1/2 animate-spin"
-          />
-        </span>
-        <span class="object-name">{{ object.label }}</span>
-        <span class="object-kind font-semibold uppercase">{{ object.kind === 'star' ? 'Star' : object.kind === 'galaxy' ? 'Galaxy' : object.kind === 'moon' ? 'Moon' : 'Planet' }}</span>
-      </button>
+            <span class="object-thumbnail relative block overflow-hidden rounded-full" aria-hidden="true">
+              <img
+                class="block h-full w-full object-cover"
+                :src="object.thumbnail"
+                alt=""
+                width="160"
+                height="160"
+                decoding="async"
+              >
+              <PhCircleNotch
+                v-if="pendingObjectId === object.id"
+                :size="18"
+                weight="bold"
+                class="thumbnail-spinner absolute left-1/2 top-1/2 animate-spin"
+              />
+            </span>
+            <span class="object-name">{{ object.label }}</span>
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 </template>

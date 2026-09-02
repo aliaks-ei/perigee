@@ -9,6 +9,7 @@ import {
   PlaneGeometry,
   Quaternion,
   RingGeometry,
+  ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
   Vector3,
@@ -57,8 +58,36 @@ import { configureTextureCache, disposeTextures, loadTexture, prefetchTextures }
  * viewpoint-aware selector.
  */
 const HERO_POSITION = new Vector3(86, 118, -500)
+/**
+ * A phone held upright has no room to the right of centre: the authored
+ * offset put a Moon-swap Saturn's rings past the edge of the frame. Portrait
+ * viewports centre the hero and lift it a little above the horizon instead.
+ */
+const PORTRAIT_HERO_POSITION = new Vector3(0, 150, -500)
 const CABO_HERO_POSITION = new Vector3(-115, 128, -500)
 const CABO_PORTRAIT_HERO_POSITION = new Vector3(-20, 195, -500)
+const PORTRAIT_ASPECT = 0.8
+
+/**
+ * How much a star at a given render radius reads as a blinding source rather
+ * than a readable texture. Only the impossible close passes reach the top.
+ */
+function proximityFor(visibleRadius: number): number {
+  const t = Math.min(Math.max((visibleRadius - 2) / 12, 0), 1)
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * The halo is additive over a dark sky, so at a third of its strength it
+ * already looks lit while the disc behind it is still a dim grey circle.
+ * Cubing the fade keeps the glare behind the surface until the disc is
+ * nearly there, and the two land together as one light source.
+ */
+function setGlareOpacity(glare: Mesh | null, opacity: number): void {
+  if (!glare) return
+  const material = glare.material as ShaderMaterial
+  material.uniforms.uOpacity!.value = opacity * opacity * opacity
+}
 
 /**
  * Standing tilt of the camera. Pitching slightly up puts the horizon in the
@@ -326,6 +355,7 @@ export class PerigeeScene implements PerigeeController {
     const nextHero = built.group
     const finalRadius = this.radiusFor(definition, preset.distanceKm)
     const visibleRadius = definition.kind === 'star' ? Math.max(finalRadius, 0.55) : finalRadius
+    built.stellar?.setProximity(proximityFor(visibleRadius))
     nextHero.position.copy(this.heroPositionFor(this.currentViewpointId))
     nextHero.scale.setScalar(visibleRadius * (this.reducedMotion ? 1 : 0.94))
     nextHero.userData.radius = visibleRadius
@@ -333,6 +363,7 @@ export class PerigeeScene implements PerigeeController {
     this.sky.scene.add(nextHero)
 
     const previous = this.hero
+    const previousGlare = this.heroGlare
     this.hero = nextHero
     this.heroSurface = built.surface
     this.heroPlanet = built.planet
@@ -347,6 +378,7 @@ export class PerigeeScene implements PerigeeController {
     this.applyShot(definition)
 
     if (immediate) {
+      this.applyGlow(definition, 1)
       setObjectOpacity(nextHero, 1)
       nextHero.scale.setScalar(visibleRadius)
       if (previous) {
@@ -355,6 +387,11 @@ export class PerigeeScene implements PerigeeController {
       }
       return
     }
+
+    // The backdrop's own glow around the hero comes up with the surface. Left
+    // at full strength from the first frame, it lit the sky around a disc that
+    // had not arrived yet, which read as a grey circle in a bright halo.
+    this.applyGlow(definition, 0)
 
     // Compile while the object is still invisible. A fresh shader compiled on
     // the frame the fade starts shows up as a stall in the middle of the shot.
@@ -366,7 +403,12 @@ export class PerigeeScene implements PerigeeController {
       timeline.to(nextOpacity, {
         value: 1,
         duration: duration * 0.72,
-        onUpdate: () => setObjectOpacity(nextHero, nextOpacity.value),
+        onUpdate: () => {
+          const value = nextOpacity.value
+          setObjectOpacity(nextHero, value)
+          setGlareOpacity(built.glare, value)
+          this.applyGlow(definition, value * value * value)
+        },
       }, 0.1)
       timeline.to(nextHero.scale, {
         x: visibleRadius,
@@ -380,7 +422,10 @@ export class PerigeeScene implements PerigeeController {
         timeline.to(previousOpacity, {
           value: 0,
           duration: duration * 0.58,
-          onUpdate: () => setObjectOpacity(previous, previousOpacity.value),
+          onUpdate: () => {
+            setObjectOpacity(previous, previousOpacity.value)
+            setGlareOpacity(previousGlare, previousOpacity.value)
+          },
         }, 0)
         timeline.to(previous.position, { y: previous.position.y + 8, duration: duration * 0.72 }, 0)
       }
@@ -392,6 +437,8 @@ export class PerigeeScene implements PerigeeController {
       this.sky.scene.remove(previous)
       disposeObject(previous)
     }
+    // A superseded shot must not leave a newer object's glow at its own level.
+    if (generation === this.generation) this.applyGlow(definition, 1)
   }
 
   async setDistance(presetId: string): Promise<void> {
@@ -414,16 +461,22 @@ export class PerigeeScene implements PerigeeController {
     const visibleRadius = definition.kind === 'star' ? Math.max(radius, 0.55) : radius
     const state = { logRadius: Math.log(Math.max(hero.userData.radius as number, 0.0001)) }
     const duration = this.reducedMotion ? 0.2 : 0.9
+    const stellar = this.heroStellar
 
     await this.director.replace((timeline) => {
       timeline.to(state, {
         logRadius: Math.log(Math.max(visibleRadius, 0.0001)),
         duration,
         ease: 'power3.inOut',
-        onUpdate: () => hero.scale.setScalar(Math.exp(state.logRadius)),
+        onUpdate: () => {
+          const radius = Math.exp(state.logRadius)
+          hero.scale.setScalar(radius)
+          stellar?.setProximity(proximityFor(radius))
+        },
       })
     })
     hero.userData.radius = visibleRadius
+    stellar?.setProximity(proximityFor(visibleRadius))
   }
 
   async setViewpoint(viewpointId: ViewpointId): Promise<void> {
@@ -715,8 +768,9 @@ export class PerigeeScene implements PerigeeController {
   }
 
   private heroPositionFor(viewpointId: ViewpointId): Vector3 {
-    if (viewpointId !== 'cabo-da-roca') return HERO_POSITION
-    return this.camera.aspect < 0.8 ? CABO_PORTRAIT_HERO_POSITION : CABO_HERO_POSITION
+    const portrait = this.camera.aspect < PORTRAIT_ASPECT
+    if (viewpointId !== 'cabo-da-roca') return portrait ? PORTRAIT_HERO_POSITION : HERO_POSITION
+    return portrait ? CABO_PORTRAIT_HERO_POSITION : CABO_HERO_POSITION
   }
 
   private placeHeroForCurrentViewpoint(): void {
@@ -729,10 +783,11 @@ export class PerigeeScene implements PerigeeController {
     this.hero.position.copy(this.heroPositionFor(this.currentViewpointId))
     this.hero.scale.setScalar(visibleRadius)
     this.hero.userData.radius = visibleRadius
+    this.heroStellar?.setProximity(proximityFor(visibleRadius))
   }
 
   private applyViewpointCamera(): void {
-    this.camera.fov = this.currentViewpointId === 'cabo-da-roca' && this.camera.aspect < 0.8
+    this.camera.fov = this.currentViewpointId === 'cabo-da-roca' && this.camera.aspect < PORTRAIT_ASPECT
       ? CABO_PORTRAIT_VERTICAL_FOV
       : BASE_VERTICAL_FOV
     this.camera.updateProjectionMatrix()
@@ -743,26 +798,37 @@ export class PerigeeScene implements PerigeeController {
     const kind = definition.kind
     const emissive = kind === 'star' || kind === 'galaxy'
     this.sky.setPalette(shot.skyPalette)
-    this.sky.setGlow(
-      emissive ? (shot.environmentTint ?? shot.accent) : '#ff9550',
-      // A galaxy is self-luminous but diffuse. It throws a fraction of the
-      // ground light a close star does, so it gets its own strength rather
-      // than a star's.
-      kind === 'star' ? 0.12 : kind === 'galaxy' ? 0.05 : 0.035,
-      // The halo the backdrop paints around the hero. A star floods the sky
-      // in its own colour; a sunlit planet only lifts the air near it a
-      // little, in its own reflected tint.
-      {
-        color: emissive ? (shot.environmentTint ?? shot.accent) : shot.accent,
-        strength: kind === 'star' ? 0.85 : kind === 'galaxy' ? 0.14 : 0.035,
-      },
-    )
 
     this.sunWorld.set(...shot.sunDirection).normalize()
     const tier = this.quality.current
     if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind)
     if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && emissive
     if (this.renderer) this.renderer.setClearColor(shot.skyPalette[0], 1)
+  }
+
+  /**
+   * The light the hero throws into the backdrop, at `scale` of its authored
+   * strength so a swap can bring it up with the surface.
+   */
+  private applyGlow(definition: SkyObjectDefinition, scale: number): void {
+    const shot = definition.shot
+    const kind = definition.kind
+    const emissive = kind === 'star' || kind === 'galaxy'
+    this.sky.setGlow(
+      emissive ? (shot.environmentTint ?? shot.accent) : '#ff9550',
+      // A galaxy is self-luminous but diffuse. It throws a fraction of the
+      // ground light a close star does, so it gets its own strength rather
+      // than a star's. The star's lift is held back so the landscape keeps
+      // its silhouette against the halo instead of washing to grey-blue.
+      (kind === 'star' ? 0.09 : kind === 'galaxy' ? 0.05 : 0.035) * scale,
+      // The halo the backdrop paints around the hero. A star floods the sky
+      // in its own colour; a sunlit planet only lifts the air near it a
+      // little, in its own reflected tint.
+      {
+        color: emissive ? (shot.environmentTint ?? shot.accent) : shot.accent,
+        strength: (kind === 'star' ? 0.62 : kind === 'galaxy' ? 0.14 : 0.035) * scale,
+      },
+    )
   }
 
   /**

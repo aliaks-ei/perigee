@@ -3,13 +3,21 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PhCaretUp, PhCircleNotch, PhX } from '@phosphor-icons/vue'
 import { formatDegrees } from '~/utils/formatters'
 
+/**
+ * The one control that rests on screen: a pill with the object, the distance
+ * ladder as five dots, and the landscape. Each segment is the one-click path
+ * to its own change; the sheet above it holds the full choosers.
+ */
 const {
   currentObject,
   currentPreset,
   currentPresetId,
+  currentViewpointId,
+  viewpoints,
   angularDiameter,
   objectBrowserOpen,
   busy,
+  revealed,
   selectDistance,
   toggleObjectBrowser,
 } = usePerigee()
@@ -18,6 +26,13 @@ const optionsEl = ref<HTMLDivElement | null>(null)
 const railEl = ref<HTMLElement | null>(null)
 const indicator = ref({ left: 0, width: 0, ready: false })
 let observer: ResizeObserver | null = null
+
+const currentViewpoint = computed(() =>
+  viewpoints.find((viewpoint) => viewpoint.id === currentViewpointId.value) ?? viewpoints[0]!,
+)
+const currentPresetIndex = computed(() =>
+  currentObject.value.presets.findIndex((preset) => preset.id === currentPresetId.value),
+)
 
 /**
  * Measures the selected option so the pill can slide between presets. Doing it
@@ -74,6 +89,18 @@ function onDistanceKeydown(event: KeyboardEvent, index: number): void {
   if (next) selectDistance(next.id)
 }
 
+/** The dots on the pill step without wrapping, like the arrow keys do. */
+function onLadderKeydown(event: KeyboardEvent, index: number): void {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+  event.preventDefault()
+  const presets = currentObject.value.presets
+  const nextIndex = Math.min(Math.max(index + (event.key === 'ArrowRight' ? 1 : -1), 0), presets.length - 1)
+  const next = presets[nextIndex]
+  if (!next) return
+  document.querySelector<HTMLButtonElement>(`[data-ladder-step="${next.id}"]`)?.focus({ preventScroll: true })
+  void selectDistance(next.id)
+}
+
 function onDocumentPointerDown(event: PointerEvent): void {
   if (!objectBrowserOpen.value) return
   const target = event.target
@@ -83,6 +110,19 @@ function onDocumentPointerDown(event: PointerEvent): void {
 async function selectDistanceAndClose(presetId: string): Promise<void> {
   closeControls()
   await selectDistance(presetId)
+}
+
+/** Opens the sheet on the landscape row, with the current plate focused. */
+async function openViewpoints(): Promise<void> {
+  if (objectBrowserOpen.value) {
+    closeControls()
+    return
+  }
+  toggleObjectBrowser(true)
+  await nextTick()
+  const selected = document.querySelector<HTMLButtonElement>('[data-viewpoint-option][aria-checked="true"]')
+  selected?.focus({ preventScroll: true })
+  selected?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }
 </script>
 
@@ -135,49 +175,96 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
               {{ preset.label }}
             </button>
           </div>
-
-          <p
-            class="apparent-size flex items-baseline gap-2.5 justify-self-end lt-lg:hidden"
-            :class="{ transitioning: busy }"
-          >
-            <PhCircleNotch
-              v-if="busy"
-              :size="13"
-              weight="bold"
-              class="animate-spin self-center text-accent"
-              aria-hidden="true"
-            />
-            <span class="size-value">{{ formatDegrees(angularDiameter) }}</span>
-            <span class="size-kicker font-semibold uppercase">Apparent size</span>
-          </p>
+          <p class="distance-meaning lt-lg:hidden">{{ currentPreset.metadataLabel ?? currentPreset.label }}</p>
         </div>
+
+        <PerigeeViewpointChooser v-if="revealed('explore')" />
       </div>
     </Transition>
 
-    <button
-      type="button"
-      class="object-trigger inline-flex items-center rounded-pill"
-      data-object-trigger
-      :aria-label="`${objectBrowserOpen ? 'Close' : 'Open'} sky controls for ${currentObject.label}, ${currentPreset.label}`"
-      aria-controls="sky-menu"
-      :aria-expanded="objectBrowserOpen"
-      @click="toggleObjectBrowser()"
-    >
-      <span class="trigger-thumb block shrink-0 overflow-hidden rounded-full" aria-hidden="true">
-        <img
-          class="block h-full w-full object-cover"
-          :src="currentObject.thumbnail"
-          alt=""
-          width="160"
-          height="160"
-          decoding="async"
+    <div class="object-trigger inline-flex items-stretch rounded-pill" :class="{ open: objectBrowserOpen }">
+      <button
+        type="button"
+        class="trigger-object inline-flex items-center"
+        data-object-trigger
+        :aria-label="`${objectBrowserOpen ? 'Close' : 'Open'} sky controls for ${currentObject.label}, ${currentPreset.label}`"
+        aria-controls="sky-menu"
+        :aria-expanded="objectBrowserOpen"
+        @click="toggleObjectBrowser()"
+      >
+        <span class="trigger-thumb block shrink-0 overflow-hidden rounded-full" aria-hidden="true">
+          <img
+            class="block h-full w-full object-cover"
+            :class="{ star: currentObject.kind === 'star' }"
+            :src="currentObject.thumbnail"
+            alt=""
+            width="160"
+            height="160"
+            decoding="async"
+          >
+        </span>
+        <span class="trigger-label flex flex-col gap-0.5 text-left">
+          <span class="trigger-kicker flex items-center gap-1.5 font-semibold uppercase" :class="{ transitioning: busy }">
+            <span class="trigger-busy grid shrink-0 place-items-center" aria-hidden="true">
+              <PhCircleNotch v-if="busy" :size="11" weight="bold" class="animate-spin text-accent" />
+              <i v-else class="block h-1 w-1 rounded-full bg-accent" />
+            </span>
+            <span class="size-value">{{ formatDegrees(angularDiameter) }}</span>
+            <span class="lt-sm:hidden">across your sky</span>
+          </span>
+          <span class="trigger-name">{{ currentObject.label }}</span>
+        </span>
+        <PhCaretUp :size="12" weight="bold" aria-hidden="true" :class="{ rotated: objectBrowserOpen }" />
+      </button>
+
+      <div
+        class="trigger-ladder flex items-center"
+        role="radiogroup"
+        :aria-label="`Distance step for ${currentObject.label}`"
+      >
+        <button
+          v-for="(preset, index) in currentObject.presets"
+          :key="preset.id"
+          type="button"
+          role="radio"
+          :aria-checked="currentPresetId === preset.id"
+          :aria-label="preset.metadataLabel ?? preset.label"
+          :data-label="preset.label"
+          :data-ladder-step="preset.id"
+          :tabindex="currentPresetId === preset.id ? 0 : -1"
+          class="ladder-step grid place-items-center"
+          :class="{ selected: currentPresetId === preset.id, passed: index < currentPresetIndex }"
+          @click="selectDistance(preset.id)"
+          @keydown="onLadderKeydown($event, index)"
         >
-      </span>
-      <span class="trigger-label flex flex-col gap-0.5 text-left">
-        <span class="trigger-kicker font-semibold uppercase">Sky controls</span>
-        <span class="trigger-name">{{ currentObject.label }} <i aria-hidden="true">·</i> {{ currentPreset.label }}</span>
-      </span>
-      <PhCaretUp :size="12" weight="bold" aria-hidden="true" :class="{ rotated: objectBrowserOpen }" />
-    </button>
+          <i aria-hidden="true" />
+        </button>
+      </div>
+
+      <Transition name="fade">
+        <button
+          v-if="revealed('explore')"
+          type="button"
+          class="trigger-viewpoint inline-flex items-center gap-2.5"
+          data-viewpoint-trigger
+          aria-controls="sky-menu"
+          :aria-expanded="objectBrowserOpen"
+          :aria-label="`Change landscape, now ${currentViewpoint.label}`"
+          @click="openViewpoints"
+        >
+          <span class="viewpoint-thumb block shrink-0 overflow-hidden" aria-hidden="true">
+            <img
+              class="block h-full w-full object-cover"
+              :src="currentViewpoint.thumbnail"
+              alt=""
+              width="320"
+              height="180"
+              decoding="async"
+            >
+          </span>
+          <span class="trigger-name lt-sm:hidden">{{ currentViewpoint.label }}</span>
+        </button>
+      </Transition>
+    </div>
   </section>
 </template>

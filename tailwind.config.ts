@@ -35,6 +35,7 @@ export default <Partial<Config>>{
         ink: {
           primary: 'var(--ink-primary)',
           secondary: 'var(--ink-secondary)',
+          label: 'var(--ink-label)',
           tertiary: 'var(--ink-tertiary)',
           quiet: 'var(--ink-quiet)',
         },

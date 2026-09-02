@@ -16,9 +16,12 @@
   --surface-raised: rgba(255, 255, 255, 0.06);
   --surface-raised-hover: rgba(255, 255, 255, 0.105);
 
-  /* Ink. Four steps is enough; more and the hierarchy stops reading. */
+  /* Ink. Five steps is enough; more and the hierarchy stops reading. `label`
+     is the floor for any text attached to a control; `quiet` is decoration
+     only, because at 34% it disappears over a bright sky. */
   --ink-primary: #f5f3ee;
   --ink-secondary: rgba(229, 234, 242, 0.74);
+  --ink-label: rgba(222, 229, 239, 0.62);
   --ink-tertiary: rgba(220, 227, 237, 0.5);
   --ink-quiet: rgba(213, 222, 234, 0.34);
 

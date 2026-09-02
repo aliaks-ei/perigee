@@ -29,8 +29,10 @@ on the template. If a rule in `perigee.css` starts with `display: flex`, it is i
 
 **What stays in CSS**: the `clamp()` layout, layered gradients and glass, `color-mix()`,
 `backdrop-filter`, the measured sliding indicator, and font sizes. Font size is deliberate — the
-type scale (9px, 10px, 12.5px, 21px) does not sit on Tailwind's steps, and `text-xs` would also
+type scale (11px, 12.5px, 13px, 21px) does not sit on Tailwind's steps, and `text-xs` would also
 impose a `line-height` the design never asked for. Do not convert it with arbitrary values.
+**Any label attached to a control is at least 11px and set in `--ink-label` or brighter**; the
+34% `--ink-quiet` is decoration only, because it vanishes over a bright sky.
 
 **Tokens are mirrored, not duplicated.** `tokens.css` holds the values; `tailwind.config.ts` maps
 them to utilities as `var(...)` references. Two consequences: the opacity modifier
@@ -71,8 +73,31 @@ Two rules when adding one:
   Wrap it in `<div class="collapsible"><div>…</div></div>`; the shell is a one-row grid animating
   between `0fr` and `1fr`, and the inner element clips so the content's own margin collapses with
   it. Fading alone leaves the layout snapping at the end of the transition, which reads as no
-  animation at all. `ObjectIdentity.vue` is the reference — its block is anchored to its bottom
-  edge, so anything opening inside it moves the title.
+  animation at all. The volume row in `AmbientSoundControl.vue` is the reference.
+- **Nothing moves under the cursor.** `ObjectIdentity.vue` is anchored to its bottom edge, so
+  everything that can appear later (metadata, the action, the hazard line) has a slot with a
+  `min-height` from the first frame and fades into it. Content that needs more room than a slot
+  (the discovery note, the capture card, tonight's sky) opens as its own layer, never inside the
+  stack.
+
+## Staged disclosure
+
+The interface arrives in four stages, `arrive → orient → explore → deepen`, defined in
+`utils/disclosureStages.ts` and driven by `usePerigee` (`stage`, `revealed(stage)`,
+`chromeIdle`). A stage is unlocked by what the viewer does (look, change the view, change it
+again) with a time fallback for a passive viewer; a shared link or a curated route starts at
+`explore`. The ladder only climbs. Gate a new control on the stage it belongs to:
+
+| Stage | Shows |
+| --- | --- |
+| `arrive` | Scene, brand, object name. The drag hint after 2 s. |
+| `orient` | Metadata line, the pill with the ladder dots, the "step the distance" hint. |
+| `explore` | Discovery note trigger, hazard line, landscape chooser and pill segment. |
+| `deepen` | Encounter card, the "more" control, tonight's sky card, idle fade after 6 s. |
+
+Every function that is not the sky lives behind the "more" control at the bottom right
+(`MoreSheet.vue`): sound, capture, featured skies, shortcuts, credits. A new secondary feature
+goes there, not into a new corner.
 
 **Every interactive element needs a visible hover and focus state.** `base.css` gives every
 non-disabled button a colour lift and every link an underline treatment, both on `:hover` and

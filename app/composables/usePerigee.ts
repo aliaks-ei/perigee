@@ -2,6 +2,7 @@ import { computed, readonly, ref, shallowRef } from 'vue'
 import { skyObjects, skyObjectsById } from '~/data/objects'
 import { viewpoints } from '~/data/viewpoints'
 import {
+  discoveries,
   discoveriesById,
   encounters,
   encountersById,
@@ -9,6 +10,18 @@ import {
 } from '~/data/editorial'
 import { resolveDiscovery } from '~/utils/discoveryCalculations'
 import { analytics } from '~/utils/analytics'
+import {
+  HINT_DELAY_MS,
+  HINT_LIFETIME_MS,
+  IDLE_AFTER_MS,
+  STAGE_FALLBACK_MS,
+  advanceStage,
+  initialStage,
+  nextStage,
+  stageAtLeast,
+  stageForAction,
+  type DisclosureStage,
+} from '~/utils/disclosureStages'
 import type { EncounterDefinition } from '~/types/editorial'
 import type {
   PerigeeController,
@@ -28,6 +41,8 @@ const currentObjectId = ref<SkyObjectId>('saturn')
 const currentPresetId = ref('moon-swap')
 const currentViewpointId = ref<ViewpointId>('rooftop')
 const objectBrowserOpen = ref(false)
+/** The "more" sheet: sound, capture, featured skies, shortcuts. */
+const moreOpen = ref(false)
 const loading = ref(true)
 const loadingProgress = ref(0)
 /** A shot is running. Controls stay live; only the object being swapped waits. */
@@ -35,13 +50,23 @@ const busy = ref(false)
 const pendingObjectId = ref<SkyObjectId | null>(null)
 const capabilityError = ref<'webgl2' | 'asset' | null>(null)
 const notice = ref<string | null>(null)
-const hintVisible = ref(true)
+/** Offered a beat after the scene settles, never on the first frame. */
+const hintVisible = ref(false)
 /**
- * True once the viewer has composed something of their own. The capture
- * action waits for it, so the resting first frame keeps its two actions.
+ * True once the viewer has composed something of their own. Capture waits for
+ * it: a share of the default sky is not a share of anything.
  */
 const hasInteracted = ref(false)
+/**
+ * How much of the interface has been revealed. See `disclosureStages.ts`. It
+ * climbs on what the viewer does and, failing that, on time.
+ */
+const stage = ref<DisclosureStage>('arrive')
+/** No pointer or key activity for a while. Only the last stage acts on it. */
+const idle = ref(false)
 const hazardReady = ref(false)
+/** The free-exploration discovery note, open as its own layer. */
+const discoveryOpen = ref(false)
 const controller = shallowRef<PerigeeController | null>(null)
 const encounterDirector = new EncounterDirector()
 const currentEncounter = ref<EncounterDefinition | null>(null)
@@ -54,6 +79,10 @@ const answeredPrediction = ref<{ beatId: string, optionId: string } | null>(null
 let hazardTimer: ReturnType<typeof setTimeout> | null = null
 let hintTimer: ReturnType<typeof setTimeout> | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
+let stageTimer: ReturnType<typeof setTimeout> | null = null
+let idleTimer: ReturnType<typeof setTimeout> | null = null
+/** Object, distance and landscape changes so far; the ladder counts them. */
+let changeCount = 0
 /** Identifies the newest shot, so a superseded one cannot clear the lock. */
 let shotToken = 0
 let encounterToken = 0
@@ -84,6 +113,14 @@ const predictionResponse = computed(() => {
   return beats[answeredIndex]?.prediction?.options
     .find((option) => option.id === answer.optionId)?.response ?? null
 })
+/** The editorial note for the view at rest, if the catalogue has one. */
+const freeDiscovery = computed(() => {
+  const discovery = discoveries.find((candidate) =>
+    candidate.scope.objectId === currentObjectId.value
+      && (!candidate.scope.presetId || candidate.scope.presetId === currentPresetId.value),
+  )
+  return discovery ? resolveDiscovery(discovery) : null
+})
 const availableEncounter = computed(() => {
   const matching = encounters.filter((encounter) =>
     encounter.beats[0]?.selection.objectId === currentObjectId.value,
@@ -95,9 +132,53 @@ const availableEncounter = computed(() => {
   ) ?? matching[0] ?? null
 })
 
+/**
+ * The chrome steps back only once everything has a home (the last stage), and
+ * never while a panel is open or a guided encounter is running.
+ */
+const chromeIdle = computed(() =>
+  idle.value
+  && stage.value === 'deepen'
+  && !objectBrowserOpen.value
+  && !moreOpen.value
+  && encounterStatus.value === 'idle',
+)
+
 function recordInteraction(kind: 'object' | 'distance' | 'viewpoint' | 'encounter'): void {
   hasInteracted.value = true
   analytics.interaction(kind)
+  if (kind !== 'encounter') changeCount += 1
+  setStage(stageForAction(kind === 'encounter' ? 'encounter' : 'change', changeCount))
+}
+
+function setStage(target: DisclosureStage): void {
+  const next = advanceStage(stage.value, target)
+  if (next === stage.value) return
+  stage.value = next
+  scheduleStageFallback()
+}
+
+/** A passive viewer still gets the whole interface, one step at a time. */
+function scheduleStageFallback(): void {
+  if (stageTimer) clearTimeout(stageTimer)
+  stageTimer = null
+  const current = stage.value
+  const upcoming = nextStage(current)
+  if (!upcoming || current === 'deepen') return
+  stageTimer = setTimeout(() => setStage(upcoming), STAGE_FALLBACK_MS[current])
+}
+
+/** Any pointer or key activity. Restores the chrome and restarts the idle clock. */
+function noteActivity(): void {
+  idle.value = false
+  if (idleTimer) clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => { idle.value = true }, IDLE_AFTER_MS)
+}
+
+/** The viewer has taken hold of the sky: a drag, a tap, an arrow key. */
+function noteLook(): void {
+  dismissHint()
+  setStage('orient')
 }
 
 function prefersReducedMotion(): boolean {
@@ -200,6 +281,12 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
   const selection = readSelectionFromUrl()
   const slug = encounterSlug ?? new URLSearchParams(window.location.search).get('encounter')
   const linkedEncounter = slug ? encountersBySlug[slug] : undefined
+  // A shared view or a curated route brought the viewer for a specific sky;
+  // they skip the orientation steps.
+  stage.value = initialStage({
+    sharedView: Object.keys(selection).length > 0,
+    encounter: Boolean(linkedEncounter),
+  })
   if (linkedEncounter) {
     applyEncounterSnapshot(encounterDirector.invite(linkedEncounter))
     applyEncounterSnapshot(encounterDirector.start())
@@ -228,8 +315,14 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
     encounterBeatRevealed.value = Boolean(linkedEncounter)
     syncUrl()
     queueHazard()
-    // The hint is the only thing on screen a touch viewer may never dismiss.
-    hintTimer = setTimeout(dismissHint, 8_000)
+    scheduleStageFallback()
+    noteActivity()
+    // Offered once the scene has settled, and withdrawn on its own: it is the
+    // only thing on screen a touch viewer may never dismiss.
+    hintTimer = setTimeout(() => {
+      hintVisible.value = true
+      hintTimer = setTimeout(dismissHint, HINT_LIFETIME_MS)
+    }, HINT_DELAY_MS)
   } catch (error) {
     loading.value = false
     capabilityError.value = error instanceof Error && error.message === 'WEBGL2_UNAVAILABLE'
@@ -254,6 +347,7 @@ async function selectObject(objectId: SkyObjectId): Promise<void> {
   currentObjectId.value = objectId
   currentPresetId.value = presetId
   hazardReady.value = false
+  discoveryOpen.value = false
   syncUrl()
 
   const token = ++shotToken
@@ -284,6 +378,7 @@ async function selectDistance(presetId: string): Promise<void> {
   const previousPresetId = currentPresetId.value
   currentPresetId.value = presetId
   hazardReady.value = false
+  discoveryOpen.value = false
   syncUrl()
 
   const token = ++shotToken
@@ -333,6 +428,22 @@ async function selectViewpoint(viewpointId: ViewpointId): Promise<void> {
 
 function toggleObjectBrowser(force?: boolean): void {
   objectBrowserOpen.value = force ?? !objectBrowserOpen.value
+  if (objectBrowserOpen.value) moreOpen.value = false
+}
+
+function toggleMore(force?: boolean): void {
+  moreOpen.value = force ?? !moreOpen.value
+  if (moreOpen.value) objectBrowserOpen.value = false
+}
+
+function openDiscovery(): void {
+  if (!freeDiscovery.value) return
+  discoveryOpen.value = true
+  analytics.track('discovery_open', { discoveryId: freeDiscovery.value.id })
+}
+
+function closeDiscovery(): void {
+  discoveryOpen.value = false
 }
 
 /**
@@ -342,6 +453,8 @@ function toggleObjectBrowser(force?: boolean): void {
 async function resetExperience(): Promise<void> {
   exitEncounter(false)
   objectBrowserOpen.value = false
+  moreOpen.value = false
+  discoveryOpen.value = false
   controller.value?.resetView()
 
   const shots: Array<Promise<void> | undefined> = []
@@ -425,6 +538,8 @@ function inviteEncounter(encounterId?: string): void {
   const encounter = encounterId ? encountersById[encounterId] : availableEncounter.value
   if (!encounter) return
   objectBrowserOpen.value = false
+  moreOpen.value = false
+  discoveryOpen.value = false
   applyEncounterSnapshot(encounterDirector.invite(encounter))
   encounterBeatRevealed.value = false
   syncUrl()
@@ -536,6 +651,10 @@ function dispose(): void {
   if (hazardTimer) clearTimeout(hazardTimer)
   if (hintTimer) clearTimeout(hintTimer)
   if (noticeTimer) clearTimeout(noticeTimer)
+  if (stageTimer) clearTimeout(stageTimer)
+  if (idleTimer) clearTimeout(idleTimer)
+  stageTimer = null
+  idleTimer = null
   controller.value?.dispose()
   controller.value = null
   exitEncounter(false)
@@ -552,6 +671,8 @@ export function usePerigee() {
     currentPreset,
     angularDiameter,
     hazardCopy,
+    freeDiscovery,
+    discoveryOpen: readonly(discoveryOpen),
     encounters,
     availableEncounter,
     currentEncounter: readonly(currentEncounter),
@@ -564,6 +685,11 @@ export function usePerigee() {
     encounterTransitioning: readonly(encounterTransitioning),
     encounterBeatRevealed: readonly(encounterBeatRevealed),
     objectBrowserOpen: readonly(objectBrowserOpen),
+    moreOpen: readonly(moreOpen),
+    stage: readonly(stage),
+    chromeIdle,
+    /** Whether the interface has reached `required`. */
+    revealed: (required: DisclosureStage): boolean => stageAtLeast(stage.value, required),
     loading: readonly(loading),
     loadingProgress: readonly(loadingProgress),
     busy: readonly(busy),
@@ -579,6 +705,11 @@ export function usePerigee() {
     stepDistance,
     selectViewpoint,
     toggleObjectBrowser,
+    toggleMore,
+    openDiscovery,
+    closeDiscovery,
+    noteActivity,
+    noteLook,
     dismissHint,
     dismissNotice,
     resetExperience,
