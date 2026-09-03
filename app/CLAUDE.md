@@ -29,10 +29,12 @@ on the template. If a rule in `perigee.css` starts with `display: flex`, it is i
 
 **What stays in CSS**: the `clamp()` layout, layered gradients and glass, `color-mix()`,
 `backdrop-filter`, the measured sliding indicator, and font sizes. Font size is deliberate — the
-type scale (11px, 12.5px, 13px, 21px) does not sit on Tailwind's steps, and `text-xs` would also
-impose a `line-height` the design never asked for. Do not convert it with arbitrary values.
-**Any label attached to a control is at least 11px and set in `--ink-label` or brighter**; the
-34% `--ink-quiet` is decoration only, because it vanishes over a bright sky.
+type scale does not sit on Tailwind's steps, and `text-xs` would also impose a `line-height` the
+design never asked for. Do not convert it with arbitrary values.
+**A label a viewer reads is at least 11px.** The dense control labels that drop to 10px
+(`.more-label`, `.locator-label`, `.stepper-position`) are the exception, not the pattern. Set every
+label in `--ink-label` or brighter; the 34% `--ink-quiet` is decoration only, because it vanishes
+over a bright sky.
 
 **Tokens are mirrored, not duplicated.** `tokens.css` holds the values; `tailwind.config.ts` maps
 them to utilities as `var(...)` references. Two consequences: the opacity modifier
@@ -63,7 +65,7 @@ new animation must be CSS-driven or carry its own `prefers-reduced-motion` guard
 | `fade` | Full-bleed overlays — loading, capability fallback |
 | `chrome` | The idle interface stepping aside for a guided encounter |
 
-Two rules when adding one:
+Three rules when adding one:
 
 - **A centred element declares `--center-x: -50%` and writes `transform: translateX(var(--center-x))`.**
   The transition classes compose their movement as `translate(var(--center-x, 0), …)`. Set the
