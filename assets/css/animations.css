@@ -42,7 +42,8 @@
 
 /* --- Interface entrance --------------------------------------------------- */
 
-.scene-ready .perigee-header {
+.scene-ready .perigee-header,
+.scene-ready .more-control {
   opacity: 1;
   animation: interface-rise 760ms 140ms var(--ease-out) backwards;
 }
@@ -200,6 +201,7 @@
   /* The entrance animations carry the interface from `opacity: 0`, so with the
      animation collapsed the opacity has to be restored by hand. */
   .scene-ready .perigee-header,
+  .scene-ready .more-control,
   .scene-ready .object-identity,
   .scene-ready .control-rail {
     opacity: 1;

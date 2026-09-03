@@ -6,17 +6,19 @@ import { analytics } from '~/utils/analytics'
 import { featureArchive, featureForMonth, formatFeatureMonth } from '~/utils/monthlyFeatures'
 
 /**
- * One home for everything that is not the sky: ambient sound, capture and
- * share, the featured skies, the keyboard shortcuts and the credits. A single
- * control at the bottom right, so a later feature has somewhere to go without
- * claiming another corner.
+ * One home for everything that is not the sky: the featured skies, ambient
+ * sound, capture and share, and the keyboard shortcuts. A single control at
+ * the top right, so a later feature has somewhere to go without claiming
+ * another corner.
+ *
+ * The featured skies lead. They are the only thing in here a viewer opens the
+ * menu looking for; sound and capture act on the sky already on screen and can
+ * wait until the eye has passed the list.
  */
 const {
   moreOpen,
   objectBrowserOpen,
   busy,
-  encounterStatus,
-  revealed,
   toggleMore,
   inviteEncounter,
 } = usePerigee()
@@ -28,10 +30,13 @@ const now = new Date()
 const currentFeature = featureForMonth(featuredEncounters, now)
 const archivedFeatures = featureArchive(featuredEncounters, now)
 const currentEncounter = currentFeature ? encountersById[currentFeature.encounterId] : null
-/** Available once the viewer is settled in, and throughout an encounter. */
-const available = computed(() =>
-  (revealed('deepen') || encounterStatus.value !== 'idle') && !objectBrowserOpen.value,
-)
+/**
+ * Not staged. The control shares the header row with the wordmark, so it rises
+ * with the rest of the interface; a header that grows a button later is a worse
+ * first impression than one that is simply complete. It steps aside only for
+ * the object browser, which owns the whole screen.
+ */
+const available = computed(() => !objectBrowserOpen.value)
 
 const shortcuts = [
   { keys: ['Drag'], action: 'Look around' },
@@ -100,10 +105,13 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
           class="more-sheet absolute lt-sm:overflow-y-auto"
           aria-label="More"
         >
+          <!-- The list's own label doubles as the sheet's header row. A "More"
+               title above it would put two micro-caps labels back to back and
+               spend a row saying what the control that opened the sheet says. -->
           <div class="more-heading flex items-center justify-between">
-            <p class="font-semibold uppercase">More</p>
+            <p class="more-label font-semibold uppercase">Featured skies</p>
             <button
-              class="inline-grid h-11 w-11 place-items-center rounded-full"
+              class="more-close inline-grid place-items-center rounded-full"
               type="button"
               aria-label="Close"
               @click="close()"
@@ -112,23 +120,7 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
             </button>
           </div>
 
-          <PerigeeAmbientSoundControl />
-
-          <button
-            type="button"
-            class="more-item flex w-full items-center justify-between gap-4 text-left"
-            data-capture-trigger
-            :disabled="capturing || busy"
-            @click="captureSky"
-          >
-            <span class="flex items-center gap-3">
-              <PhCamera :size="16" weight="regular" aria-hidden="true" />
-              {{ capturing ? 'Capturing…' : 'Capture this sky' }}
-            </span>
-          </button>
-
-          <div class="more-section">
-            <p class="more-label font-semibold uppercase">Featured skies</p>
+          <div class="more-lead">
             <button
               v-if="currentFeature && currentEncounter"
               type="button"
@@ -146,6 +138,23 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
                 </button>
               </li>
             </ol>
+          </div>
+
+          <div class="more-section">
+            <PerigeeAmbientSoundControl />
+
+            <button
+              type="button"
+              class="more-item flex w-full items-center justify-between gap-4 text-left"
+              data-capture-trigger
+              :disabled="capturing || busy"
+              @click="captureSky"
+            >
+              <span class="flex items-center gap-3">
+                <PhCamera :size="16" weight="regular" aria-hidden="true" />
+                {{ capturing ? 'Capturing…' : 'Capture this sky' }}
+              </span>
+            </button>
           </div>
 
           <div class="more-section shortcut-section">

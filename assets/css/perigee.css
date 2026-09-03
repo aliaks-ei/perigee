@@ -93,8 +93,10 @@
 
 /* The month's featured encounter, offered once as a card at the top right,
    where the landscape switcher used to be. */
+/* Below More rather than beside it: both want the top-right corner, and the
+   card is the one that can wait. */
 .tonight-card {
-  top: clamp(24px, 4.4vh, 46px);
+  top: max(calc(clamp(24px, 4.4vh, 46px) + 58px), calc(env(safe-area-inset-top, 0px) + 74px));
   right: clamp(30px, 3.7vw, 62px);
   width: min(340px, calc(100vw - 36px));
   padding: 16px 20px 14px;
@@ -153,16 +155,13 @@
    More: sound, capture, featured skies, shortcuts
    ========================================================================== */
 
+/* One header row at every width: the brand on the left, More on the right, on
+   the same top inset. It stays there while an encounter runs, so the control
+   never moves out from under the pointer, and it leaves the bottom of the
+   screen to the transport and the distance rail. */
 .more-control {
-  /* The same inset on both sides, so the circle sits square in the corner. */
-  right: clamp(18px, 2.5vh, 28px);
-  bottom: max(clamp(18px, 2.5vh, 28px), calc(env(safe-area-inset-bottom, 0px) + 10px));
-}
-
-/* Above the transport while an encounter runs. */
-.encounter-active .more-control,
-.encounter-paused .more-control {
-  bottom: clamp(76px, 9vh, 92px);
+  top: max(clamp(24px, 4.4vh, 46px), calc(env(safe-area-inset-top, 0px) + 16px));
+  right: clamp(30px, 3.7vw, 62px);
 }
 
 .more-trigger {
@@ -186,12 +185,12 @@
 }
 
 .more-sheet {
+  top: calc(100% + 12px);
   right: 0;
-  bottom: calc(100% + 12px);
   width: min(300px, calc(100vw - 36px));
-  max-height: min(600px, calc(100svh - 120px));
+  max-height: min(600px, calc(100svh - 160px));
   overflow-y: auto;
-  padding: 10px 20px 18px;
+  padding: 8px 18px 14px;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-lg);
   background:
@@ -202,15 +201,22 @@
     inset 0 1px rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(18px) saturate(1.3);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  transform-origin: bottom right;
+  transform-origin: top right;
   scrollbar-width: thin;
 }
 
+/* The header row is the featured list's label with the close control on the
+   same line, so the sheet spends no row on a title. */
 .more-heading {
-  margin: 0 -8px 6px 0;
+  min-height: 34px;
+  margin: 0 -6px 0 0;
 }
 
-.more-heading p,
+.more-close {
+  width: 34px;
+  height: 34px;
+}
+
 .more-label {
   margin: 0;
   color: var(--ink-tertiary);
@@ -224,9 +230,10 @@
 }
 
 /* One quiet row per function: the name at the left, its state or its key at
-   the right, nothing else. Sections are separated by space, not rules. */
+   the right, nothing else. The row is sized for a pointer; the coarse-pointer
+   block at the end of this file gives it back the full 44px thumb target. */
 .more-item {
-  min-height: 44px;
+  min-height: 36px;
   padding: 2px 0;
   color: var(--ink-secondary);
   font-size: 13px;
@@ -265,7 +272,7 @@
 }
 
 .ambient-volume {
-  padding: 0 0 8px;
+  padding: 0 0 6px;
 }
 
 .ambient-volume input {
@@ -289,13 +296,13 @@
 }
 
 .more-section {
-  margin-top: 10px;
-  padding-top: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid var(--hairline);
 }
 
 .more-section .more-label {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .feature-archive {
@@ -313,7 +320,7 @@
 }
 
 .shortcut-list li {
-  min-height: 38px;
+  min-height: 32px;
 }
 
 .shortcut-list kbd {
@@ -334,10 +341,14 @@
    Object identity
    ========================================================================== */
 
+/* The cap has to clear the action row at its longest — the play ring, the
+   label, the longest beat title in the catalogue and the discovery link beside
+   it — or the title ellipses on a desktop that has room to spare. The block is
+   shrink-to-fit, so a wider cap costs nothing on the objects that need less. */
 .object-identity {
   left: clamp(34px, 4.2vw, 70px);
   bottom: clamp(102px, 12vh, 132px);
-  max-width: min(640px, 60vw);
+  max-width: min(820px, 72vw);
   opacity: 0;
   transition:
     opacity var(--speed-base) ease,
@@ -357,22 +368,6 @@
   visibility: hidden;
 }
 
-.identity-kicker {
-  display: none;
-  margin: 0 0 16px;
-  color: var(--ink-quiet);
-  font-size: 9px;
-  letter-spacing: 0.34em;
-}
-
-.kicker-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent-object);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-object) 60%, transparent);
-}
-
 .object-identity h1 {
   margin: 0 0 12px;
   font-size: clamp(38px, 4.35vw, 66px);
@@ -388,10 +383,20 @@
   color: var(--ink-secondary);
   font-size: 13px;
   letter-spacing: 0.035em;
+  white-space: nowrap;
 }
 
 .metadata-lead {
   font-weight: 500;
+}
+
+/* The last item is the one that gives way. Wrapping the line to a second row
+   would grow a bottom-anchored block upward, so on a narrow screen the label
+   ellipses instead and below 360px it leaves altogether. */
+.metadata-detail {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 .metadata-rule {
@@ -401,21 +406,29 @@
   background: var(--ink-quiet);
 }
 
-/* Everything that can appear later has its slot from the first frame. The
-   block is anchored to its bottom edge, so a slot that grew would push the
-   title and the action the viewer was already aiming at. */
+/* Everything that can appear later has its slot from the first frame, and the
+   slot is a fixed height rather than a floor. The block is anchored to its
+   bottom edge, so a slot that grew — a metadata line wrapping for one object
+   and not the next, an action row breaking onto two lines — would lift the
+   title and the button the viewer was already aiming at, then drop them back
+   on the way out. Each row is kept to one line so the height cannot change. */
 .identity-metadata-slot {
-  min-height: 20px;
+  height: 20px;
 }
 
+/* The safety note sits above the block rather than inside it. It belongs to a
+   single preset on a single object, so reserving a row for it in the stack
+   would leave a band of dead air under every other object in the catalogue. */
 .hazard-slot {
-  min-height: 22px;
-  margin-top: 10px;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  max-width: 100%;
 }
 
 .identity-actions {
-  min-height: 46px;
-  margin-top: 10px;
+  height: 44px;
+  margin-top: 16px;
 }
 
 .hazard-notice {
@@ -426,35 +439,50 @@
   letter-spacing: 0.01em;
 }
 
-/* The guided encounter as a small card: it is a two-minute commitment, so it
-   carries its title and length rather than posing as one more text link. */
+/* The two contextual actions. Neither has a resting box: over a live render a
+   bordered pill reads as a second control rail, and there is already one at the
+   bottom of the screen. What marks them instead is weight — an accent play ring
+   on the commitment, a hairline underline on the aside — and a surface that
+   only arrives under the pointer. */
 .encounter-card {
-  min-height: 46px;
-  padding: 3px 12px 3px 4px;
-  border: 1px solid color-mix(in srgb, var(--accent-object) 34%, var(--hairline-strong));
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  margin: 0 -12px;
+  padding: 0 12px;
   border-radius: var(--radius-pill);
-  background: rgba(3, 8, 15, 0.62);
   color: var(--ink-secondary);
   transition:
     color var(--speed-fast) ease,
-    border-color var(--speed-fast) ease,
     background-color var(--speed-fast) ease;
 }
 
 .encounter-card:hover,
 .encounter-card:focus-visible {
-  border-color: var(--accent-object);
-  background: color-mix(in srgb, var(--accent-object) 10%, rgba(3, 8, 15, 0.7));
+  background: var(--surface-raised);
 }
 
 .encounter-card-play {
-  width: 34px;
-  height: 34px;
-  border: 1px solid color-mix(in srgb, var(--accent-object) 70%, white 8%);
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 62%, transparent);
+  background: color-mix(in srgb, var(--accent-object) 8%, transparent);
   color: var(--accent-object);
+  transition:
+    border-color var(--speed-fast) ease,
+    background-color var(--speed-fast) ease;
 }
 
+.encounter-card:hover .encounter-card-play,
+.encounter-card:focus-visible .encounter-card-play {
+  border-color: var(--accent-object);
+  background: color-mix(in srgb, var(--accent-object) 18%, transparent);
+}
+
+/* Deliberately the same size and tracking as the metadata line's own label, so
+   the two lines sit in the same voice. */
 .encounter-card-kicker {
+  flex: 0 0 auto;
   color: var(--accent-object);
   font-size: 11px;
   letter-spacing: 0.14em;
@@ -462,33 +490,62 @@
 }
 
 .encounter-card-title {
+  flex: 1 1 auto;
   overflow: hidden;
-  font-size: 12.5px;
+  min-width: 0;
+  color: var(--ink-primary);
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.01em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
+/* The aside, one step quieter: no glyph, and an underline that is the whole of
+   its resting affordance. It picks up the object's accent under the pointer. */
 .encounter-invite {
+  position: relative;
+  flex: 0 0 auto;
   min-height: 44px;
   margin: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--accent-object) 58%, transparent);
-  color: var(--ink-secondary);
+  padding: 0 2px;
+  color: var(--ink-label);
   font-size: 11px;
   letter-spacing: 0.12em;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 7px;
   transition:
     color var(--speed-fast) ease,
-    border-color var(--speed-fast) ease;
+    text-decoration-color var(--speed-fast) ease;
 }
 
 .encounter-invite:hover,
 .encounter-invite:focus-visible {
-  border-color: var(--accent-object);
   color: var(--ink-primary);
+  text-decoration-color: var(--accent-object);
 }
 
- /* The note for the view at rest. Its own layer, where the capture card also
+/* A hairline between the two, the same separator the control rail uses, so the
+   row reads as two actions rather than one long sentence. */
+.encounter-card + .encounter-invite {
+  margin-left: 4px;
+  padding-left: 24px;
+}
+
+.encounter-card + .encounter-invite::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 1px;
+  height: 16px;
+  background: var(--hairline);
+  transform: translateY(-50%);
+}
+
+/* The note for the view at rest. Its own layer, where the capture card also
    lands, so the title block beneath never changes height. */
 .free-discovery {
   right: clamp(18px, 2.5vh, 28px);
@@ -1951,7 +2008,13 @@
   .object-identity {
     left: 20px;
     bottom: 100px;
-    max-width: 78vw;
+    max-width: calc(100vw - 40px);
+  }
+
+  /* Between the phone and the desktop the row is tight. The length is the first
+     detail to go, which buys back the width the beat title needs. */
+  .encounter-card-minutes {
+    display: none;
   }
 
   .control-panel {
@@ -2057,39 +2120,36 @@
     width: auto;
   }
 
+  /* `right` as well as `left`, so the block spans the screen: the action line
+     below is a long title that has to ellipse at the edge, not shrink-wrap. */
   .object-identity {
     left: 18px;
+    right: 18px;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
-    max-width: calc(100vw - 36px);
+    max-width: none;
   }
 
   .object-identity h1 {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     font-size: clamp(32px, 9.5vw, 46px);
     letter-spacing: 0.075em;
   }
 
   .object-metadata {
+    gap: 8px;
     font-size: 12px;
   }
 
-  /* Only one contextual action is visible on a phone: discovery first, then
-     the guided encounter after the note has been opened. */
-  .identity-actions {
-    min-height: 46px;
-    margin-top: 6px;
+  .identity-metadata-slot {
+    height: 18px;
   }
 
-  /* Keep the title, scale and contextual action in one fixed cluster. A rare
-     safety note sits just above it instead of entering the flow and shifting
-     the whole identity block when the distance changes. */
-  .hazard-slot {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 0;
-    max-width: 100%;
-    min-height: 0;
-    margin-top: 0;
+  /* Only one contextual action is visible on a phone: discovery first, then
+     the guided encounter after the note has been opened. Either way the block
+     is three lines and nothing else. */
+  .identity-actions {
+    height: 44px;
+    margin-top: 6px;
   }
 
   /* Busy scene changes can soften the copy, but must not move controls the
@@ -2106,9 +2166,30 @@
     display: none;
   }
 
-  .encounter-card {
-    max-width: 100%;
-    min-height: 44px;
+  /* A note on its way out must not reappear on the way. Changing object clears
+     `has-discovery` and `discovery-seen` in the same frame the invite starts
+     its leave transition, which un-hides it for the length of the fade and puts
+     two actions in a row that has space for one. It reads as a flash. */
+  .encounter-invite.hint-leave-active,
+  .encounter-invite.hint-leave-to {
+    display: none;
+  }
+
+  /* Only one action is ever on screen here, and the hidden one is hidden rather
+     than absent, so the separator between them has to go with it. */
+  .encounter-card + .encounter-invite {
+    margin-left: 0;
+    padding-left: 2px;
+  }
+
+  .encounter-card + .encounter-invite::before {
+    content: none;
+  }
+
+  /* The row has one line to spend, so the beat title takes whatever is left and
+     ellipses at the edge of the screen. */
+  .encounter-card-title {
+    font-size: 12.5px;
   }
 
   /* Above the scene rather than over the action row. */
@@ -2347,35 +2428,13 @@
 
   .encounter-progress { bottom: 46px; }
 
-  /* One stable header row: the brand or encounter exit at the left, and More
-     at the right. Neither control moves when an encounter begins. */
   .more-control {
     top: calc(env(safe-area-inset-top, 0px) + 14px);
     right: 18px;
-    bottom: auto;
   }
 
   .more-sheet {
-    top: calc(100% + 10px);
-    bottom: auto;
     max-height: calc(100svh - env(safe-area-inset-top, 0px) - 90px);
-    transform-origin: top right;
-  }
-
-  /* The base encounter rule raises More above the desktop transport. On a
-     phone the menu owns the top-right corner throughout, including its sheet. */
-  .encounter-active .more-control,
-  .encounter-paused .more-control {
-    top: calc(env(safe-area-inset-top, 0px) + 14px);
-    right: 18px;
-    bottom: auto;
-  }
-
-  .encounter-active .more-sheet,
-  .encounter-paused .more-sheet {
-    top: calc(100% + 10px);
-    bottom: auto;
-    transform-origin: top right;
   }
 
 }
@@ -2423,6 +2482,15 @@
 }
 
 @media (hover: none) and (pointer: coarse) {
+  .more-item {
+    min-height: 44px;
+  }
+
+  .more-close {
+    width: 44px;
+    height: 44px;
+  }
+
   .perigee-shell.chrome-idle .perigee-header {
     opacity: 0.72;
   }
@@ -2456,7 +2524,6 @@
 @media (prefers-reduced-transparency: reduce) {
   .control-panel,
   .object-trigger,
-  .encounter-card,
   .hazard-notice,
   .encounter-discovery,
   .free-discovery,

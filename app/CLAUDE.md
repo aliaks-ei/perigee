@@ -92,14 +92,14 @@ again) with a time fallback for a passive viewer; a shared link or a curated rou
 
 | Stage | Shows |
 | --- | --- |
-| `arrive` | Scene, brand, object name. The drag hint after 2 s. |
+| `arrive` | Scene, brand, the "more" control, object name. The drag hint after 2 s. |
 | `orient` | Metadata line, the pill with the ladder dots, the "step the distance" hint. |
 | `explore` | Discovery note trigger, hazard line, landscape chooser and pill segment. |
-| `deepen` | Encounter card, the "more" control, tonight's sky card, idle fade after 6 s. |
+| `deepen` | Encounter card, tonight's sky card, idle fade after 6 s. |
 
-Every function that is not the sky lives behind the "more" control at the bottom right
-(`MoreSheet.vue`): sound, capture, featured skies, shortcuts, credits. A new secondary feature
-goes there, not into a new corner.
+Every function that is not the sky lives behind the "more" control at the top right
+(`MoreSheet.vue`): featured skies, sound, capture, shortcuts. A new secondary feature goes there,
+not into a new corner.
 
 **Every interactive element needs a visible hover and focus state.** `base.css` gives every
 non-disabled button a colour lift and every link an underline treatment, both on `:hover` and
