@@ -12,6 +12,7 @@ export interface EngagementEventMap {
   encounter_complete: { encounterId: string }
   prediction_answer: { encounterId: string; predictionId: string; optionId: string }
   featured_encounter_open: { month: string; hasCurrent: boolean }
+  more_open: { hasCurrent: boolean }
   featured_encounter_select: {
     featureId: string
     encounterId: string

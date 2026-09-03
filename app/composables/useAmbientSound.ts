@@ -1,4 +1,4 @@
-import { readonly, ref, watch, type Ref } from 'vue'
+import { effectScope, readonly, ref, watch, type Ref } from 'vue'
 import type {
   AmbientSoundController,
   AmbientSoundStatus,
@@ -148,8 +148,13 @@ function installSceneWatcher(viewpoint: Readonly<Ref<ViewpointId>>): void {
   activeViewpoint = viewpoint
   if (sceneWatcherInstalled) return
   sceneWatcherInstalled = true
-  watch(viewpoint, (viewpointId) => {
-    engine?.setViewpoint(viewpointId)
+  // Detached from whatever component happens to call first. The control lives
+  // inside the "more" sheet, so a component-owned watcher would be stopped the
+  // first time the sheet closes, and the latch above would never rebuild it.
+  effectScope(true).run(() => {
+    watch(viewpoint, (viewpointId) => {
+      engine?.setViewpoint(viewpointId)
+    })
   })
 }
 

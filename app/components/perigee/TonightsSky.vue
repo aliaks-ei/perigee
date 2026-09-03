@@ -43,8 +43,13 @@ function markSeen(): void {
   }
 }
 
+// Once per mount. `visible` also follows the panels, so without the latch
+// every open and close of the sky controls counted as another offer.
+let offerTracked = false
 watch(visible, (shown) => {
-  if (shown) analytics.track('featured_encounter_open', { month, hasCurrent: true })
+  if (!shown || offerTracked) return
+  offerTracked = true
+  analytics.track('featured_encounter_open', { month, hasCurrent: true })
 })
 
 function begin(): void {

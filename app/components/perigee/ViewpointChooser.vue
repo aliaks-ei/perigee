@@ -43,6 +43,7 @@ async function choose(viewpointId: ViewpointId): Promise<void> {
         type="button"
         role="radio"
         :aria-checked="currentViewpointId === viewpoint.id"
+        :tabindex="currentViewpointId === viewpoint.id ? 0 : -1"
         :aria-label="`${viewpoint.label}: ${viewpoint.description}`"
         :data-viewpoint-option="viewpoint.id"
         class="viewpoint-option flex shrink-0 flex-col gap-2 text-left"
