@@ -83,11 +83,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <h2 class="font-display">{{ encounter.title }}</h2>
       <p class="tonight-summary">{{ feature.summary }}</p>
       <div class="flex items-center gap-5">
-        <button type="button" class="tonight-primary inline-flex min-h-10 items-center gap-2.5 font-semibold" @click="begin">
+        <button type="button" class="tonight-primary inline-flex min-h-11 items-center gap-2.5 font-semibold" @click="begin">
           Begin · {{ encounter.estimatedMinutes }} min
           <PhArrowRight :size="14" weight="bold" aria-hidden="true" />
         </button>
-        <button type="button" class="tonight-dismiss min-h-10" @click="markSeen">Not now</button>
+        <button type="button" class="tonight-dismiss min-h-11" @click="markSeen">Not now</button>
       </div>
     </aside>
   </Transition>

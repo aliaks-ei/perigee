@@ -13,6 +13,7 @@ import { featureArchive, featureForMonth, formatFeatureMonth } from '~/utils/mon
  */
 const {
   moreOpen,
+  objectBrowserOpen,
   busy,
   encounterStatus,
   revealed,
@@ -28,7 +29,9 @@ const currentFeature = featureForMonth(featuredEncounters, now)
 const archivedFeatures = featureArchive(featuredEncounters, now)
 const currentEncounter = currentFeature ? encountersById[currentFeature.encounterId] : null
 /** Available once the viewer is settled in, and throughout an encounter. */
-const available = computed(() => revealed('deepen') || encounterStatus.value !== 'idle')
+const available = computed(() =>
+  (revealed('deepen') || encounterStatus.value !== 'idle') && !objectBrowserOpen.value,
+)
 
 const shortcuts = [
   { keys: ['Drag'], action: 'Look around' },
@@ -100,7 +103,7 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
           <div class="more-heading flex items-center justify-between">
             <p class="font-semibold uppercase">More</p>
             <button
-              class="inline-grid h-9 w-9 place-items-center rounded-full"
+              class="inline-grid h-11 w-11 place-items-center rounded-full"
               type="button"
               aria-label="Close"
               @click="close()"
@@ -132,20 +135,20 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
               class="more-item flex w-full items-center justify-between gap-4 text-left"
               @click="selectFeature(currentFeature, 'current')"
             >
-              <span class="min-w-0 flex-1 truncate">{{ currentEncounter.title }}</span>
+              <span class="more-feature-title min-w-0 flex-1">{{ currentEncounter.title }}</span>
               <span class="more-state font-semibold uppercase">{{ formatFeatureMonth(currentFeature.month, 'short') }}</span>
             </button>
             <ol v-if="archivedFeatures.length" class="feature-archive">
               <li v-for="feature in archivedFeatures" :key="feature.id">
                 <button type="button" class="more-item flex w-full items-center justify-between gap-4 text-left" @click="selectFeature(feature, 'archive')">
-                  <span class="min-w-0 flex-1 truncate">{{ encountersById[feature.encounterId]?.title }}</span>
+                  <span class="more-feature-title min-w-0 flex-1">{{ encountersById[feature.encounterId]?.title }}</span>
                   <span class="more-state font-semibold uppercase">{{ formatFeatureMonth(feature.month, 'short') }}</span>
                 </button>
               </li>
             </ol>
           </div>
 
-          <div class="more-section">
+          <div class="more-section shortcut-section">
             <p class="more-label font-semibold uppercase">Keyboard</p>
             <ul class="shortcut-list">
               <li v-for="shortcut in shortcuts" :key="shortcut.action + shortcut.keys.join()" class="flex items-center justify-between gap-4">
@@ -165,7 +168,7 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
         type="button"
         class="more-trigger grid place-items-center rounded-full"
         data-more-trigger
-        aria-label="More: sound, capture, featured skies and shortcuts"
+        aria-label="More: sound, capture and featured skies"
         aria-controls="more-sheet"
         :aria-expanded="moreOpen"
         @click="toggleMore()"

@@ -37,7 +37,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown, true)
       aria-label="About this view"
     >
       <button
-        class="discovery-close absolute right-2 top-2 grid h-8 w-8 place-items-center"
+        class="discovery-close absolute right-2 top-2 grid h-11 w-11 place-items-center"
         data-discovery-close
         type="button"
         aria-label="Close discovery"

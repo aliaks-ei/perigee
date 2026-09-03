@@ -56,7 +56,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown, true)
       aria-label="Your captured sky"
     >
       <button
-        class="capture-close absolute right-2 top-2 grid h-8 w-8 place-items-center"
+        class="capture-close absolute right-2 top-2 grid h-11 w-11 place-items-center"
         type="button"
         aria-label="Close capture"
         @click="dismiss"

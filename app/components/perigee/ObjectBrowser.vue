@@ -2,7 +2,7 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { PhCircleNotch } from '@phosphor-icons/vue'
 import type { SkyObjectId } from '~/types/perigee'
-import { groupObjects } from '~/utils/objectGroups'
+import { groupObjects, type ObjectGroup } from '~/utils/objectGroups'
 
 const {
   skyObjects,
@@ -15,12 +15,14 @@ const {
 } = usePerigee()
 
 /**
- * Three groups rather than one flat row, so a viewer knows what lies beyond
- * the edge of a phone-width track and a new object joins its family. The
- * keyboard still walks one flat list across the groups.
+ * Three groups rather than one flat row. Desktop shows the complete catalogue;
+ * narrow layouts expose the groups as tabs so no family is hidden beyond an
+ * ambiguous horizontal edge.
  */
 const groups = groupObjects(skyObjects)
 const indexOf = (objectId: SkyObjectId): number => skyObjects.findIndex((object) => object.id === objectId)
+const groupFor = (objectId: SkyObjectId): ObjectGroup =>
+  groups.find((group) => group.objects.some((object) => object.id === objectId)) ?? groups[0]!
 
 /**
  * One tab stop for the whole list, moved with the arrow keys. The refs are
@@ -29,6 +31,8 @@ const indexOf = (objectId: SkyObjectId): number => skyObjects.findIndex((object)
  */
 const itemRefs = ref<Array<HTMLButtonElement | null>>([])
 const activeIndex = ref(Math.max(indexOf(currentObjectId.value), 0))
+const activeGroupId = ref<ObjectGroup['id']>(groupFor(currentObjectId.value).id)
+const track = ref<HTMLElement | null>(null)
 
 function setItemRef(element: unknown, index: number): void {
   itemRefs.value[index] = element instanceof HTMLButtonElement ? element : null
@@ -46,6 +50,7 @@ async function focusActive(): Promise<void> {
 
 function syncActiveToSelection(): void {
   activeIndex.value = Math.max(indexOf(currentObjectId.value), 0)
+  activeGroupId.value = groupFor(currentObjectId.value).id
   void focusActive()
 }
 
@@ -65,13 +70,44 @@ function onKeydown(event: KeyboardEvent, index: number): void {
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
 
-  if (event.key === 'Home') activeIndex.value = 0
-  else if (event.key === 'End') activeIndex.value = skyObjects.length - 1
+  const narrow = window.matchMedia('(max-width: 900px)').matches
+  const visibleObjects = narrow
+    ? groups.find((group) => group.id === activeGroupId.value)?.objects ?? skyObjects
+    : skyObjects
+  const visibleIndex = visibleObjects.findIndex((object) => object.id === skyObjects[index]?.id)
+
+  if (event.key === 'Home') activeIndex.value = indexOf(visibleObjects[0]!.id)
+  else if (event.key === 'End') activeIndex.value = indexOf(visibleObjects[visibleObjects.length - 1]!.id)
   else {
     const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1
-    activeIndex.value = (index + direction + skyObjects.length) % skyObjects.length
+    const nextIndex = (visibleIndex + direction + visibleObjects.length) % visibleObjects.length
+    activeIndex.value = indexOf(visibleObjects[nextIndex]!.id)
   }
   void focusActive()
+}
+
+async function selectGroup(groupId: ObjectGroup['id']): Promise<void> {
+  activeGroupId.value = groupId
+  const group = groups.find((candidate) => candidate.id === groupId)
+  if (!group) return
+  const selectedInGroup = group.objects.find((object) => object.id === currentObjectId.value)
+  activeIndex.value = indexOf((selectedInGroup ?? group.objects[0]!).id)
+  await nextTick()
+  if (track.value) track.value.scrollLeft = 0
+}
+
+function onGroupKeydown(event: KeyboardEvent, index: number): void {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? groups.length - 1
+      : (index + (event.key === 'ArrowRight' ? 1 : -1) + groups.length) % groups.length
+  const next = groups[nextIndex]
+  if (!next) return
+  void selectGroup(next.id)
+  document.querySelector<HTMLButtonElement>(`[data-browser-tab="${next.id}"]`)?.focus({ preventScroll: true })
 }
 
 async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void> {
@@ -86,16 +122,36 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
   <div
     id="object-browser"
     class="object-browser"
-    role="listbox"
-    aria-label="Celestial objects"
-    :aria-busy="busy"
   >
-    <div role="presentation" class="browser-track flex items-start lt-md:overflow-x-auto lt-md:overscroll-x-contain">
+    <div class="browser-tabs hidden items-center lt-md:flex" role="tablist" aria-label="Object category">
+      <button
+        v-for="(group, index) in groups"
+        :key="group.id"
+        type="button"
+        role="tab"
+        :aria-selected="activeGroupId === group.id"
+        :tabindex="activeGroupId === group.id ? 0 : -1"
+        :class="{ selected: activeGroupId === group.id }"
+        :data-browser-tab="group.id"
+        @click="selectGroup(group.id)"
+        @keydown="onGroupKeydown($event, index)"
+      >
+        {{ group.label }}
+      </button>
+    </div>
+    <div
+      ref="track"
+      role="listbox"
+      aria-label="Celestial objects"
+      :aria-busy="busy"
+      class="browser-track flex items-start lt-md:overflow-x-auto lt-md:overscroll-x-contain"
+    >
       <section
         v-for="group in groups"
         :key="group.id"
         role="group"
         class="browser-group flex shrink-0 flex-col"
+        :class="{ 'mobile-active': activeGroupId === group.id }"
         :aria-label="group.label"
       >
         <p class="browser-kicker block font-semibold uppercase" aria-hidden="true">{{ group.label }}</p>

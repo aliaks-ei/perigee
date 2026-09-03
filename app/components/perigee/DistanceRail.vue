@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { PhCaretUp, PhCircleNotch, PhX } from '@phosphor-icons/vue'
+import { PhCaretLeft, PhCaretRight, PhCaretUp, PhCircleNotch, PhX } from '@phosphor-icons/vue'
 import { formatDegrees } from '~/utils/formatters'
 
 /**
- * The one control that rests on screen: a pill with the object, the distance
- * ladder as five dots, and the landscape. Each segment is the one-click path
- * to its own change; the sheet above it holds the full choosers.
+ * The one control that rests on screen: a pill with the object, distance, and
+ * landscape. Desktop keeps the five-dot ladder; phones get three 44px distance
+ * controls and task-specific sheets so the same actions fit without clipping.
  */
 const {
   currentObject,
@@ -25,6 +25,8 @@ const {
 const optionsEl = ref<HTMLDivElement | null>(null)
 const railEl = ref<HTMLElement | null>(null)
 const indicator = ref({ left: 0, width: 0, ready: false })
+const mobilePanelMode = ref<'objects' | 'distance' | 'viewpoints'>('objects')
+const panelTrigger = ref<'object' | 'distance' | 'viewpoint'>('object')
 let observer: ResizeObserver | null = null
 
 const currentViewpoint = computed(() =>
@@ -32,6 +34,14 @@ const currentViewpoint = computed(() =>
 )
 const currentPresetIndex = computed(() =>
   currentObject.value.presets.findIndex((preset) => preset.id === currentPresetId.value),
+)
+const mobilePanelTitle = computed(() => ({
+  objects: 'Choose an object',
+  distance: 'Choose a distance',
+  viewpoints: 'Choose a landscape',
+})[mobilePanelMode.value])
+const mobileStepLabel = computed(() =>
+  `${currentPresetIndex.value + 1} of ${currentObject.value.presets.length}: ${currentPreset.value.label}`,
 )
 
 /**
@@ -72,7 +82,12 @@ watch(objectBrowserOpen, async (open) => {
 })
 
 function focusTrigger(): void {
-  nextTick(() => document.querySelector<HTMLButtonElement>('[data-object-trigger]')?.focus())
+  const selector = {
+    object: '[data-object-trigger]',
+    distance: '[data-distance-trigger]',
+    viewpoint: '[data-viewpoint-trigger]',
+  }[panelTrigger.value]
+  nextTick(() => document.querySelector<HTMLButtonElement>(selector)?.focus())
 }
 
 function closeControls(restoreFocus = true): void {
@@ -112,6 +127,39 @@ async function selectDistanceAndClose(presetId: string): Promise<void> {
   await selectDistance(presetId)
 }
 
+function isCompactLayout(): boolean {
+  return window.matchMedia('(max-width: 640px)').matches
+}
+
+async function openCompactPanel(mode: 'objects' | 'distance' | 'viewpoints'): Promise<void> {
+  const trigger = mode === 'objects' ? 'object' : mode === 'distance' ? 'distance' : 'viewpoint'
+  if (!isCompactLayout()) {
+    panelTrigger.value = trigger
+    if (mode === 'objects') toggleObjectBrowser()
+    else await openViewpoints()
+    return
+  }
+  if (objectBrowserOpen.value && mobilePanelMode.value === mode) {
+    closeControls()
+    return
+  }
+  mobilePanelMode.value = mode
+  panelTrigger.value = trigger
+  toggleObjectBrowser(true)
+  await nextTick()
+  const selector = mode === 'objects'
+    ? '.object-option[aria-selected="true"]'
+    : mode === 'distance'
+      ? '.distance-options [aria-checked="true"]'
+      : '[data-viewpoint-option][aria-checked="true"]'
+  document.querySelector<HTMLButtonElement>(selector)?.focus({ preventScroll: true })
+}
+
+async function stepMobileDistance(direction: -1 | 1): Promise<void> {
+  const next = currentObject.value.presets[currentPresetIndex.value + direction]
+  if (next) await selectDistance(next.id)
+}
+
 /** Opens the sheet on the landscape row, with the current plate focused. */
 async function openViewpoints(): Promise<void> {
   if (objectBrowserOpen.value) {
@@ -133,11 +181,16 @@ async function openViewpoints(): Promise<void> {
         v-if="objectBrowserOpen"
         id="sky-menu"
         class="control-panel absolute overflow-hidden rounded-lg lt-sm:overflow-y-auto"
+        :data-mobile-panel="mobilePanelMode"
+        @keydown.esc.stop.prevent="closeControls()"
       >
         <div class="control-panel-heading flex items-center justify-between">
-          <p class="font-semibold uppercase">Explore the sky</p>
+          <p class="font-semibold uppercase">
+            <span class="lt-sm:hidden">Explore the sky</span>
+            <span class="hidden lt-sm:inline">{{ mobilePanelTitle }}</span>
+          </p>
           <button
-            class="inline-grid h-9 w-9 place-items-center rounded-full"
+            class="inline-grid h-11 w-11 place-items-center rounded-full"
             type="button"
             aria-label="Close sky controls"
             @click="closeControls()"
@@ -190,7 +243,7 @@ async function openViewpoints(): Promise<void> {
         :aria-label="`${objectBrowserOpen ? 'Close' : 'Open'} sky controls for ${currentObject.label}, ${currentPreset.label}`"
         aria-controls="sky-menu"
         :aria-expanded="objectBrowserOpen"
-        @click="toggleObjectBrowser()"
+        @click="openCompactPanel('objects')"
       >
         <span class="trigger-thumb block shrink-0 overflow-hidden rounded-full" aria-hidden="true">
           <img
@@ -218,7 +271,7 @@ async function openViewpoints(): Promise<void> {
       </button>
 
       <div
-        class="trigger-ladder flex items-center"
+        class="trigger-ladder flex items-center lt-sm:hidden"
         role="radiogroup"
         :aria-label="`Distance step for ${currentObject.label}`"
       >
@@ -241,6 +294,38 @@ async function openViewpoints(): Promise<void> {
         </button>
       </div>
 
+      <div class="trigger-stepper hidden items-stretch lt-sm:flex" role="group" :aria-label="`Distance for ${currentObject.label}`">
+        <button
+          type="button"
+          class="grid place-items-center"
+          :disabled="currentPresetIndex === 0"
+          aria-label="Move one distance step farther away"
+          @click="stepMobileDistance(-1)"
+        >
+          <PhCaretLeft :size="14" weight="bold" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="stepper-position grid place-items-center font-semibold"
+          data-distance-trigger
+          aria-controls="sky-menu"
+          :aria-expanded="objectBrowserOpen && mobilePanelMode === 'distance'"
+          :aria-label="`Choose distance, ${mobileStepLabel}`"
+          @click="openCompactPanel('distance')"
+        >
+          {{ currentPresetIndex + 1 }}/{{ currentObject.presets.length }}
+        </button>
+        <button
+          type="button"
+          class="grid place-items-center"
+          :disabled="currentPresetIndex === currentObject.presets.length - 1"
+          aria-label="Move one distance step closer"
+          @click="stepMobileDistance(1)"
+        >
+          <PhCaretRight :size="14" weight="bold" aria-hidden="true" />
+        </button>
+      </div>
+
       <Transition name="fade">
         <button
           v-if="revealed('explore')"
@@ -250,7 +335,7 @@ async function openViewpoints(): Promise<void> {
           aria-controls="sky-menu"
           :aria-expanded="objectBrowserOpen"
           :aria-label="`Change landscape, now ${currentViewpoint.label}`"
-          @click="openViewpoints"
+          @click="openCompactPanel('viewpoints')"
         >
           <span class="viewpoint-thumb block shrink-0 overflow-hidden" aria-hidden="true">
             <img

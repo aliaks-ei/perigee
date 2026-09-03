@@ -168,7 +168,7 @@ onBeforeUnmount(() => {
   >
     <canvas
       ref="sceneCanvas"
-      class="absolute inset-0 z-canvas block h-full w-full cursor-grab touch-none active:cursor-grabbing"
+      class="absolute inset-0 z-canvas block h-full w-full cursor-grab touch-pinch-zoom active:cursor-grabbing"
       aria-label="Interactive view of the selected celestial object above the current landscape"
       tabindex="-1"
       @pointerdown="noteLook"

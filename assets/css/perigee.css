@@ -28,7 +28,7 @@
    ========================================================================== */
 
 .perigee-header {
-  top: clamp(24px, 4.4vh, 46px);
+  top: max(clamp(24px, 4.4vh, 46px), calc(env(safe-area-inset-top, 0px) + 16px));
   left: clamp(30px, 3.7vw, 62px);
   right: clamp(30px, 3.7vw, 62px);
   opacity: 0;
@@ -156,7 +156,7 @@
 .more-control {
   /* The same inset on both sides, so the circle sits square in the corner. */
   right: clamp(18px, 2.5vh, 28px);
-  bottom: clamp(18px, 2.5vh, 28px);
+  bottom: max(clamp(18px, 2.5vh, 28px), calc(env(safe-area-inset-bottom, 0px) + 10px));
 }
 
 /* Above the transport while an encounter runs. */
@@ -189,7 +189,7 @@
   right: 0;
   bottom: calc(100% + 12px);
   width: min(300px, calc(100vw - 36px));
-  max-height: min(600px, calc(100vh - 120px));
+  max-height: min(600px, calc(100svh - 120px));
   overflow-y: auto;
   padding: 10px 20px 18px;
   border: 1px solid var(--hairline-strong);
@@ -226,12 +226,16 @@
 /* One quiet row per function: the name at the left, its state or its key at
    the right, nothing else. Sections are separated by space, not rules. */
 .more-item {
-  min-height: 42px;
+  min-height: 44px;
   padding: 2px 0;
   color: var(--ink-secondary);
   font-size: 13px;
   letter-spacing: 0.01em;
   transition: color var(--speed-fast) ease;
+}
+
+.more-feature-title {
+  line-height: 1.35;
 }
 
 .more-item:disabled {
@@ -467,7 +471,7 @@
 }
 
 .encounter-invite {
-  min-height: 40px;
+  min-height: 44px;
   margin: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--accent-object) 58%, transparent);
   color: var(--ink-secondary);
@@ -490,7 +494,7 @@
   right: clamp(18px, 2.5vh, 28px);
   bottom: calc(clamp(18px, 2.5vh, 28px) + 58px);
   width: min(380px, calc(100vw - 40px));
-  padding: 18px 40px 16px 20px;
+  padding: 18px 56px 16px 20px;
   border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
   background: linear-gradient(180deg, rgba(3, 8, 15, 0.86), rgba(3, 8, 15, 0.66));
   backdrop-filter: blur(14px);
@@ -579,7 +583,7 @@
 }
 
 .encounter-dismiss {
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px;
   color: var(--ink-tertiary);
 }
@@ -587,7 +591,7 @@
 .encounter-exit {
   top: clamp(24px, 4.4vh, 46px);
   right: clamp(30px, 3.7vw, 62px);
-  min-height: 40px;
+  min-height: 44px;
   color: var(--ink-label);
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -615,7 +619,7 @@
 }
 
 .encounter-observation button {
-  min-height: 38px;
+  min-height: 44px;
   margin-top: 8px;
   border-bottom: 1px solid var(--hairline-strong);
   color: var(--ink-label);
@@ -816,7 +820,7 @@
 .encounter-discovery p { margin: 0 0 10px; }
 
 .encounter-discovery .discovery-close {
-  min-height: 32px;
+  min-height: 44px;
   margin: -8px -8px 6px 12px;
   padding: 0 8px;
   color: var(--ink-label);
@@ -839,7 +843,7 @@
 .encounter-transport {
   left: clamp(24px, 3.7vw, 62px);
   right: clamp(24px, 3.7vw, 62px);
-  bottom: clamp(18px, 2.5vh, 28px);
+  bottom: max(clamp(18px, 2.5vh, 28px), calc(env(safe-area-inset-bottom, 0px) + 8px));
   grid-template-columns: 1fr auto auto;
   gap: clamp(18px, 3vw, 46px);
 }
@@ -867,7 +871,7 @@
 }
 
 .encounter-transport button {
-  min-height: 40px;
+  min-height: 44px;
   color: var(--ink-secondary);
   font-size: 11px;
 }
@@ -880,7 +884,7 @@
 
 .control-rail {
   left: 50%;
-  bottom: clamp(18px, 2.5vh, 28px);
+  bottom: max(clamp(18px, 2.5vh, 28px), calc(env(safe-area-inset-bottom, 0px) + 10px));
   width: max-content;
   transform: translateX(-50%);
   opacity: 0;
@@ -890,7 +894,7 @@
   left: 50%;
   bottom: calc(100% + 14px);
   width: min(1040px, calc(100vw - 48px));
-  max-height: min(540px, calc(100vh - 126px));
+  max-height: min(540px, calc(100svh - 126px));
   border: 1px solid var(--hairline-strong);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.045), transparent 34%),
@@ -1070,6 +1074,43 @@
   border-left: 1px solid var(--hairline);
 }
 
+.trigger-stepper {
+  padding: 4px 0;
+}
+
+.trigger-stepper button {
+  width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+  color: var(--ink-tertiary);
+  transition:
+    color var(--speed-fast) ease,
+    background-color var(--speed-fast) ease;
+}
+
+.trigger-stepper button:not(:disabled):hover,
+.trigger-stepper button:not(:disabled):focus-visible {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.trigger-stepper button:disabled {
+  opacity: 0.28;
+}
+
+.trigger-stepper .stepper-position {
+  background: color-mix(in srgb, var(--accent-object) 9%, rgba(255, 255, 255, 0.035));
+  color: var(--ink-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+.trigger-stepper .stepper-position:hover,
+.trigger-stepper .stepper-position:focus-visible,
+.trigger-stepper .stepper-position[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--accent-object) 16%, rgba(255, 255, 255, 0.055));
+}
+
 .ladder-step {
   position: relative;
   width: 22px;
@@ -1200,7 +1241,7 @@
   position: relative;
   z-index: 1;
   min-width: 62px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 18px;
   border-radius: var(--radius-pill);
   color: var(--ink-label);
@@ -1308,6 +1349,30 @@
 
 .object-browser {
   padding: 2px 20px 18px;
+}
+
+.browser-tabs {
+  gap: 4px;
+  margin: 0 4px 8px;
+}
+
+.browser-tabs button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid transparent;
+  color: var(--ink-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease;
+}
+
+.browser-tabs button.selected {
+  border-color: var(--accent-object);
+  color: var(--ink-primary);
 }
 
 .browser-kicker {
@@ -1452,7 +1517,7 @@
 
 /* Buttons, not links: pills with a border, the primary one filled. */
 .capture-card .capture-actions button {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-pill);
@@ -1486,6 +1551,7 @@
 }
 
 .capture-toggle {
+  min-height: 44px;
   margin-top: 12px;
   color: var(--ink-label);
   font-size: 11px;
@@ -1494,8 +1560,8 @@
 }
 
 .capture-toggle input {
-  width: 13px;
-  height: 13px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--accent-object);
 }
 
@@ -1877,7 +1943,7 @@
 
 @media (max-width: 900px) {
   .perigee-header {
-    top: 16px;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
     left: 18px;
     right: 18px;
   }
@@ -1904,9 +1970,21 @@
     display: none;
   }
 
-  /* The track scrolls sideways. The right edge fades and the last visible
-     tile peeks, so the viewer knows the row goes on; the snap lands a group
-     heading at the left edge. */
+  /* Narrow screens choose an object family first, avoiding a hidden category
+     beyond the edge. Only the active family's tiles need horizontal scroll. */
+  .browser-group:not(.mobile-active) {
+    display: none;
+  }
+
+  .browser-group + .browser-group {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .browser-group .browser-kicker {
+    display: none;
+  }
+
   .browser-track,
   .viewpoint-track {
     gap: 14px;
@@ -1920,10 +1998,6 @@
   .browser-group,
   .viewpoint-option {
     scroll-snap-align: start;
-  }
-
-  .browser-group + .browser-group {
-    padding-left: 14px;
   }
 
   .object-option {
@@ -1972,12 +2046,12 @@
   }
 
   .brand-word {
-    font-size: 10px;
-    letter-spacing: 0.32em;
+    font-size: 12px;
+    letter-spacing: 0.36em;
   }
 
   .tonight-card {
-    top: 60px;
+    top: calc(env(safe-area-inset-top, 0px) + 60px);
     right: 18px;
     left: 18px;
     width: auto;
@@ -1985,7 +2059,7 @@
 
   .object-identity {
     left: 18px;
-    bottom: 88px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
     max-width: calc(100vw - 36px);
   }
 
@@ -1996,21 +2070,45 @@
   }
 
   .object-metadata {
-    font-size: 11px;
+    font-size: 12px;
   }
 
-  /* Two actions stack on a phone. The slot reserves both rows from the first
-     frame, so the title never moves when the second one arrives. */
+  /* Only one contextual action is visible on a phone: discovery first, then
+     the guided encounter after the note has been opened. */
   .identity-actions {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    min-height: 88px;
+    min-height: 46px;
+    margin-top: 6px;
+  }
+
+  /* Keep the title, scale and contextual action in one fixed cluster. A rare
+     safety note sits just above it instead of entering the flow and shifting
+     the whole identity block when the distance changes. */
+  .hazard-slot {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    max-width: 100%;
+    min-height: 0;
+    margin-top: 0;
+  }
+
+  /* Busy scene changes can soften the copy, but must not move controls the
+     viewer has already located with their thumb. */
+  .object-identity.transitioning {
+    transform: none;
+  }
+
+  .identity-actions.has-discovery:not(.discovery-seen) .encounter-card {
+    display: none;
+  }
+
+  .identity-actions.discovery-seen .encounter-invite {
+    display: none;
   }
 
   .encounter-card {
     max-width: 100%;
-    min-height: 42px;
+    min-height: 44px;
   }
 
   /* Above the scene rather than over the action row. */
@@ -2026,15 +2124,33 @@
   }
 
   .control-rail {
-    bottom: 10px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
     max-width: calc(100vw - 20px);
   }
 
   .object-trigger {
+    width: calc(100vw - 20px);
     max-width: 100%;
   }
 
+  /* Touching a segment focuses it. Keep the rail shell physically and
+     visually stationary; keyboard focus remains visible on the button itself. */
+  .object-trigger:hover,
+  .object-trigger:focus-within,
+  .object-trigger.open {
+    border-color: var(--hairline-strong);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 48%),
+      rgba(3, 8, 15, 0.84);
+    box-shadow:
+      0 16px 46px rgba(0, 0, 0, 0.42),
+      inset 0 1px rgba(255, 255, 255, 0.07);
+    transform: none;
+  }
+
   .trigger-object {
+    flex: 1 1 auto;
+    min-width: 0;
     gap: 8px;
     padding: 6px 10px 6px 7px;
   }
@@ -2049,19 +2165,25 @@
   }
 
   .trigger-label {
-    min-width: 84px;
+    min-width: 0;
+    overflow: hidden;
   }
 
-  .trigger-ladder {
-    padding: 0 3px;
+  .trigger-label .trigger-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .ladder-step {
-    width: 18px;
+  .trigger-stepper {
+    flex: 0 0 132px;
   }
 
   .trigger-viewpoint {
-    padding: 0 10px 0 8px;
+    flex: 0 0 52px;
+    justify-content: center;
+    padding: 0 5px;
+    border-left: 0;
   }
 
   .rail-hint {
@@ -2071,7 +2193,7 @@
   .control-panel {
     bottom: calc(100% + 10px);
     width: calc(100vw - 20px);
-    max-height: calc(100svh - 84px);
+    max-height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 88px);
     border-radius: 18px;
   }
 
@@ -2081,6 +2203,15 @@
 
   .object-browser {
     padding: 0 12px 14px;
+  }
+
+  .control-panel[data-mobile-panel='objects'] .distance-panel,
+  .control-panel[data-mobile-panel='objects'] .viewpoint-chooser,
+  .control-panel[data-mobile-panel='distance'] .object-browser,
+  .control-panel[data-mobile-panel='distance'] .viewpoint-chooser,
+  .control-panel[data-mobile-panel='viewpoints'] .object-browser,
+  .control-panel[data-mobile-panel='viewpoints'] .distance-panel {
+    display: none;
   }
 
   .browser-kicker {
@@ -2093,6 +2224,11 @@
 
   .viewpoint-chooser {
     padding: 10px 12px 14px;
+    border-top: 0;
+  }
+
+  .control-panel[data-mobile-panel='viewpoints'] .viewpoint-chooser .control-label {
+    display: none;
   }
 
   .viewpoint-option {
@@ -2102,13 +2238,40 @@
   .distance-panel {
     min-height: 0;
     grid-template-columns: 1fr;
-    padding: 9px 10px 11px;
+    padding: 4px 10px 14px;
+    border-top: 0;
+  }
+
+  .control-panel .distance-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .shortcut-section {
+    display: none;
+  }
+
+  .distance-indicator {
+    display: none;
   }
 
   .distance-options button {
-    min-width: 54px;
-    padding: 0 11px;
-    font-size: 11.5px;
+    min-width: 0;
+    padding: 0 10px;
+    border: 1px solid var(--hairline);
+    font-size: 12px;
+  }
+
+  .distance-options button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .distance-options button.selected {
+    border-color: color-mix(in srgb, var(--accent-object) 54%, var(--hairline-strong));
+    background: color-mix(in srgb, var(--accent-object) 12%, var(--surface-raised));
   }
 
   .object-thumbnail {
@@ -2117,7 +2280,7 @@
   }
 
   .encounter-invitation {
-    bottom: 92px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
   }
 
   .encounter-invitation h2 {
@@ -2125,17 +2288,18 @@
   }
 
   .encounter-exit {
-    top: 16px;
-    right: 18px;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    right: auto;
+    left: 18px;
   }
 
   .encounter-observation {
-    bottom: 110px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
     width: calc(100vw - 36px);
   }
 
   .encounter-transition-state {
-    bottom: 126px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 126px);
   }
 
   .locator-label {
@@ -2157,7 +2321,7 @@
 
   .encounter-discovery {
     right: 18px;
-    bottom: 132px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 132px);
     width: calc(100vw - 36px);
     max-height: 36svh;
   }
@@ -2165,7 +2329,7 @@
   .capture-card,
   .free-discovery {
     right: 18px;
-    bottom: 96px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
     width: calc(100vw - 36px);
   }
 
@@ -2177,17 +2341,16 @@
   .encounter-transport {
     left: 18px;
     right: 18px;
-    bottom: 8px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
     gap: 18px;
   }
 
   .encounter-progress { bottom: 46px; }
 
-  /* One header row: the brand at the left, "more" at the right. During an
-     encounter the exit button takes that corner, so "more" drops back above
-     the transport. */
+  /* One stable header row: the brand or encounter exit at the left, and More
+     at the right. Neither control moves when an encounter begins. */
   .more-control {
-    top: 14px;
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
     right: 18px;
     bottom: auto;
   }
@@ -2195,22 +2358,80 @@
   .more-sheet {
     top: calc(100% + 10px);
     bottom: auto;
-    max-height: calc(100svh - 90px);
+    max-height: calc(100svh - env(safe-area-inset-top, 0px) - 90px);
     transform-origin: top right;
   }
 
+  /* The base encounter rule raises More above the desktop transport. On a
+     phone the menu owns the top-right corner throughout, including its sheet. */
   .encounter-active .more-control,
   .encounter-paused .more-control {
-    top: auto;
-    bottom: 64px;
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    right: 18px;
+    bottom: auto;
   }
 
   .encounter-active .more-sheet,
   .encounter-paused .more-sheet {
-    top: auto;
-    bottom: calc(100% + 10px);
-    transform-origin: bottom right;
+    top: calc(100% + 10px);
+    bottom: auto;
+    transform-origin: top right;
   }
+
+}
+
+@media (max-width: 360px) {
+  .metadata-detail,
+  .metadata-detail-rule {
+    display: none;
+  }
+
+  .trigger-object {
+    gap: 6px;
+    padding-right: 5px;
+    padding-left: 5px;
+  }
+
+  .trigger-thumb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .trigger-kicker {
+    font-size: 10px;
+  }
+
+  .trigger-viewpoint {
+    flex-basis: 44px;
+    padding: 0 4px;
+  }
+
+  .viewpoint-thumb {
+    width: 34px;
+    height: 22px;
+  }
+}
+
+@media (max-width: 900px) and (hover: none) and (pointer: coarse) {
+  .shortcut-section {
+    display: none;
+  }
+
+  .ambient-volume input {
+    height: 44px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .perigee-shell.chrome-idle .perigee-header {
+    opacity: 0.72;
+  }
+
+  .perigee-shell.chrome-idle .control-rail,
+  .perigee-shell.chrome-idle .more-control {
+    opacity: 0.88;
+  }
+
 }
 
 @media (max-height: 720px) and (min-width: 641px) {

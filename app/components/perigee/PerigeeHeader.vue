@@ -10,7 +10,7 @@ const { resetExperience } = usePerigee()
 <template>
   <header class="perigee-header pointer-events-none absolute z-header flex items-center">
     <button
-      class="brand pointer-events-auto inline-flex min-h-10 items-center"
+      class="brand pointer-events-auto inline-flex min-h-11 items-center"
       type="button"
       aria-label="Reset Perigee"
       @click="resetExperience"
