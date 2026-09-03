@@ -33,8 +33,14 @@ const kind = computed(() => {
     default: return 'Planet'
   }
 })
+const discoverySeen = ref(false)
+
+watch(() => currentObject.value.id, () => {
+  discoverySeen.value = false
+})
 
 async function open(): Promise<void> {
+  discoverySeen.value = true
   openDiscovery()
   await nextTick()
   document.querySelector<HTMLButtonElement>('[data-discovery-close]')?.focus({ preventScroll: true })
@@ -61,8 +67,8 @@ async function open(): Promise<void> {
           <span class="metadata-lead">{{ formatAngularDiameter(angularDiameter) }}</span>
           <span aria-hidden="true" class="metadata-rule" />
           <span>{{ formatDistance(currentPreset.distanceKm) }}</span>
-          <span aria-hidden="true" class="metadata-rule" />
-          <span>{{ currentPreset.metadataLabel ?? currentPreset.label }}</span>
+          <span aria-hidden="true" class="metadata-rule metadata-detail-rule" />
+          <span class="metadata-detail">{{ currentPreset.metadataLabel ?? currentPreset.label }}</span>
         </p>
       </Transition>
     </div>
@@ -79,7 +85,10 @@ async function open(): Promise<void> {
     <!-- One contextual action, chosen by stage. The note for this view comes
          first; the guided encounter, a two-minute commitment, waits until the
          viewer has settled in and then arrives as a small card. -->
-    <div class="identity-actions pointer-events-auto flex items-center gap-5 lt-sm:gap-3.5">
+    <div
+      class="identity-actions pointer-events-auto flex items-center gap-5 lt-sm:flex-col lt-sm:items-start lt-sm:gap-1.5"
+      :class="{ 'has-discovery': Boolean(freeDiscovery), 'discovery-seen': discoverySeen }"
+    >
       <Transition name="hint">
         <button
           v-if="revealed('deepen') && availableEncounter"
