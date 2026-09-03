@@ -388,14 +388,16 @@ export class PerigeeScene implements PerigeeController {
       return
     }
 
-    // The backdrop's own glow around the hero comes up with the surface. Left
-    // at full strength from the first frame, it lit the sky around a disc that
-    // had not arrived yet, which read as a grey circle in a bright halo.
-    this.applyGlow(definition, 0)
-
     // Compile while the object is still invisible. A fresh shader compiled on
     // the frame the fade starts shows up as a stall in the middle of the shot.
     await this.renderer.compileAsync(nextHero, this.camera, this.sky.scene)
+
+    // The backdrop's own glow around the hero comes up with the surface. Left
+    // at full strength from the first frame, it lit the sky around a disc that
+    // had not arrived yet, which read as a grey circle in a bright halo. It
+    // drops only after the compile: a cold shader can hold there for hundreds
+    // of milliseconds, and the outgoing hero is still fully lit until the fade.
+    this.applyGlow(definition, 0)
 
     const duration = this.reducedMotion ? 0.2 : 1.1
     await this.director.replace((timeline) => {

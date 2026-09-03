@@ -53,11 +53,6 @@ const notice = ref<string | null>(null)
 /** Offered a beat after the scene settles, never on the first frame. */
 const hintVisible = ref(false)
 /**
- * True once the viewer has composed something of their own. Capture waits for
- * it: a share of the default sky is not a share of anything.
- */
-const hasInteracted = ref(false)
-/**
  * How much of the interface has been revealed. See `disclosureStages.ts`. It
  * climbs on what the viewer does and, failing that, on time.
  */
@@ -81,6 +76,8 @@ let hintTimer: ReturnType<typeof setTimeout> | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
 let stageTimer: ReturnType<typeof setTimeout> | null = null
 let idleTimer: ReturnType<typeof setTimeout> | null = null
+/** When the idle clock was last restarted, so a drag does not restart it per frame. */
+let lastActivityAt = 0
 /** Object, distance and landscape changes so far; the ladder counts them. */
 let changeCount = 0
 /** Identifies the newest shot, so a superseded one cannot clear the lock. */
@@ -145,7 +142,6 @@ const chromeIdle = computed(() =>
 )
 
 function recordInteraction(kind: 'object' | 'distance' | 'viewpoint' | 'encounter'): void {
-  hasInteracted.value = true
   analytics.interaction(kind)
   if (kind !== 'encounter') changeCount += 1
   setStage(stageForAction(kind === 'encounter' ? 'encounter' : 'change', changeCount))
@@ -171,8 +167,17 @@ function scheduleStageFallback(): void {
 /** Any pointer or key activity. Restores the chrome and restarts the idle clock. */
 function noteActivity(): void {
   idle.value = false
+  // `pointermove` calls this once a frame while the sky is being dragged, and
+  // each call is a clearTimeout/setTimeout pair. The idle clock runs for a
+  // minute, so restarting it at most once a second changes nothing.
+  const now = performance.now()
+  if (idleTimer && now - lastActivityAt < 1_000) return
+  lastActivityAt = now
   if (idleTimer) clearTimeout(idleTimer)
-  idleTimer = setTimeout(() => { idle.value = true }, IDLE_AFTER_MS)
+  idleTimer = setTimeout(() => {
+    idleTimer = null
+    idle.value = true
+  }, IDLE_AFTER_MS)
 }
 
 /** The viewer has taken hold of the sky: a drag, a tap, an arrow key. */
@@ -426,14 +431,23 @@ async function selectViewpoint(viewpointId: ViewpointId): Promise<void> {
   }
 }
 
+// One layer at a time. The discovery note closes with them because it owns
+// Escape while it is open, and a note left behind a panel eats the key that
+// was meant to close the panel.
 function toggleObjectBrowser(force?: boolean): void {
   objectBrowserOpen.value = force ?? !objectBrowserOpen.value
-  if (objectBrowserOpen.value) moreOpen.value = false
+  if (objectBrowserOpen.value) {
+    moreOpen.value = false
+    discoveryOpen.value = false
+  }
 }
 
 function toggleMore(force?: boolean): void {
   moreOpen.value = force ?? !moreOpen.value
-  if (moreOpen.value) objectBrowserOpen.value = false
+  if (moreOpen.value) {
+    objectBrowserOpen.value = false
+    discoveryOpen.value = false
+  }
 }
 
 function openDiscovery(): void {
@@ -653,8 +667,18 @@ function dispose(): void {
   if (noticeTimer) clearTimeout(noticeTimer)
   if (stageTimer) clearTimeout(stageTimer)
   if (idleTimer) clearTimeout(idleTimer)
+  hintTimer = null
   stageTimer = null
   idleTimer = null
+  // The state is a module singleton, so a client-side navigation remounts on
+  // whatever the last page left here. A viewer arriving on a fresh mount has
+  // made no changes and has nothing open.
+  changeCount = 0
+  hintVisible.value = false
+  objectBrowserOpen.value = false
+  moreOpen.value = false
+  discoveryOpen.value = false
+  idle.value = false
   controller.value?.dispose()
   controller.value = null
   exitEncounter(false)
@@ -697,7 +721,6 @@ export function usePerigee() {
     capabilityError: readonly(capabilityError),
     notice: readonly(notice),
     hintVisible: readonly(hintVisible),
-    hasInteracted: readonly(hasInteracted),
     initialize,
     retry,
     selectObject,

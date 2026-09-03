@@ -38,10 +38,7 @@ const shortcuts = [
 
 watch(moreOpen, (open) => {
   if (open) {
-    analytics.track('featured_encounter_open', {
-      month: currentFeature?.month ?? '',
-      hasCurrent: Boolean(currentFeature),
-    })
+    analytics.track('more_open', { hasCurrent: Boolean(currentFeature) })
     nextTick(() => root.value?.querySelector<HTMLButtonElement>('.more-item')?.focus({ preventScroll: true }))
   }
 })

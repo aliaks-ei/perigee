@@ -90,15 +90,16 @@ async function selectObjectAndRestoreFocus(objectId: SkyObjectId): Promise<void>
     aria-label="Celestial objects"
     :aria-busy="busy"
   >
-    <div class="browser-track flex items-start lt-md:overflow-x-auto lt-md:overscroll-x-contain">
+    <div role="presentation" class="browser-track flex items-start lt-md:overflow-x-auto lt-md:overscroll-x-contain">
       <section
         v-for="group in groups"
         :key="group.id"
+        role="group"
         class="browser-group flex shrink-0 flex-col"
         :aria-label="group.label"
       >
-        <p class="browser-kicker block font-semibold uppercase">{{ group.label }}</p>
-        <div class="group-tiles flex items-start">
+        <p class="browser-kicker block font-semibold uppercase" aria-hidden="true">{{ group.label }}</p>
+        <div role="presentation" class="group-tiles flex items-start">
           <button
             v-for="object in group.objects"
             :key="object.id"
