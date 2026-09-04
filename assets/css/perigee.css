@@ -1651,6 +1651,51 @@
   color: var(--ink-primary);
 }
 
+/* The home route's prerendered body. It is longer than an encounter's, and it
+   carries the site's only internal link graph, so it is laid out as a readable
+   document rather than a single centred block. */
+.prerender-landing {
+  padding: 12vh 24px 18vh;
+  line-height: 1.65;
+}
+
+.prerender-landing h2 {
+  margin: 38px 0 10px;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+
+.prerender-landing p {
+  margin: 0 0 14px;
+}
+
+.prerender-lede {
+  font-size: 17px;
+  color: var(--ink-primary);
+}
+
+.prerender-list li {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.prerender-meta {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+
+.prerender-formula {
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--ink-primary);
+}
+
 /* ==========================================================================
    Ambient states
    ========================================================================== */

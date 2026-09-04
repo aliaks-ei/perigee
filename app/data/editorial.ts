@@ -48,6 +48,41 @@ export const scienceSources: ScienceSource[] = [
     url: 'https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-31/',
     reviewedOn: '2026-09-01',
   },
+  {
+    id: 'nasa-mars-facts',
+    title: 'Mars: Facts',
+    publisher: 'NASA Science',
+    url: 'https://science.nasa.gov/mars/facts/',
+    reviewedOn: '2026-09-04',
+  },
+  {
+    id: 'nasa-jupiter-facts',
+    title: 'Jupiter: Facts',
+    publisher: 'NASA Science',
+    url: 'https://science.nasa.gov/jupiter/jupiter-facts/',
+    reviewedOn: '2026-09-04',
+  },
+  {
+    id: 'nasa-neptune-facts',
+    title: 'Neptune: Facts',
+    publisher: 'NASA Science',
+    url: 'https://science.nasa.gov/neptune/neptune-facts/',
+    reviewedOn: '2026-09-04',
+  },
+  {
+    id: 'simbad-sirius',
+    title: 'SIMBAD basic query: Sirius (alpha Canis Majoris)',
+    publisher: 'Centre de Données astronomiques de Strasbourg',
+    url: 'https://simbad.u-strasbg.fr/simbad/sim-basic?Ident=Sirius',
+    reviewedOn: '2026-09-04',
+  },
+  {
+    id: 'simbad-rigel',
+    title: 'SIMBAD basic query: Rigel (beta Orionis)',
+    publisher: 'Centre de Données astronomiques de Strasbourg',
+    url: 'https://simbad.u-strasbg.fr/simbad/sim-basic?Ident=Rigel',
+    reviewedOn: '2026-09-04',
+  },
 ]
 
 /**
