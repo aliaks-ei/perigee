@@ -26,5 +26,6 @@ const emit = defineEmits<{ retry: [] }>()
     >
       Retry
     </button>
+    <PerigeeCreatorLinks placement="fallback" />
   </section>
 </template>

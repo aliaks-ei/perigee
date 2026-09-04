@@ -169,6 +169,8 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
             </ul>
           </div>
 
+          <PerigeeCreatorLinks placement="more" />
+
         </section>
       </Transition>
 

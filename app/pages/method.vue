@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { creatorSchema } from '~/data/creator'
 import { scienceSources } from '~/data/editorial'
 import { absoluteUrl, citationsForSourceIds, SITE_NAME } from '~/utils/seo'
 
@@ -46,7 +47,7 @@ useHead({
             description,
             inLanguage: 'en',
             isAccessibleForFree: true,
-            author: { '@type': 'Person', name: 'Aliaksei Mazheika' },
+            author: creatorSchema,
             publisher: { '@type': 'Organization', name: SITE_NAME },
             citation: citationsForSourceIds(sources.map((source) => source.id)),
           },
@@ -164,5 +165,7 @@ useHead({
     <p>
       <NuxtLink to="/">Explore the full Perigee sky</NuxtLink>
     </p>
+
+    <PerigeeCreatorLinks placement="footer" />
   </main>
 </template>

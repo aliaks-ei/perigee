@@ -305,6 +305,61 @@
   margin-bottom: 2px;
 }
 
+/* Contact belongs with the other secondary controls, but the name and links
+   read as attribution rather than another scene action. */
+.creator-name {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.creator-link-list {
+  margin-top: 2px;
+  gap: 0 14px;
+}
+
+.creator-link {
+  min-height: 36px;
+  color: var(--ink-label);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-underline-offset: 4px;
+}
+
+.creator-links--footer {
+  margin-top: 42px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+.creator-links--footer .creator-name {
+  color: var(--ink-primary);
+}
+
+.creator-links--fallback {
+  margin-top: 28px;
+}
+
+.creator-links--error {
+  margin-top: 7px;
+}
+
+.creator-links--error .creator-name {
+  display: none;
+}
+
+.creator-links--error .creator-link-list {
+  gap: 0 12px;
+}
+
+.creator-links--error .creator-link {
+  min-height: 28px;
+  color: var(--ink-label);
+  font-size: 10px;
+}
+
 .feature-archive {
   margin: 0;
   padding: 0;
@@ -1635,10 +1690,12 @@
 /* The prerendered body of a curated encounter route. Only a crawler or a
    visitor without JavaScript ever sees it. */
 .prerender-shell {
+  height: 100%;
   max-width: 46rem;
   margin: 0 auto;
   padding: 18vh 24px;
   color: var(--ink-secondary);
+  overflow-y: auto;
 }
 
 .prerender-shell h1 {
@@ -2534,6 +2591,14 @@
   .more-close {
     width: 44px;
     height: 44px;
+  }
+
+  .creator-link {
+    min-height: 44px;
+  }
+
+  .creator-links--error .creator-link {
+    min-height: 36px;
   }
 
   .perigee-shell.chrome-idle .perigee-header {

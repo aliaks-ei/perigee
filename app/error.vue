@@ -83,9 +83,10 @@ async function leaveError(path: string): Promise<void> {
         </nav>
       </section>
 
-      <p class="error-signoff font-semibold uppercase text-ink-quiet">
-        Impossible skies · honest scale
-      </p>
+      <div class="error-signoff">
+        <p class="m-0 font-semibold uppercase text-ink-quiet">Impossible skies · honest scale</p>
+        <PerigeeCreatorLinks placement="error" />
+      </div>
     </div>
   </main>
 </template>

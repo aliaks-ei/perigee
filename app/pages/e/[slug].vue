@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { creatorSchema } from '~/data/creator'
 import { encountersBySlug } from '~/data/editorial'
 import { skyObjectsById } from '~/data/objects'
 import {
@@ -65,7 +66,7 @@ useHead({
             image: card,
             inLanguage: 'en',
             isAccessibleForFree: true,
-            author: { '@type': 'Person', name: 'Aliaksei Mazheika' },
+            author: creatorSchema,
             publisher: { '@type': 'Organization', name: SITE_NAME },
             about: subjects.map((name) => ({ '@type': 'Thing', name })),
             citation: citations,
@@ -117,6 +118,7 @@ useHead({
         <p class="mt-6">
           <NuxtLink to="/">Explore the full Perigee sky</NuxtLink>
         </p>
+        <PerigeeCreatorLinks placement="footer" />
       </main>
     </template>
   </ClientOnly>
