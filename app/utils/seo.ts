@@ -23,12 +23,11 @@ export const SITE_DESCRIPTION =
   + 'and real distances.'
 
 /**
- * The fallback social card, used by any route without one of its own.
- *
- * This is currently the Saturn encounter capture, which is the right size and
- * the signature image, but a dedicated 1200x630 home card should replace it.
+ * The site-wide social card, used by the home route and by any route without
+ * one of its own. Captured from the live scene and carrying no caption, unlike
+ * the per-object cards.
  */
-export const DEFAULT_SOCIAL_CARD = '/assets/encounters/saturn-at-the-moons-distance.jpg'
+export const DEFAULT_SOCIAL_CARD = '/assets/social/perigee.jpg'
 
 /**
  * Every route rendered to real HTML at build time. Nothing in the running app
