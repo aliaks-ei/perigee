@@ -864,11 +864,12 @@
   height: 0;
   filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.8));
   transition: opacity var(--speed-base) ease;
+  animation: interface-rise 420ms var(--ease-out) backwards;
 }
 
 .locator-arrow {
-  left: 7px;
-  top: -38px;
+  left: -2px;
+  top: -34px;
   width: 76px;
   height: 40px;
   overflow: visible;
@@ -904,7 +905,7 @@
 }
 
 .celestial-locator.align-left .locator-arrow {
-  right: 7px;
+  right: -2px;
   left: auto;
   transform: scaleX(-1);
 }
@@ -1177,9 +1178,8 @@
 
 /* --- Ladder dots ----------------------------------------------------------
 
-   Five steps, the current one filled in the object's accent, the steps behind
-   it lit a little. Visible before the sheet opens, so "closer" and "farther"
-   exist as a shape and the arrow keys have something to map onto. */
+   Five steps run closest to farthest. Their shrinking silhouette makes the
+   direction readable before a label appears; selection carries the accent. */
 .trigger-ladder {
   gap: 0;
   padding: 0 6px;
@@ -1210,6 +1210,7 @@
 }
 
 .trigger-stepper .stepper-position {
+  width: 58px;
   background: color-mix(in srgb, var(--accent-object) 9%, rgba(255, 255, 255, 0.035));
   color: var(--ink-secondary);
   font-size: 10px;
@@ -1262,8 +1263,8 @@
 
 .ladder-step i {
   display: block;
-  width: 6px;
-  height: 6px;
+  width: var(--step-size, 6px);
+  height: var(--step-size, 6px);
   border-radius: 50%;
   background: currentcolor;
   box-shadow: 0 0 0 1px transparent;
@@ -1371,7 +1372,16 @@
   font-weight: 600;
 }
 
-/* What the selected step means, in words, beside the segmented control. */
+.distance-option-meaning {
+  color: var(--ink-label);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+/* Exact scale stays secondary beside the approachable preset name. */
 .distance-meaning {
   margin: 0;
   justify-self: end;
@@ -2473,7 +2483,7 @@
 
   .control-panel .distance-options {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 6px;
     padding: 0;
     overflow: visible;
@@ -2489,13 +2499,10 @@
 
   .distance-options button {
     min-width: 0;
-    padding: 0 10px;
+    min-height: 56px;
+    padding: 6px 12px;
     border: 1px solid var(--hairline);
     font-size: 12px;
-  }
-
-  .distance-options button:last-child {
-    grid-column: 1 / -1;
   }
 
   .distance-options button.selected {
@@ -2535,7 +2542,7 @@
     left: 36px;
     top: -50px;
     max-width: 126px;
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .celestial-locator.align-left .locator-label {

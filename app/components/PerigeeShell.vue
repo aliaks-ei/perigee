@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from '~/utils/seo'
+import { formatDegrees } from '~/utils/formatters'
 
 /**
  * The whole experience. It lives in a component rather than in `app.vue` so the
@@ -23,6 +24,7 @@ const {
   angularDiameter,
   loading,
   loadingProgress,
+  busy,
   capabilityError,
   objectBrowserOpen,
   moreOpen,
@@ -181,6 +183,12 @@ onBeforeUnmount(() => {
       <PerigeeObjectIdentity v-if="encounterStatus === 'idle'" />
     </Transition>
     <PerigeeEncounterOverlay />
+    <PerigeeCelestialLocator
+      v-if="encounterStatus === 'idle' && !loading && !capabilityError"
+      :active="!busy"
+      :label="`${currentObject.label} · ${currentPreset.label}`"
+      :max-diameter-pixels="6"
+    />
     <PerigeeDiscoveryNote />
     <PerigeeCaptureCard />
     <PerigeeTonightsSky v-if="!loading && !capabilityError" />
@@ -208,7 +216,7 @@ onBeforeUnmount(() => {
     </Transition>
 
     <div class="selection-alternative sr-only" aria-live="polite">
-      {{ currentObject.label }}, {{ currentPreset.label }}, {{ angularDiameter.toFixed(2) }} degrees across the sky.
+      {{ currentObject.label }}, {{ currentPreset.label }}, {{ formatDegrees(angularDiameter) }} across the sky.
     </div>
 
     <Transition name="fade">

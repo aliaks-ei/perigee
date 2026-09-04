@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { PhPlay, PhWarningDiamond } from '@phosphor-icons/vue'
-import { formatAngularDiameter, formatDistance } from '~/utils/formatters'
+import { formatAngularDiameter } from '~/utils/formatters'
 
 /**
  * The name of what is in the sky, and the one thing to do about it.
@@ -53,7 +53,7 @@ async function open(): Promise<void> {
         <p v-if="revealed('orient')" class="object-metadata text-shadow flex items-center gap-3">
           <span class="metadata-lead shrink-0">{{ formatAngularDiameter(angularDiameter) }}</span>
           <span aria-hidden="true" class="metadata-rule shrink-0" />
-          <span class="shrink-0">{{ formatDistance(currentPreset.distanceKm) }}</span>
+          <span class="shrink-0">{{ currentPreset.label }}</span>
           <span aria-hidden="true" class="metadata-rule metadata-detail-rule shrink-0" />
           <span class="metadata-detail">{{ currentPreset.metadataLabel ?? currentPreset.label }}</span>
         </p>

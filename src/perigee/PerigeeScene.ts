@@ -38,11 +38,13 @@ import {
   angularDiameterRadians,
   renderRadiusForAngularDiameter,
 } from './math/angularSize'
+import { backgroundGlowVisibility, stellarAppearanceForDiameter } from './math/stellarAppearance'
 import { createPlanetMaterial, type PlanetMaterialSet } from './materials/PlanetMaterial'
 import { createRingMaterial, type RingMaterialSet } from './materials/RingMaterial'
 import { createGalaxyMaterial, type GalaxyMaterialSet } from './materials/GalaxyMaterial'
 import { createStellarMaterial, type StellarMaterialSet } from './materials/StellarMaterial'
-import { createGlareMaterial } from './materials/GlareMaterial'
+import { createGlareMaterial, type GlareMaterialSet } from './materials/GlareMaterial'
+import { createStarPointMaterial, type StarPointMaterialSet } from './materials/StarPointMaterial'
 import { FilmEffect } from './effects/FilmEffect'
 import { CameraRig } from './CameraRig'
 import { createSkyScene, type SkySceneBundle } from './scenes/createSkyScene'
@@ -107,6 +109,7 @@ let sharedSphere: SphereGeometry | null = null
 let sharedRing: RingGeometry | null = null
 let sharedGalaxyPlane: PlaneGeometry | null = null
 let sharedGlarePlane: PlaneGeometry | null = null
+let sharedStarPointPlane: PlaneGeometry | null = null
 
 function sphereGeometry(): SphereGeometry {
   sharedSphere ??= new SphereGeometry(1, 192, 128)
@@ -134,6 +137,11 @@ function galaxyPlaneGeometry(): PlaneGeometry {
 function glarePlaneGeometry(): PlaneGeometry {
   sharedGlarePlane ??= new PlaneGeometry(6, 6)
   return sharedGlarePlane
+}
+
+function starPointPlaneGeometry(): PlaneGeometry {
+  sharedStarPointPlane ??= new PlaneGeometry(1, 1)
+  return sharedStarPointPlane
 }
 
 /**
@@ -180,6 +188,10 @@ interface HeroBundle {
   galaxy: GalaxyMaterialSet | null
   /** The additive halo behind a star; a billboard that tracks the camera. */
   glare: Mesh | null
+  glareSet: GlareMaterialSet | null
+  /** Compact optical point used only while the physical stellar disc is unresolved. */
+  point: Mesh | null
+  pointSet: StarPointMaterialSet | null
   /**
    * Radians per second of visible spin. A galaxy turns once every few hundred
    * million years, so rendering any rotation on it would be invention.
@@ -200,6 +212,9 @@ export class PerigeeScene implements PerigeeController {
   private heroStellar: StellarMaterialSet | null = null
   private heroGalaxy: GalaxyMaterialSet | null = null
   private heroGlare: Mesh | null = null
+  private heroGlareSet: GlareMaterialSet | null = null
+  private heroPoint: Mesh | null = null
+  private heroPointSet: StarPointMaterialSet | null = null
   private heroSpinRate = 0
   /** Roll of a galaxy billboard about the view axis: its position angle. */
   private heroGalaxyRoll = 0
@@ -271,7 +286,7 @@ export class PerigeeScene implements PerigeeController {
     const viewpointId = options.selection?.viewpointId ?? 'rooftop'
 
     this.currentViewpointId = viewpointId
-    this.sky = createSkyScene(this.quality.current)
+    this.sky = createSkyScene(this.quality.current, this.reducedMotion)
 
     const skyPass = new RenderPass(this.sky.scene, this.camera)
 
@@ -354,8 +369,8 @@ export class PerigeeScene implements PerigeeController {
 
     const nextHero = built.group
     const finalRadius = this.radiusFor(definition, preset.distanceKm)
-    const visibleRadius = definition.kind === 'star' ? Math.max(finalRadius, 0.55) : finalRadius
-    built.stellar?.setProximity(proximityFor(visibleRadius))
+    const visibleRadius = finalRadius
+    this.applyStarAppearance(visibleRadius, nextHero, built.stellar, built.glareSet, built.point, built.pointSet)
     nextHero.position.copy(this.heroPositionFor(this.currentViewpointId))
     nextHero.scale.setScalar(visibleRadius * (this.reducedMotion ? 1 : 0.94))
     nextHero.userData.radius = visibleRadius
@@ -371,6 +386,9 @@ export class PerigeeScene implements PerigeeController {
     this.heroStellar = built.stellar
     this.heroGalaxy = built.galaxy
     this.heroGlare = built.glare
+    this.heroGlareSet = built.glareSet
+    this.heroPoint = built.point
+    this.heroPointSet = built.pointSet
     this.heroSpinRate = built.spinRate
     this.heroTimeUniforms = built.animated
     this.currentObjectId = objectId
@@ -460,7 +478,7 @@ export class PerigeeScene implements PerigeeController {
     this.currentPresetId = presetId
     const hero = this.hero
     const radius = this.radiusFor(definition, preset.distanceKm)
-    const visibleRadius = definition.kind === 'star' ? Math.max(radius, 0.55) : radius
+    const visibleRadius = radius
     const state = { logRadius: Math.log(Math.max(hero.userData.radius as number, 0.0001)) }
     const duration = this.reducedMotion ? 0.2 : 0.9
     const stellar = this.heroStellar
@@ -473,12 +491,29 @@ export class PerigeeScene implements PerigeeController {
         onUpdate: () => {
           const radius = Math.exp(state.logRadius)
           hero.scale.setScalar(radius)
-          stellar?.setProximity(proximityFor(radius))
+          hero.userData.radius = radius
+          this.applyStarAppearance(
+            radius,
+            hero,
+            stellar,
+            this.heroGlareSet,
+            this.heroPoint,
+            this.heroPointSet,
+          )
+          this.applyGlow(definition, 1)
         },
       })
     })
     hero.userData.radius = visibleRadius
-    stellar?.setProximity(proximityFor(visibleRadius))
+    this.applyStarAppearance(
+      visibleRadius,
+      hero,
+      stellar,
+      this.heroGlareSet,
+      this.heroPoint,
+      this.heroPointSet,
+    )
+    this.applyGlow(definition, 1)
   }
 
   async setViewpoint(viewpointId: ViewpointId): Promise<void> {
@@ -489,12 +524,13 @@ export class PerigeeScene implements PerigeeController {
     await this.sky.setViewpoint(viewpointId)
   }
 
-  getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null {
+  getObjectScreenPosition(): { x: number, y: number, onScreen: boolean, diameterPixels: number } | null {
     if (!this.hero) return null
     const projected = this.scratchVector.copy(this.hero.position).project(this.camera)
     return {
       x: (projected.x + 1) / 2,
       y: (1 - projected.y) / 2,
+      diameterPixels: this.projectedDiameterPixels(this.hero.userData.radius as number),
       onScreen: projected.z >= -1 && projected.z <= 1
         && projected.x >= -1 && projected.x <= 1
         && projected.y >= -1 && projected.y <= 1,
@@ -544,7 +580,11 @@ export class PerigeeScene implements PerigeeController {
     this.resize(width, height, window.devicePixelRatio)
     if (this.composer) this.composer.multisampling = tier === 'high' ? 4 : 0
     const kind = skyObjectsById[this.currentObjectId].kind
-    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind)
+    const radius = this.hero?.userData.radius as number | undefined
+    const bloomVisibility = kind === 'star'
+      ? backgroundGlowVisibility(this.projectedDiameterPixels(radius ?? 0))
+      : 1
+    if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind) * bloomVisibility
     // A star or a galaxy is the only thing bright enough to bloom. The safe
     // tier drops the chain altogether, and its anti-aliasing with it.
     if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && (kind === 'star' || kind === 'galaxy')
@@ -605,10 +645,12 @@ export class PerigeeScene implements PerigeeController {
     sharedRing?.dispose()
     sharedGalaxyPlane?.dispose()
     sharedGlarePlane?.dispose()
+    sharedStarPointPlane?.dispose()
     sharedSphere = null
     sharedRing = null
     sharedGalaxyPlane = null
     sharedGlarePlane = null
+    sharedStarPointPlane = null
     disposeTextures()
     this.composer?.dispose()
     this.renderer?.dispose()
@@ -619,6 +661,9 @@ export class PerigeeScene implements PerigeeController {
     this.heroStellar = null
     this.heroGalaxy = null
     this.heroGlare = null
+    this.heroGlareSet = null
+    this.heroPoint = null
+    this.heroPointSet = null
     this.heroTimeUniforms = []
     this.composer = null
     this.renderer = null
@@ -704,7 +749,20 @@ export class PerigeeScene implements PerigeeController {
       const surface = new Mesh(galaxyPlaneGeometry(), galaxy.material)
       this.heroGalaxyRoll = (disc.positionAngleDegrees * Math.PI) / 180
       group.add(surface)
-      return { group, surface, planet: null, ring: null, stellar: null, galaxy, glare: null, spinRate: 0, animated: [] }
+      return {
+        group,
+        surface,
+        planet: null,
+        ring: null,
+        stellar: null,
+        galaxy,
+        glare: null,
+        glareSet: null,
+        point: null,
+        pointSet: null,
+        spinRate: 0,
+        animated: [],
+      }
     }
 
     if (definition.kind === 'star') {
@@ -717,8 +775,12 @@ export class PerigeeScene implements PerigeeController {
       const glareSet = createGlareMaterial(definition.shot.environmentTint ?? definition.shot.accent, 1)
       const glare = new Mesh(glarePlaneGeometry(), glareSet.material)
       glare.renderOrder = 1
+      const pointSet = createStarPointMaterial(definition.shot.environmentTint ?? definition.shot.accent)
+      const point = new Mesh(starPointPlaneGeometry(), pointSet.material)
+      point.renderOrder = 3
       group.add(glare)
       group.add(surface)
+      group.add(point)
       group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
       return {
         group,
@@ -728,8 +790,15 @@ export class PerigeeScene implements PerigeeController {
         stellar,
         galaxy: null,
         glare,
+        glareSet,
+        point,
+        pointSet,
         spinRate: 0.018,
-        animated: [stellar.material.uniforms.uTime!, glareSet.material.uniforms.uTime!],
+        animated: [
+          stellar.material.uniforms.uTime!,
+          glareSet.material.uniforms.uTime!,
+          pointSet.material.uniforms.uTime!,
+        ],
       }
     }
 
@@ -758,7 +827,20 @@ export class PerigeeScene implements PerigeeController {
     }
 
     group.rotation.set(0.08, definition.shot.objectYaw, -0.05)
-    return { group, surface, planet, ring, stellar: null, galaxy: null, glare: null, spinRate: 0.018, animated: [] }
+    return {
+      group,
+      surface,
+      planet,
+      ring,
+      stellar: null,
+      galaxy: null,
+      glare: null,
+      glareSet: null,
+      point: null,
+      pointSet: null,
+      spinRate: 0.018,
+      animated: [],
+    }
   }
 
   private radiusFor(definition: SkyObjectDefinition, distanceKm: number): number {
@@ -767,6 +849,38 @@ export class PerigeeScene implements PerigeeController {
       theta,
       this.heroPositionFor(this.currentViewpointId).length(),
     )
+  }
+
+  private worldDiameterForPixels(pixels: number): number {
+    const viewportHeight = this.renderer?.domElement.clientHeight || window.innerHeight || 1
+    const distance = this.heroPositionFor(this.currentViewpointId).length()
+    const visibleHeight = 2 * distance * Math.tan((this.camera.fov * Math.PI) / 360)
+    return pixels * visibleHeight / viewportHeight
+  }
+
+  private projectedDiameterPixels(radius: number): number {
+    return (radius * 2) / Math.max(this.worldDiameterForPixels(1), 0.000001)
+  }
+
+  private applyStarAppearance(
+    radius: number,
+    hero: Group | null,
+    stellar: StellarMaterialSet | null,
+    glare: GlareMaterialSet | null,
+    point: Mesh | null,
+    pointSet: StarPointMaterialSet | null,
+  ): void {
+    if (!hero || !stellar || !point || !pointSet) return
+    const pixels = this.projectedDiameterPixels(radius)
+    const appearance = stellarAppearanceForDiameter(pixels)
+    const pointDiameter = this.worldDiameterForPixels(appearance.pointDiameterPixels)
+    point.scale.setScalar(pointDiameter / Math.max(radius, 0.000001))
+    pointSet.setVisibility(1 - appearance.resolved)
+    pointSet.setStrength(appearance.pointStrength)
+    // A disc smaller than the locator threshold must leave no surrounding
+    // light at all. The point above is its only visible representation.
+    glare?.setVisibility(appearance.resolved * backgroundGlowVisibility(pixels))
+    stellar.setProximity(proximityFor(radius))
   }
 
   private heroPositionFor(viewpointId: ViewpointId): Vector3 {
@@ -781,11 +895,19 @@ export class PerigeeScene implements PerigeeController {
     const preset = definition.presets.find((candidate) => candidate.id === this.currentPresetId)
       ?? definition.presets[0]!
     const radius = this.radiusFor(definition, preset.distanceKm)
-    const visibleRadius = definition.kind === 'star' ? Math.max(radius, 0.55) : radius
+    const visibleRadius = radius
     this.hero.position.copy(this.heroPositionFor(this.currentViewpointId))
     this.hero.scale.setScalar(visibleRadius)
     this.hero.userData.radius = visibleRadius
-    this.heroStellar?.setProximity(proximityFor(visibleRadius))
+    this.applyStarAppearance(
+      visibleRadius,
+      this.hero,
+      this.heroStellar,
+      this.heroGlareSet,
+      this.heroPoint,
+      this.heroPointSet,
+    )
+    this.applyGlow(definition, 1)
   }
 
   private applyViewpointCamera(): void {
@@ -816,19 +938,28 @@ export class PerigeeScene implements PerigeeController {
     const shot = definition.shot
     const kind = definition.kind
     const emissive = kind === 'star' || kind === 'galaxy'
+    const radius = this.hero?.userData.radius as number | undefined
+    const diameterPixels = this.projectedDiameterPixels(radius ?? 0)
+    const resolvedLight = backgroundGlowVisibility(diameterPixels)
+    const stellarLight = kind === 'star'
+      ? stellarAppearanceForDiameter(diameterPixels).illumination
+      : resolvedLight
+    if (kind === 'star' && this.bloom) {
+      this.bloom.intensity = this.bloomIntensity(this.quality.current, kind) * resolvedLight * scale
+    }
     this.sky.setGlow(
       emissive ? (shot.environmentTint ?? shot.accent) : '#ff9550',
       // A galaxy is self-luminous but diffuse. It throws a fraction of the
       // ground light a close star does, so it gets its own strength rather
       // than a star's. The star's lift is held back so the landscape keeps
       // its silhouette against the halo instead of washing to grey-blue.
-      (kind === 'star' ? 0.09 : kind === 'galaxy' ? 0.05 : 0.035) * scale,
+      (kind === 'star' ? 0.09 * stellarLight : kind === 'galaxy' ? 0.05 : 0.035) * scale,
       // The halo the backdrop paints around the hero. A star floods the sky
       // in its own colour; a sunlit planet only lifts the air near it a
       // little, in its own reflected tint.
       {
         color: emissive ? (shot.environmentTint ?? shot.accent) : shot.accent,
-        strength: (kind === 'star' ? 0.62 : kind === 'galaxy' ? 0.14 : 0.035) * scale,
+        strength: (kind === 'star' ? 0.62 * stellarLight : kind === 'galaxy' ? 0.14 : 0.035) * scale,
       },
     )
   }
@@ -842,7 +973,7 @@ export class PerigeeScene implements PerigeeController {
    */
   private bloomIntensity(tier: QualityTier, kind: SkyObjectDefinition['kind']): number {
     const base = tier === 'safe' ? 0.32 : tier === 'balanced' ? 0.42 : 0.52
-    if (kind === 'star') return base * 2.2
+    if (kind === 'star') return base * 1.45
     if (kind === 'galaxy') return base * 1.15
     return base
   }
@@ -898,6 +1029,9 @@ export class PerigeeScene implements PerigeeController {
       // group's rotation out before it takes the camera's on.
       if (this.heroGlare) {
         this.heroGlare.quaternion.copy(this.hero.quaternion).invert().multiply(this.camera.quaternion)
+      }
+      if (this.heroPoint) {
+        this.heroPoint.quaternion.copy(this.hero.quaternion).invert().multiply(this.camera.quaternion)
       }
       this.hero.updateMatrixWorld()
     }

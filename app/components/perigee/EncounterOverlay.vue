@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { PhArrowRight, PhPause, PhPlay, PhX } from '@phosphor-icons/vue'
 import { scienceSources } from '~/data/editorial'
 import { analytics } from '~/utils/analytics'
@@ -21,14 +21,11 @@ const {
   toggleEncounterPause,
   replayEncounter,
   exitEncounter,
-  getObjectScreenPosition,
-  subscribeFrame,
 } = usePerigee()
 const { capture, capturing } = useCapture()
 
 const overlay = ref<HTMLElement | null>(null)
 const observation = ref<HTMLElement | null>(null)
-const locator = ref<HTMLElement | null>(null)
 const sourceOpen = ref(false)
 const sources = computed(() => currentDiscovery.value?.sourceIds.map((id) =>
   scienceSources.find((source) => source.id === id),
@@ -45,9 +42,6 @@ const showLocator = computed(() => Boolean(
   && !encounterTransitioning.value
   && encounterStatus.value === 'active',
 ))
-let unsubscribeLocator: (() => void) | null = null
-let locatorX = -1
-let locatorY = -1
 
 watch(encounterStatus, async () => {
   sourceOpen.value = false
@@ -62,41 +56,6 @@ watch(encounterBeatRevealed, async (revealed) => {
   await nextTick()
   observation.value?.focus({ preventScroll: true })
 })
-
-watch(showLocator, async (show) => {
-  unsubscribeLocator?.()
-  unsubscribeLocator = null
-  if (!show) return
-  await nextTick()
-  locatorX = -1
-  locatorY = -1
-  updateLocator()
-  // Driven by the scene's own frame rather than a second animation loop, so
-  // the style write lands once per rendered frame and only when it moved.
-  unsubscribeLocator = subscribeFrame(updateLocator)
-})
-
-onBeforeUnmount(() => {
-  unsubscribeLocator?.()
-  unsubscribeLocator = null
-})
-
-function updateLocator(): void {
-  const element = locator.value
-  const point = getObjectScreenPosition()
-  if (!element || !point) return
-  const x = Math.min(Math.max(point.x, 0.04), 0.96)
-  const y = Math.min(Math.max(point.y, 0.06), 0.78)
-  // A style write forces a style recalculation; skip it under a pixel of movement.
-  const threshold = 1 / Math.max(window.innerWidth, 1)
-  if (Math.abs(x - locatorX) < threshold && Math.abs(y - locatorY) < threshold) return
-  locatorX = x
-  locatorY = y
-  element.style.setProperty('--locator-x', `${x * 100}%`)
-  element.style.setProperty('--locator-y', `${y * 100}%`)
-  element.classList.toggle('off-screen', !point.onScreen)
-  element.classList.toggle('align-left', x > 0.72)
-}
 
 function leaveEncounter(): void {
   exitEncounter()
@@ -147,18 +106,10 @@ function toggleSource(): void {
         Exit encounter
       </button>
 
-      <div
-        v-if="showLocator"
-        ref="locator"
-        class="celestial-locator pointer-events-none absolute z-locator"
-        aria-hidden="true"
-      >
-        <svg class="locator-arrow absolute block" viewBox="0 0 76 40" aria-hidden="true">
-          <path d="M70 5C48 8 27 18 9 33" />
-          <path d="M10 23L9 33L20 32" />
-        </svg>
-        <span class="locator-label text-shadow absolute font-semibold uppercase">{{ currentEncounterBeat?.locatorLabel }}</span>
-      </div>
+      <PerigeeCelestialLocator
+        :active="showLocator"
+        :label="currentEncounterBeat?.locatorLabel ?? ''"
+      />
 
       <Transition name="encounter-title" mode="out-in">
         <div

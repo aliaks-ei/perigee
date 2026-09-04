@@ -13,6 +13,8 @@ describe('display formatters', () => {
 
   it('formats apparent diameter as UI copy', () => {
     expect(formatAngularDiameter(20.618)).toBe('20.6° across your sky')
-    expect(formatAngularDiameter(0.051)).toBe('0.05° across your sky')
+    expect(formatAngularDiameter(0.051)).toBe('3.1′ across your sky')
+    expect(formatAngularDiameter(0.001)).toBe('3.6″ across your sky')
+    expect(formatAngularDiameter(0.0000116)).toBe('42 mas across your sky')
   })
 })

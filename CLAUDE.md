@@ -98,8 +98,9 @@ Rendering is a hybrid and the switch is inverted on purpose:
   distance; `renderRadiusForAngularDiameter` converts it to a render radius against the fixed
   `HERO_POSITION` distance. If `HERO_POSITION` changes, the scale math follows automatically — do
   not compensate by hand-scaling objects.
-- Distance ladders: exactly 5 presets per object, unique ids, positive distances. `hazardCopy`
-  belongs only on the star `impossible` preset. Enforced by `tests/preset-ladders.test.ts`.
+- Distance ladders: exactly 5 object-specific presets, ordered closest to farthest with positive,
+  strictly increasing distances. `hazardCopy` belongs only on the star `impossible` preset.
+  Enforced by `tests/preset-ladders.test.ts`.
 - **Nothing is fetched until the listener asks for it, and the context is created and resumed
   inside their gesture.** iOS grants an `AudioContext` nothing that is not claimed synchronously in
   the task the gesture started, so `start()` runs `ensureGraph`, `claimPlaybackOutput` and
