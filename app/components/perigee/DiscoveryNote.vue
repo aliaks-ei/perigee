@@ -34,7 +34,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown, true)
     <aside
       v-if="discoveryOpen && freeDiscovery"
       class="free-discovery pointer-events-auto absolute z-notice"
-      aria-label="About this view"
+      :aria-label="freeDiscovery.prompt ?? 'About this view'"
     >
       <button
         class="discovery-close absolute right-2 top-2 grid h-11 w-11 place-items-center"

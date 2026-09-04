@@ -6,8 +6,9 @@ import { PhSpeakerHigh, PhSpeakerSlash } from '@phosphor-icons/vue'
  * volume beneath it while it is playing. It used to be a lone circle in the
  * corner in the quietest ink, which nobody found.
  *
- * This is the permanent home of the control. `AmbientSoundInvite.vue` is the
- * one-time offer that points a first-time listener at it.
+ * The volume lives only here. The on/off toggle also rests in the header
+ * beside "more" (`SoundToggle.vue`), and the offer to start the music is made
+ * once, on the loading screen.
  */
 const { currentViewpointId } = usePerigee()
 const { status, volume, toggle, setVolume } = useAmbientSound(currentViewpointId)

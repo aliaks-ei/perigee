@@ -172,3 +172,6 @@ a three upgrade leaves it behind (copy the two files from
 
 - The selection lives in the query string (`?object=&distance=&view=`), written with
   `history.replaceState`. `public/_headers` carries the static-host cache rules.
+- A visit with no query string lands on a random frame from `app/data/arrivals.ts` and approaches
+  it from the real distance; `tests/arrival-frames.test.ts` keeps those frames inside the ladders
+  and away from the hazard presets. Shared links and `/e/` routes bypass it.

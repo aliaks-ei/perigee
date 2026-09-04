@@ -461,7 +461,7 @@ export class PerigeeScene implements PerigeeController {
     if (generation === this.generation) this.applyGlow(definition, 1)
   }
 
-  async setDistance(presetId: string): Promise<void> {
+  async setDistance(presetId: string, options?: { duration?: number }): Promise<void> {
     const definition = skyObjectsById[this.currentObjectId]
     const preset = definition.presets.find((candidate) => candidate.id === presetId)
     if (!preset) return
@@ -480,7 +480,7 @@ export class PerigeeScene implements PerigeeController {
     const radius = this.radiusFor(definition, preset.distanceKm)
     const visibleRadius = radius
     const state = { logRadius: Math.log(Math.max(hero.userData.radius as number, 0.0001)) }
-    const duration = this.reducedMotion ? 0.2 : 0.9
+    const duration = this.reducedMotion ? 0.2 : options?.duration ?? 0.9
     const stellar = this.heroStellar
 
     await this.director.replace((timeline) => {

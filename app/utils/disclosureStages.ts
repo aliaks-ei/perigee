@@ -7,8 +7,8 @@
  *    tap or key, or once the viewer has looked for a while.
  * 3. `explore`: the discovery note, the hazard line and the landscape chooser,
  *    after the first change of object, distance or landscape.
- * 4. `deepen`: the guided encounter card and the "more" sheet with sound,
- *    capture, featured skies and shortcuts. The chrome fades when idle.
+ * 4. `deepen`: nothing new to show. The interface is complete, so the chrome
+ *    may now step back when the viewer is idle.
  *
  * The ladder only climbs. A viewer never loses a control they have seen.
  */
@@ -24,7 +24,7 @@ export const STAGE_FALLBACK_MS: Record<Exclude<DisclosureStage, 'deepen'>, numbe
 }
 
 /** Milliseconds without pointer or key activity before the chrome steps back. */
-export const IDLE_AFTER_MS = 6_000
+export const IDLE_AFTER_MS = 15_000
 
 /** How long the scene settles before the drag hint is offered. */
 export const HINT_DELAY_MS = 2_000

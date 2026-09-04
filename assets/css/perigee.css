@@ -72,7 +72,7 @@
 
 /* Once everything has a home, the chrome steps back after a few seconds
    without the pointer or a key, and returns on the next move. The transient
-   layers (discovery note, capture card, tonight's sky) are not chrome and
+   layers (discovery note, capture card) are not chrome and
    stay put. Reduced motion clamps the transition to an instant change. */
 .perigee-header,
 .control-rail,
@@ -85,70 +85,6 @@
 .perigee-shell.chrome-idle .control-rail,
 .perigee-shell.chrome-idle .more-control {
   opacity: 0.1;
-}
-
-/* ==========================================================================
-   Tonight's sky
-   ========================================================================== */
-
-/* The month's featured encounter, offered once as a card at the top right,
-   where the landscape switcher used to be. */
-/* Below More rather than beside it: both want the top-right corner, and the
-   card is the one that can wait. */
-.tonight-card {
-  top: max(calc(clamp(24px, 4.4vh, 46px) + 58px), calc(env(safe-area-inset-top, 0px) + 74px));
-  right: clamp(30px, 3.7vw, 62px);
-  width: min(340px, calc(100vw - 36px));
-  padding: 16px 20px 14px;
-  border-top: 1px solid color-mix(in srgb, var(--accent-object) 52%, var(--hairline));
-  background: linear-gradient(180deg, rgba(3, 8, 15, 0.88), rgba(3, 8, 15, 0.68));
-  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-}
-
-.tonight-kicker {
-  margin: 0 0 8px;
-  color: var(--accent-object);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-}
-
-.tonight-card h2 {
-  margin: 0;
-  font-size: 23px;
-  font-weight: 300;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-}
-
-.tonight-summary {
-  margin: 10px 0 6px;
-  color: var(--ink-secondary);
-  font-size: 12.5px;
-  line-height: 1.55;
-}
-
-.tonight-primary {
-  border-bottom: 1px solid var(--accent-object);
-  color: var(--accent-object);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  transition:
-    color var(--speed-fast) ease,
-    gap var(--speed-base) var(--ease-out);
-}
-
-.tonight-primary:hover,
-.tonight-primary:focus-visible {
-  gap: 14px;
-  color: var(--ink-primary);
-}
-
-.tonight-dismiss {
-  color: var(--ink-tertiary);
-  font-size: 11px;
 }
 
 /* ==========================================================================
@@ -182,6 +118,46 @@
   border-color: color-mix(in srgb, var(--accent-object) 40%, var(--hairline-strong));
   color: var(--ink-primary);
   transform: scale(1.05);
+}
+
+/* The music toggle, the same circle as More beside it. Playing is shown by
+   the accent and a slow pulse behind the note, not by a label. */
+.sound-toggle {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--hairline-strong);
+  background: rgba(3, 8, 15, 0.78);
+  color: var(--ink-secondary);
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease,
+    transform var(--speed-base) var(--ease-out);
+}
+
+.sound-toggle:not(:disabled):hover,
+.sound-toggle:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-object) 40%, var(--hairline-strong));
+  color: var(--ink-primary);
+  transform: scale(1.05);
+}
+
+.sound-toggle.audible {
+  border-color: color-mix(in srgb, var(--accent-object) 55%, var(--hairline-strong));
+  color: var(--accent-object);
+}
+
+.sound-toggle:disabled {
+  opacity: 0.4;
+}
+
+.sound-toggle-pulse {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 50%, transparent);
+  border-radius: inherit;
+  animation: sound-pulse 3.2s ease-out infinite;
+  pointer-events: none;
 }
 
 .more-sheet {
@@ -500,70 +476,12 @@
   letter-spacing: 0.01em;
 }
 
-/* The two contextual actions. Neither has a resting box: over a live render a
+/* The contextual actions. They have no resting box: over a live render a
    bordered pill reads as a second control rail, and there is already one at the
-   bottom of the screen. What marks them instead is weight — an accent play ring
-   on the commitment, a hairline underline on the aside — and a surface that
-   only arrives under the pointer. */
-.encounter-card {
-  min-width: 0;
-  min-height: 44px;
-  max-width: 100%;
-  margin: 0 -12px;
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  color: var(--ink-secondary);
-  transition:
-    color var(--speed-fast) ease,
-    background-color var(--speed-fast) ease;
-}
-
-.encounter-card:hover,
-.encounter-card:focus-visible {
-  background: var(--surface-raised);
-}
-
-.encounter-card-play {
-  width: 30px;
-  height: 30px;
-  border: 1px solid color-mix(in srgb, var(--accent-object) 62%, transparent);
-  background: color-mix(in srgb, var(--accent-object) 8%, transparent);
-  color: var(--accent-object);
-  transition:
-    border-color var(--speed-fast) ease,
-    background-color var(--speed-fast) ease;
-}
-
-.encounter-card:hover .encounter-card-play,
-.encounter-card:focus-visible .encounter-card-play {
-  border-color: var(--accent-object);
-  background: color-mix(in srgb, var(--accent-object) 18%, transparent);
-}
-
-/* Deliberately the same size and tracking as the metadata line's own label, so
-   the two lines sit in the same voice. */
-.encounter-card-kicker {
-  flex: 0 0 auto;
-  color: var(--accent-object);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  white-space: nowrap;
-}
-
-.encounter-card-title {
-  flex: 1 1 auto;
-  min-width: 0;
-  color: var(--ink-primary);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.35;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-/* The aside, one step quieter: no glyph, and an underline that is the whole of
-   its resting affordance. It picks up the object's accent under the pointer. */
-.encounter-invite {
+   bottom of the screen. A hairline underline is the whole of their affordance,
+   and the next-object link carries the accent because it is the one step the
+   block is actually asking for. */
+.identity-link {
   position: relative;
   flex: 0 0 auto;
   min-height: 44px;
@@ -581,20 +499,29 @@
     text-decoration-color var(--speed-fast) ease;
 }
 
-.encounter-invite:hover,
-.encounter-invite:focus-visible {
+.identity-link:hover,
+.identity-link:focus-visible {
   color: var(--ink-primary);
   text-decoration-color: var(--accent-object);
 }
 
-/* A hairline between the two, the same separator the control rail uses, so the
-   row reads as two actions rather than one long sentence. */
-.encounter-card + .encounter-invite {
-  margin-left: 4px;
-  padding-left: 24px;
+.identity-link:disabled {
+  opacity: 0.5;
 }
 
-.encounter-card + .encounter-invite::before {
+.identity-next {
+  color: var(--accent-object);
+  text-decoration-color: color-mix(in srgb, var(--accent-object) 45%, transparent);
+}
+
+/* A hairline between two links, the separator the control rail uses, so the
+   row reads as two actions rather than one long sentence. */
+.identity-link + .identity-link {
+  margin-left: 20px;
+  padding-left: 22px;
+}
+
+.identity-link + .identity-link::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -607,10 +534,12 @@
 
 /* The note for the view at rest. Its own layer, where the capture card also
    lands, so the title block beneath never changes height. */
+/* Above the title block it was opened from, on the same left edge, so it reads
+   as that line unfolding. The rail and the corners stay clear. */
 .free-discovery {
-  right: clamp(18px, 2.5vh, 28px);
-  bottom: calc(clamp(18px, 2.5vh, 28px) + 58px);
-  width: min(380px, calc(100vw - 40px));
+  left: clamp(34px, 4.2vw, 70px);
+  bottom: calc(clamp(102px, 12vh, 132px) + 196px);
+  width: min(400px, calc(100vw - 40px));
   padding: 18px 56px 16px 20px;
   border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
   background: linear-gradient(180deg, rgba(3, 8, 15, 0.86), rgba(3, 8, 15, 0.66));
@@ -649,60 +578,6 @@
 .encounter-overlay button,
 .encounter-overlay a {
   pointer-events: auto;
-}
-
-.encounter-invitation {
-  left: 50%;
-  bottom: clamp(92px, 13vh, 138px);
-  width: min(620px, calc(100vw - 40px));
-  --center-x: -50%;
-  transform: translateX(var(--center-x));
-}
-
-.encounter-invitation > p {
-  margin: 0 0 24px;
-  color: var(--accent-object);
-  font-size: 11px;
-  letter-spacing: 0.26em;
-}
-
-.encounter-invitation h2 {
-  max-width: 570px;
-  margin: 0 0 28px;
-  font-size: clamp(28px, 3.4vw, 48px);
-  font-weight: 300;
-  line-height: 1.12;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-}
-
-.encounter-play {
-  min-height: 72px;
-  padding: 0 18px;
-  color: var(--accent-object);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-}
-
-.encounter-play span {
-  width: 54px;
-  height: 54px;
-  border: 1px solid color-mix(in srgb, var(--accent-object) 76%, white 8%);
-  transition:
-    transform var(--speed-base) var(--ease-out),
-    background-color var(--speed-fast) ease;
-}
-
-.encounter-play:hover span,
-.encounter-play:focus-visible span {
-  transform: scale(1.06);
-  background: color-mix(in srgb, var(--accent-object) 12%, transparent);
-}
-
-.encounter-dismiss {
-  min-height: 44px;
-  padding: 0 12px;
-  color: var(--ink-tertiary);
 }
 
 .encounter-exit {
@@ -777,55 +652,6 @@
 
 .encounter-observation .encounter-primary-action:disabled {
   opacity: 0.4;
-}
-
-/* --- Prediction ----------------------------------------------------------- */
-
-/* Optional guess before the scene answers. No score, no failure state, and no
-   permanent surface: it lives inside the beat that is already on screen. */
-.encounter-prediction {
-  gap: 8px 16px;
-  margin-top: 14px;
-}
-
-.encounter-observation .prediction-question {
-  flex: 1 0 100%;
-  color: var(--ink-secondary);
-  font-size: 12.5px;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-}
-
-.encounter-observation .prediction-option {
-  min-height: 40px;
-  margin-top: 0;
-  padding: 0 14px;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 999px;
-  color: var(--ink-secondary);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  transition:
-    color var(--speed-fast) ease,
-    border-color var(--speed-fast) ease;
-}
-
-.encounter-observation .prediction-option:not(:disabled):hover,
-.encounter-observation .prediction-option:not(:disabled):focus-visible {
-  border-color: var(--accent-object);
-  color: var(--ink-primary);
-}
-
-.encounter-observation .prediction-option:disabled {
-  opacity: 0.4;
-}
-
-.encounter-observation .prediction-response {
-  margin-bottom: 10px;
-  color: var(--accent-object);
-  font-size: 12px;
-  line-height: 1.5;
-  letter-spacing: 0.02em;
 }
 
 .encounter-transition-state {
@@ -923,40 +749,6 @@
 
 /* --- Discovery note ------------------------------------------------------- */
 
-.encounter-discovery {
-  right: clamp(24px, 4vw, 64px);
-  bottom: clamp(118px, 17vh, 180px);
-  width: min(360px, calc(100vw - 40px));
-  padding: 18px 20px;
-  border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
-  background: linear-gradient(180deg, rgba(3, 8, 15, 0.84), rgba(3, 8, 15, 0.62));
-  backdrop-filter: blur(14px);
-  color: var(--ink-secondary);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.encounter-discovery p { margin: 0 0 10px; }
-
-.encounter-discovery .discovery-close {
-  min-height: 44px;
-  margin: -8px -8px 6px 12px;
-  padding: 0 8px;
-  color: var(--ink-label);
-  font-size: 11px;
-}
-
-.encounter-discovery .discovery-glance { color: var(--ink-primary); font-size: 14px; }
-
-.encounter-discovery .discovery-boundary {
-  color: var(--accent-object);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.encounter-discovery a { display: block; margin-top: 8px; }
-
 /* --- Transport ------------------------------------------------------------ */
 
 .encounter-transport {
@@ -980,21 +772,6 @@
   background: var(--accent-object);
   transition: width var(--speed-slow) var(--ease-out);
 }
-
-.encounter-count {
-  color: var(--accent-object);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.12em;
-}
-
-.encounter-transport button {
-  min-height: 44px;
-  color: var(--ink-secondary);
-  font-size: 11px;
-}
-
-.encounter-transport button:disabled { opacity: 0.28; }
 
 /* ==========================================================================
    Control rail
@@ -1191,6 +968,8 @@
   border-left: 1px solid var(--hairline);
 }
 
+/* The phone's distance control: one step closer, the step's name, one step
+   farther. Three 44px targets in the width the dots would need. */
 .trigger-stepper {
   padding: 4px 0;
 }
@@ -1215,12 +994,12 @@
 }
 
 .trigger-stepper .stepper-position {
-  width: 58px;
+  width: 60px;
   background: color-mix(in srgb, var(--accent-object) 9%, rgba(255, 255, 255, 0.035));
-  color: var(--ink-secondary);
-  font-size: 10px;
+  color: var(--ink-primary);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .trigger-stepper .stepper-position:hover,
@@ -1607,11 +1386,13 @@
 
 /* Anchored where the discovery note sits, just above the "more" control and
    flush with its right edge, so the transient panels share one place. */
+/* Under the corner it was opened from, so it lands beside the "more" sheet's
+   place rather than on the rail. */
 .capture-card {
-  right: clamp(18px, 2.5vh, 28px);
-  bottom: calc(clamp(18px, 2.5vh, 28px) + 58px);
+  top: max(calc(clamp(24px, 4.4vh, 46px) + 58px), calc(env(safe-area-inset-top, 0px) + 74px));
+  right: clamp(30px, 3.7vw, 62px);
   width: min(320px, calc(100vw - 40px));
-  max-height: calc(100svh - 116px);
+  max-height: calc(100svh - 160px);
   padding: 10px 12px 14px;
   border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
   background: linear-gradient(180deg, rgba(3, 8, 15, 0.86), rgba(3, 8, 15, 0.66));
@@ -1814,45 +1595,6 @@
    "more" control. It is deliberately left out of the `chrome-idle` fade below
    — it withdraws itself after sixteen seconds, and a viewer who has gone still
    is exactly the one who has not read it yet. */
-.sound-invite {
-  left: 50%;
-  bottom: clamp(112px, 14vh, 132px);
-  gap: 2px;
-  padding: 3px 5px 3px 12px;
-  --center-x: -50%;
-  transform: translateX(var(--center-x));
-  border: 1px solid var(--hairline-strong);
-  border-radius: 999px;
-  background: rgba(3, 8, 15, 0.78);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-}
-
-.sound-invite-accept {
-  min-height: 30px;
-  padding: 0 6px;
-  color: var(--ink-label);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  transition: color var(--speed-fast) ease;
-}
-
-.sound-invite-accept svg,
-.sound-invite-dismiss {
-  color: var(--ink-tertiary);
-  transition: color var(--speed-fast) ease;
-}
-
-.sound-invite-accept:not(:disabled):hover svg,
-.sound-invite-accept:not(:disabled):focus-visible svg {
-  color: var(--accent-object);
-}
-
-.sound-invite-dismiss {
-  width: 26px;
-  height: 26px;
-}
 
 .drag-hint::before,
 .drag-hint::after {
@@ -1896,6 +1638,42 @@
   background: var(--ink-primary);
   transform-origin: left center;
   transition: transform 320ms var(--ease-out);
+}
+
+/* The music, offered once, here: the viewer is already waiting, and the tap
+   that says yes is the gesture the browser needs before it will play. */
+.arrival-sound {
+  gap: 22px;
+  margin-top: 14px;
+}
+
+.arrival-sound-accept {
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--accent-object) 62%, transparent);
+  color: var(--accent-object);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease,
+    background-color var(--speed-fast) ease;
+}
+
+.arrival-sound-accept:hover,
+.arrival-sound-accept:focus-visible {
+  border-color: var(--accent-object);
+  background: color-mix(in srgb, var(--accent-object) 12%, transparent);
+  color: var(--ink-primary);
+}
+
+.arrival-sound-decline {
+  min-height: 44px;
+  padding: 0 6px;
+  color: var(--ink-tertiary);
+  font-size: 11px;
+  letter-spacing: 0.12em;
 }
 
 /* Something went wrong after the scene was already running. */
@@ -2172,24 +1950,29 @@
     right: 18px;
   }
 
+  /* On the header's own line, at every width. */
+  .more-control {
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    right: 18px;
+  }
+
   .object-identity {
     left: 20px;
     bottom: 100px;
     max-width: calc(100vw - 40px);
   }
 
-  /* Between the phone and the desktop the row is tight. The length is the first
-     detail to go, which buys back the width the beat title needs. */
-  .encounter-card-minutes {
-    display: none;
-  }
-
   .identity-actions {
-    height: 58px;
+    height: 44px;
   }
 
-  .encounter-card-title {
-    white-space: normal;
+  /* Above the scene rather than on the title block's action row, which
+     reaches the centre of the screen at this width. */
+  .drag-hint,
+  .rail-hint {
+    top: 76px;
+    bottom: auto;
+    white-space: nowrap;
   }
 
   .control-panel {
@@ -2288,19 +2071,12 @@
     letter-spacing: 0.36em;
   }
 
-  .tonight-card {
-    top: calc(env(safe-area-inset-top, 0px) + 60px);
-    right: 18px;
-    left: 18px;
-    width: auto;
-  }
-
   /* Full width is reserved for the selected object's one useful descriptive
      line; scale and preset remain available in the control immediately below. */
   .object-identity {
     left: 18px;
     right: 18px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
     max-width: none;
   }
 
@@ -2318,7 +2094,7 @@
   }
 
   .identity-metadata-slot {
-    height: 32px;
+    height: 24px;
   }
 
   .metadata-lead,
@@ -2333,12 +2109,10 @@
     text-overflow: clip;
   }
 
-  /* Only one contextual action is visible on a phone: discovery first, then
-     the guided encounter after the note has been opened. Either way the block
-     is three lines and nothing else. */
+  /* One action at a time on a phone, in a slot that is there from the start. */
   .identity-actions {
-    height: 48px;
-    margin-top: 6px;
+    height: 44px;
+    margin-top: 2px;
   }
 
   /* Busy scene changes can soften the copy, but must not move controls the
@@ -2347,58 +2121,42 @@
     transform: none;
   }
 
-  .identity-actions.has-discovery:not(.discovery-seen) .encounter-card {
+  /* A note on its way out must not overlap the one arriving for the next
+     object: the row has space for one, and two reads as a flash. */
+  .identity-link.hint-leave-active,
+  .identity-link.hint-leave-to {
     display: none;
   }
 
-  .identity-actions.discovery-seen .encounter-invite {
+  /* The row has room for one. At the end of the ladder the next object is
+     the one that matters; the note waits until the viewer steps back. */
+  .identity-actions.has-next .identity-link:not(.identity-next) {
     display: none;
   }
 
-  /* A note on its way out must not reappear on the way. Changing object clears
-     `has-discovery` and `discovery-seen` in the same frame the invite starts
-     its leave transition, which un-hides it for the length of the fade and puts
-     two actions in a row that has space for one. It reads as a flash. */
-  .encounter-invite.hint-leave-active,
-  .encounter-invite.hint-leave-to {
-    display: none;
-  }
-
-  /* Only one action is ever on screen here, and the hidden one is hidden rather
-     than absent, so the separator between them has to go with it. */
-  .encounter-card + .encounter-invite {
+  .identity-link + .identity-link {
     margin-left: 0;
     padding-left: 2px;
   }
 
-  .encounter-card + .encounter-invite::before {
+  .identity-link + .identity-link::before {
     content: none;
   }
 
-  /* The title keeps its full two-line allowance on narrow screens. */
-  .encounter-card-title {
-    font-size: 12.5px;
+  .arrival-sound {
+    flex-direction: column;
+    gap: 6px;
   }
 
-  /* Above the scene rather than over the action row. */
-  .drag-hint {
-    top: 76px;
-    bottom: auto;
-    white-space: nowrap;
-  }
-
-  .rail-hint {
-    top: auto;
-    bottom: 76px;
-  }
-
+  /* The same inset as the header and the title block. */
   .control-rail {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
-    max-width: calc(100vw - 20px);
+    max-width: calc(100vw - 36px);
   }
 
+  /* Full width, on the header's and the title block's 18px inset. */
   .object-trigger {
-    width: min(340px, calc(100vw - 20px));
+    width: calc(100vw - 36px);
     min-height: 48px;
   }
 
@@ -2445,18 +2203,14 @@
   }
 
   .trigger-stepper {
-    flex: 0 0 132px;
+    flex: 0 0 148px;
   }
 
   .trigger-viewpoint {
-    flex: 0 0 48px;
+    flex: 0 0 52px;
     justify-content: center;
-    padding: 0 5px;
+    padding: 0 8px 0 5px;
     border-left: 0;
-  }
-
-  .rail-hint {
-    bottom: 76px;
   }
 
   .control-panel {
@@ -2545,14 +2299,6 @@
     height: 46px;
   }
 
-  .encounter-invitation {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
-  }
-
-  .encounter-invitation h2 {
-    font-size: clamp(27px, 8.5vw, 38px);
-  }
-
   .encounter-exit {
     top: calc(env(safe-area-inset-top, 0px) + 16px);
     right: auto;
@@ -2585,16 +2331,13 @@
     height: 32px;
   }
 
-  .encounter-discovery {
+  .capture-card {
     right: 18px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 132px);
     width: calc(100vw - 36px);
-    max-height: 36svh;
   }
 
-  .capture-card,
   .free-discovery {
-    right: 18px;
+    left: 18px;
     width: calc(100vw - 36px);
   }
 
@@ -2610,7 +2353,7 @@
   }
 
   .free-discovery {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 206px);
   }
 
   .free-discovery {
@@ -2628,7 +2371,7 @@
   .encounter-progress { bottom: 46px; }
 
   .more-control {
-    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
     right: 18px;
   }
 
@@ -2638,7 +2381,7 @@
 
 }
 
-@media (max-width: 360px) {
+@media (max-width: 340px) {
   .metadata-detail,
   .metadata-detail-rule {
     display: none;
@@ -2683,19 +2426,6 @@
 @media (hover: none) and (pointer: coarse) {
   .more-item {
     min-height: 44px;
-  }
-
-  .sound-invite {
-    padding: 0 2px 0 14px;
-  }
-
-  .sound-invite-accept {
-    min-height: 44px;
-  }
-
-  .sound-invite-dismiss {
-    width: 40px;
-    height: 40px;
   }
 
   .more-close {
@@ -2745,13 +2475,11 @@
   .control-panel,
   .object-trigger,
   .hazard-notice,
-  .encounter-discovery,
   .free-discovery,
   .capture-card,
-  .tonight-card,
   .more-sheet,
   .more-trigger,
-  .sound-invite {
+  .sound-toggle {
     background: rgba(4, 8, 14, 0.94);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

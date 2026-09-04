@@ -93,6 +93,7 @@ export const discoveries: DiscoveryDefinition[] = [
   {
     id: 'saturn-moon-widths',
     scope: { objectId: 'saturn', presetId: 'moon-swap' },
+    prompt: 'How many Moons wide?',
     glance: 'Saturn itself spans about {{value}} familiar full Moons across your sky.',
     detail: 'This comparison uses the planet\'s globe, not the wider ring system, and the same angular-size calculation that positions Saturn in the scene.',
     boundary: 'calculated',
@@ -108,6 +109,7 @@ export const discoveries: DiscoveryDefinition[] = [
   {
     id: 'saturn-light-time',
     scope: { objectId: 'saturn', presetId: 'moon-swap' },
+    prompt: 'How long does light take?',
     glance: 'At this distance, light would cross the gap in about {{value}} seconds.',
     detail: 'Perigee divides the selected distance by the exact speed of light in vacuum. It does not delay the live rendering by that amount.',
     boundary: 'calculated',
@@ -123,6 +125,7 @@ export const discoveries: DiscoveryDefinition[] = [
   {
     id: 'betelgeuse-simulation-boundary',
     scope: { objectId: 'betelgeuse', presetId: 'impossible' },
+    prompt: 'What is real here?',
     glance: 'The changing light is rendered; heat, radiation, gravity, and tides are not simulated.',
     detail: 'This encounter visualizes apparent size and an authored environmental treatment. Any physical consequences require separately reviewed source material.',
     boundary: 'rendered',
@@ -132,6 +135,7 @@ export const discoveries: DiscoveryDefinition[] = [
   {
     id: 'moon-nonlinear-growth',
     scope: { objectId: 'moon', presetId: 'half' },
+    prompt: 'Why almost twice as wide?',
     glance: 'At half the distance, the Moon appears almost twice as wide.',
     detail: 'Apparent width follows angular geometry rather than a linear screen-space scale. Perigee calculates it from the Moon\'s diameter and selected distance.',
     boundary: 'calculated',
@@ -141,6 +145,7 @@ export const discoveries: DiscoveryDefinition[] = [
   {
     id: 'andromeda-moon-widths',
     scope: { objectId: 'andromeda', presetId: 'real' },
+    prompt: 'How wide is it, really?',
     glance: 'Andromeda is already about {{value}} full Moons wide, right now, tonight.',
     detail: 'Your eye only catches the bright core, so the galaxy looks like a small smudge. The disc really does reach this far across the sky; it is simply too faint for unaided vision. Perigee uses the catalogued optical diameter and NASA\'s distance in the same angular-size calculation the scene runs.',
     boundary: 'calculated',
@@ -156,6 +161,7 @@ export const discoveries: DiscoveryDefinition[] = [
   {
     id: 'andromeda-disc-boundary',
     scope: { objectId: 'andromeda', presetId: 'touching' },
+    prompt: 'What is rendered here?',
     glance: 'The visible silhouette is rendered in projection. The approach and any collision are not simulated.',
     detail: 'Perigee paints the bulge, fragmented ring and outer arcs, arms, dust filaments, and bright satellites procedurally at the calculated angular size. It uses the catalogued optical axis ratio for the visible silhouette. Three-dimensional thickness, physical rotation, and any interaction with the Milky Way are outside this model.',
     boundary: 'described-not-simulated',
@@ -180,22 +186,6 @@ export const encounters: EncounterDefinition[] = [
         actionLabel: 'Bring Saturn closer',
         transitionLabel: 'Finding Saturn at its real distance',
         locatorLabel: 'Saturn · real distance',
-        prediction: {
-          id: 'saturn-versus-moon',
-          question: 'Before we move it: at the Moon\'s distance, will Saturn look wider or narrower than the full Moon?',
-          options: [
-            {
-              id: 'wider',
-              label: 'Wider',
-              response: 'You said wider. Watch how much wider it turns out to be.',
-            },
-            {
-              id: 'narrower',
-              label: 'Narrower',
-              response: 'You said narrower. Saturn is far larger than the Moon, so watch what that does to the sky.',
-            },
-          ],
-        },
       },
       {
         id: 'saturn-reveal',
@@ -262,22 +252,6 @@ export const encounters: EncounterDefinition[] = [
         actionLabel: 'Bring Betelgeuse closer',
         transitionLabel: 'Finding Betelgeuse in the night sky',
         locatorLabel: 'Betelgeuse · real distance',
-        prediction: {
-          id: 'betelgeuse-first-step',
-          question: 'One step closer is still a thousand astronomical units away. Will the point already become a surface?',
-          options: [
-            {
-              id: 'still-a-point',
-              label: 'Still a point',
-              response: 'You expected a point. Distance on this ladder falls faster than it reads.',
-            },
-            {
-              id: 'a-surface',
-              label: 'A surface',
-              response: 'You expected a surface. See how much of one a thousand astronomical units gives you.',
-            },
-          ],
-        },
       },
       {
         id: 'betelgeuse-surface',
@@ -310,22 +284,6 @@ export const encounters: EncounterDefinition[] = [
         observation: 'Start with a familiar Moon and notice how little sky it occupies.',
         actionLabel: 'Move the Moon closer',
         transitionLabel: 'Returning to the familiar Moon',
-        prediction: {
-          id: 'moon-doubles',
-          question: 'If the Moon comes twice as close, does it look exactly twice as wide?',
-          options: [
-            {
-              id: 'exactly-twice',
-              label: 'Exactly twice',
-              response: 'You said exactly twice. Compare that with the width you are about to see.',
-            },
-            {
-              id: 'not-quite',
-              label: 'Not quite',
-              response: 'You said not quite. Angular size follows the geometry rather than the number.',
-            },
-          ],
-        },
       },
       {
         id: 'moon-half',

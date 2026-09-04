@@ -2,6 +2,8 @@ import type { SkyObjectId, ViewpointId } from '~/types/perigee'
 
 export interface EngagementEventMap {
   scene_ready: { loadMs: number }
+  /** A fresh visit landed on one of the arrival frames. */
+  arrival: { objectId: SkyObjectId; presetId: string; viewpointId: ViewpointId }
   first_interaction: { kind: 'object' | 'distance' | 'viewpoint' | 'encounter' }
   object_change: { objectId: SkyObjectId }
   distance_change: { objectId: SkyObjectId; presetId: string }
@@ -10,8 +12,6 @@ export interface EngagementEventMap {
   encounter_beat: { encounterId: string; beatIndex: number }
   encounter_exit: { encounterId: string; beatIndex: number }
   encounter_complete: { encounterId: string }
-  prediction_answer: { encounterId: string; predictionId: string; optionId: string }
-  featured_encounter_open: { month: string; hasCurrent: boolean }
   more_open: { hasCurrent: boolean }
   featured_encounter_select: {
     featureId: string

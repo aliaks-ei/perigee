@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { PhPlay, PhWarningDiamond } from '@phosphor-icons/vue'
+import { PhArrowRight, PhWarningDiamond } from '@phosphor-icons/vue'
+import { objectEditorialById } from '~/data/objectEditorial'
 import { formatAngularDiameter } from '~/utils/formatters'
 
 /**
@@ -12,6 +13,7 @@ import { formatAngularDiameter } from '~/utils/formatters'
  * viewer has already aimed at.
  */
 const {
+  skyObjects,
   currentObject,
   currentPreset,
   angularDiameter,
@@ -19,20 +21,27 @@ const {
   busy,
   freeDiscovery,
   discoveryOpen,
-  availableEncounter,
   revealed,
-  inviteEncounter,
   openDiscovery,
+  selectObject,
 } = usePerigee()
 
-const discoverySeen = ref(false)
-
-watch(() => currentObject.value.id, () => {
-  discoverySeen.value = false
+/** The question the note answers, so the link reads as a thought, not a menu. */
+const discoveryPrompt = computed(() => freeDiscovery.value?.prompt ?? 'About this view')
+/**
+ * The closest rung is the end of the ladder. The one thing left to do there
+ * is the same thing with the next object, so the block offers exactly that.
+ * `selectObject` carries the rank across, so "this close" is honest.
+ */
+const atClosestRung = computed(() => currentObject.value.presets[0]?.id === currentPreset.value.id)
+const nextObject = computed(() => {
+  const index = skyObjects.findIndex((object) => object.id === currentObject.value.id)
+  const next = skyObjects[(index + 1) % skyObjects.length]
+  if (!next) return null
+  return { id: next.id, subject: objectEditorialById[next.id]?.subject ?? next.label }
 })
 
 async function open(): Promise<void> {
-  discoverySeen.value = true
   openDiscovery()
   await nextTick()
   document.querySelector<HTMLButtonElement>('[data-discovery-close]')?.focus({ preventScroll: true })
@@ -69,45 +78,34 @@ async function open(): Promise<void> {
       </Transition>
     </div>
 
-    <!-- One contextual action, chosen by stage. The note for this view comes
-         first; the guided encounter, a two-minute commitment, waits until the
-         viewer has settled in and then arrives beside it.
-
-         Neither carries a resting box. They borrow the
-         grammar of the metadata line above — micro-caps label, dot, content —
-         so the block reads in the same voice rather than as a
-         title with buttons stuck under it. The affordance is the accent play
-         ring on one and the underline on the other; the surface behind them
-         only appears on hover. -->
-    <div
-      class="identity-actions pointer-events-auto flex items-center gap-5"
-      :class="{ 'has-discovery': Boolean(freeDiscovery), 'discovery-seen': discoverySeen }"
-    >
-      <Transition name="hint">
-        <button
-          v-if="revealed('deepen') && availableEncounter"
-          type="button"
-          class="encounter-card text-shadow flex items-center gap-3 text-left"
-          data-encounter-invite
-          @click="inviteEncounter()"
-        >
-          <span class="encounter-card-play grid shrink-0 place-items-center rounded-full" aria-hidden="true">
-            <PhPlay :size="10" weight="fill" />
-          </span>
-          <span class="encounter-card-kicker font-semibold uppercase">Guided<span class="encounter-card-minutes"> · {{ availableEncounter.estimatedMinutes }} min</span></span>
-          <span aria-hidden="true" class="metadata-rule shrink-0" />
-          <span class="encounter-card-title">{{ availableEncounter.title }}</span>
-        </button>
-      </Transition>
+    <!-- The contextual actions: the question this view's note answers, and at
+         the end of the ladder the next object. Neither carries a resting box;
+         they borrow the grammar of the metadata line above, so the block reads
+         in one voice rather than as a title with buttons under it. The
+         underline is the whole of their affordance. A phone shows one at a
+         time, the next object winning, because the row has room for one. -->
+    <div class="identity-actions pointer-events-auto flex items-center" :class="{ 'has-next': atClosestRung && nextObject }">
       <Transition name="hint">
         <button
           v-if="revealed('explore') && freeDiscovery && !discoveryOpen"
           type="button"
-          class="encounter-invite text-shadow inline-flex items-center whitespace-nowrap font-semibold uppercase"
+          class="identity-link text-shadow inline-flex items-center whitespace-nowrap font-semibold uppercase"
           data-discovery-trigger
           @click="open"
         >
-          Discover this view
+          {{ discoveryPrompt }}
+        </button>
+      </Transition>
+      <Transition name="hint">
+        <button
+          v-if="revealed('explore') && atClosestRung && nextObject"
+          type="button"
+          class="identity-link identity-next text-shadow inline-flex items-center gap-2 whitespace-nowrap font-semibold uppercase"
+          :disabled="busy"
+          @click="selectObject(nextObject.id)"
+        >
+          Now see {{ nextObject.subject }} this close
+          <PhArrowRight :size="12" weight="bold" aria-hidden="true" />
         </button>
       </Transition>
     </div>
