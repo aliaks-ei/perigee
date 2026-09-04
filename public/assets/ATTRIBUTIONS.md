@@ -72,6 +72,14 @@ visualization rather than scientific analysis.
   live renderer with Perigee's standard restrained caption treatment.
 - Created: 2026-09-01
 
+## Rendered social cards
+
+- Source: Frames captured from Perigee's own live renderer. No new third-party asset is introduced.
+- Files: `social/perigee.jpg`, `objects/social/moon.jpg`, `objects/social/mars.jpg`, `objects/social/jupiter.jpg`, `objects/social/saturn.jpg`, `objects/social/neptune.jpg`, `objects/social/betelgeuse.jpg`, `objects/social/sirius.jpg`, `objects/social/rigel.jpg`, `objects/social/andromeda.jpg`, `encounters/saturn-at-the-moons-distance.jpg`, `encounters/saturn-at-the-edge-of-the-world.jpg`, `encounters/when-betelgeuse-takes-the-sky.jpg`, `encounters/why-the-moon-grows-so-quickly.jpg`
+- Modifications: Each card is a clean frame from the running scene, exported through the app's own capture path and resized to 1200x630 JPEG. The object cards carry Perigee's standard restrained caption; the site-wide card in `social/` carries none.
+- Note: These are composites, so they inherit the licences of whatever they show. A card of a rocky or gas-giant body contains the Solar System Scope surface texture (CC BY 4.0, see above) over a viewpoint plate; a card of a star or the galaxy contains only procedural project artwork over a viewpoint plate. The Cabo da Roca plate is CC BY-SA 4.0, which the cards showing it inherit.
+- Created: 2026-09-04
+
 ## Bright star catalogue
 
 - Source: [Yale Bright Star Catalog, 5th revised edition (BSC5)](http://tdc-www.harvard.edu/catalogs/bsc5.html) — Hoffleit, D. and Warren, W. H. Jr., 1991

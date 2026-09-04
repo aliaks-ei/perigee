@@ -79,15 +79,23 @@ describe('social cards', () => {
     expect(publicFiles.has(DEFAULT_SOCIAL_CARD)).toBe(true)
   })
 
+  it('ships a card for every approved object page', () => {
+    // `/o/[object].vue` falls back to the site default when a card is missing,
+    // so this never breaks a page — it catches an approved object quietly
+    // sharing the wrong picture.
+    for (const record of objectEditorial) {
+      if (record.reviewState !== 'approved') continue
+      expect(publicFiles.has(`/assets/objects/social/${record.objectId}.jpg`)).toBe(true)
+    }
+  })
+
   it('names every object card after a real object', () => {
-    // Cards are captured one object at a time, and `/o/[object].vue` falls back
-    // to the site default until one exists. What must not happen is a card
-    // filed under a name no object has: it would sit there looking present and
-    // never be picked up.
-    const ids = new Set(objectEditorial.map((record) => record.objectId))
+    // A card filed under a name no object has would sit there looking present
+    // and never be picked up.
+    const ids = new Set<string>(objectEditorial.map((record) => record.objectId))
     for (const file of publicFiles) {
       const match = /^\/assets\/objects\/social\/(.+)\.jpg$/.exec(file)
-      if (match?.[1]) expect(ids.has(match[1] as never), file).toBe(true)
+      if (match?.[1]) expect(ids.has(match[1]), file).toBe(true)
     }
   })
 })
