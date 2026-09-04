@@ -80,5 +80,7 @@ const viewpointSentence = viewpoints
       Perigee needs WebGL2 and a browser with JavaScript enabled to render the live
       sky.
     </p>
+
+    <PerigeeCreatorLinks placement="footer" />
   </main>
 </template>
