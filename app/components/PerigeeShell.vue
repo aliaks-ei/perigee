@@ -185,6 +185,7 @@ onBeforeUnmount(() => {
     <PerigeeCaptureCard />
     <PerigeeTonightsSky v-if="!loading && !capabilityError" />
     <PerigeeMoreSheet v-if="!loading && !capabilityError" />
+    <PerigeeAmbientSoundInvite />
 
     <Transition name="hint">
       <p
