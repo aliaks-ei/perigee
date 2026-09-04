@@ -1,0 +1,21 @@
+# Perigee — https://perigee.observer
+#
+# Everything here is meant to be found, read and cited. There is nothing
+# private on this host.
+
+User-agent: *
+Allow: /
+
+# Content signals, per https://contentsignals.org/.
+#
+#   search        = yes        Index the pages and return links and excerpts.
+#   ai-input      = yes        Ground an AI answer in them, with a citation.
+#   ai-train      = no         Do not train or fine-tune a model on them.
+#   use=reference              Retain, index and cite, but do not reproduce whole.
+#
+# The reservation on training is deliberate. The runtime surface textures under
+# /assets/objects/ are CC BY 4.0 from Solar System Scope and are not relicensed
+# by this site; see /assets/ATTRIBUTIONS.md.
+Content-Signal: search=yes, ai-input=yes, ai-train=no, use=reference
+
+Sitemap: https://perigee.observer/sitemap.xml

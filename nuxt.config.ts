@@ -1,4 +1,4 @@
-import { encounters } from './app/data/editorial'
+import { indexableRoutes } from './app/utils/seo'
 
 /** `@types/node` is not installed, so the environment is read defensively. */
 const environment = (globalThis as {
@@ -7,19 +7,14 @@ const environment = (globalThis as {
 const compressedTextures = environment.VITE_KTX2_TEXTURES ?? '0'
 
 /**
- * The curated encounter routes. Nothing in the app links to them, so the
- * prerender crawler cannot find them on its own; they are derived from the
- * catalogue instead, and `tests/scene-capture.test.ts` checks each one has its
- * social card on disk.
+ * Every route rendered to real HTML, plus the sitemap that lists them.
+ *
+ * `crawlLinks` is off, so the prerenderer finds nothing on its own; the list in
+ * `app/utils/seo.ts` is the single source both this and the sitemap read, so a
+ * page can never be prerendered without appearing in the sitemap or the other
+ * way round. `tests/seo.test.ts` enforces that.
  */
-const encounterRoutes = encounters.map((encounter) => `/e/${encounter.slug}`)
-
-/**
- * `/` is listed as well, and only to keep `index.html` in the output. Its rule
- * is `ssr: false`, so what lands there is the same empty SPA shell as
- * `200.html`; without the entry a static host has no file to serve at the root.
- */
-const prerenderRoutes = ['/', ...encounterRoutes]
+const prerenderRoutes = [...indexableRoutes, '/sitemap.xml']
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-28',
@@ -42,12 +37,20 @@ export default defineNuxtConfig({
       umamiSrc: environment.NUXT_PUBLIC_UMAMI_SRC ?? '',
     },
   },
-  // The app is a client-rendered SPA everywhere except the curated encounter
-  // routes. Those are rendered once at build time so their title, description
-  // and social card are real HTML; `pages/e/[slug].vue` still mounts the live
-  // scene client-side only.
+  // The app is a client-rendered SPA except on the content routes below, which
+  // are rendered once at build time so their title, description, copy and
+  // social card are real HTML. That matters beyond ordinary search: GPTBot,
+  // ClaudeBot and PerplexityBot do not execute JavaScript and never come back,
+  // so anything only a client render produces does not exist to them.
+  //
+  // Each of these pages still mounts the live scene client-side only; the
+  // prerendered body is what a crawler reads and what a visitor without
+  // JavaScript is left with.
   routeRules: {
     '/**': { ssr: false },
+    '/': { ssr: true, prerender: true },
+    '/method': { ssr: true, prerender: true },
+    '/o/**': { ssr: true, prerender: true },
     '/e/**': { ssr: true, prerender: true },
   },
   nitro: {
@@ -105,6 +108,18 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#040810' },
         { name: 'color-scheme', content: 'dark' },
       ],
+      // The scene routes ship a prerendered body so a crawler that does not run
+      // JavaScript has something to read. A visitor must never see it: the sky
+      // has to start loading immediately, not after a page of text has flashed
+      // past.
+      //
+      // Both tags are inline and synchronous so they take effect before the
+      // first paint. An external stylesheet rule would not do — the body can
+      // paint before that file arrives, which just moves the flash earlier.
+      // Scripting absent, the attribute is never set and the content stays
+      // visible, which is the whole point of it being there.
+      style: [{ innerHTML: '[data-js] .prerender-fallback{display:none}' }],
+      script: [{ innerHTML: "document.documentElement.dataset.js='1'" }],
       // The first frame cannot be drawn until these two land, and they are
       // otherwise only discovered after the engine chunk has parsed. The
       // texture cache pulls them with `fetch()`, so the hints are `as: 'fetch'`

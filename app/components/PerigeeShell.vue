@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from '~/utils/seo'
+
 /**
  * The whole experience. It lives in a component rather than in `app.vue` so the
  * curated `/e/<slug>` routes, which are prerendered with server rendering on so
@@ -55,15 +57,13 @@ let resizeTimer: ReturnType<typeof setTimeout> | null = null
 // A curated route sets its own head at build time, so the reactive title only
 // applies where the encounter is chosen inside the running app.
 if (!props.encounterSlug) {
+  // No entry here carries "— Perigee": `titleTemplate` in `app.vue` appends the
+  // site name, and adding it here too doubles it.
   useSeoMeta({
-    title: () => currentEncounter.value
-      ? `${currentEncounter.value.title} — Perigee`
-      : 'Perigee — Impossible skies, honest scale',
-    description: () => currentEncounter.value?.invitation
-      ?? 'See planets and famous stars brought close to Earth with scientifically correct apparent sizes.',
-    ogTitle: () => currentEncounter.value?.title ?? 'Perigee',
-    ogDescription: () => currentEncounter.value?.invitation
-      ?? 'A cinematic, scientifically grounded view of impossible skies.',
+    title: () => currentEncounter.value?.title ?? SITE_TAGLINE,
+    description: () => currentEncounter.value?.invitation ?? SITE_DESCRIPTION,
+    ogTitle: () => currentEncounter.value?.title ?? `${SITE_NAME} — ${SITE_TAGLINE}`,
+    ogDescription: () => currentEncounter.value?.invitation ?? SITE_DESCRIPTION,
   })
 }
 
