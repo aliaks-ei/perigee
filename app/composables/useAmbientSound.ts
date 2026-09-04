@@ -5,7 +5,6 @@ import type {
 } from '~/types/ambientSound'
 import type { ViewpointId } from '~/types/perigee'
 import { AmbientSoundEngine } from '../../src/perigee/audio/AmbientSoundEngine'
-import { resolveAmbientSoundPreset } from '../../src/perigee/audio/presets'
 
 export const AMBIENT_SOUND_STORAGE_KEY = 'perigee:ambient-sound'
 export const DEFAULT_AMBIENT_VOLUME = 0.35
@@ -13,6 +12,8 @@ export const DEFAULT_AMBIENT_VOLUME = 0.35
 const status = ref<AmbientSoundStatus>('off')
 const volume = ref(DEFAULT_AMBIENT_VOLUME)
 const preferenceEnabled = ref(false)
+/** No stored answer yet, so the music has never been offered or refused. */
+const undecided = ref(false)
 let lastNonZeroVolume = DEFAULT_AMBIENT_VOLUME
 let engine: AmbientSoundEngine | null = null
 let initialized = false
@@ -21,20 +22,27 @@ let sceneWatcherInstalled = false
 let activeViewpoint: Readonly<Ref<ViewpointId>> | null = null
 let resumeAfterVisibility = false
 let operation = 0
+let pendingAutoStart: (() => void) | null = null
 
 export function resolveAmbientSoundPreference(value: string | null): boolean {
   return value === 'on'
 }
 
-function readPreference(): boolean {
+/** Only an explicit answer counts. Anything else is a listener who has not been asked. */
+export function hasAmbientSoundDecision(value: string | null): boolean {
+  return value === 'on' || value === 'off'
+}
+
+function readStoredPreference(): string | null {
   try {
-    return resolveAmbientSoundPreference(window.localStorage.getItem(AMBIENT_SOUND_STORAGE_KEY))
+    return window.localStorage.getItem(AMBIENT_SOUND_STORAGE_KEY)
   } catch {
-    return false
+    return null
   }
 }
 
 function writePreference(enabled: boolean): void {
+  undecided.value = false
   try {
     window.localStorage.setItem(AMBIENT_SOUND_STORAGE_KEY, enabled ? 'on' : 'off')
   } catch {
@@ -46,20 +54,59 @@ function writePreference(enabled: boolean): void {
 function initialize(): void {
   if (initialized || !import.meta.client) return
   initialized = true
-  preferenceEnabled.value = readPreference()
-  if (preferenceEnabled.value) status.value = 'suspended'
+  const stored = readStoredPreference()
+  preferenceEnabled.value = resolveAmbientSoundPreference(stored)
+  undecided.value = !hasAmbientSoundDecision(stored)
+  if (preferenceEnabled.value) {
+    status.value = 'suspended'
+    armAutoStart()
+  }
+}
+
+/**
+ * A listener who has already turned the sound on gets it back without being
+ * asked again. No browser will start audio unprompted, so the music waits on
+ * the first thing the viewer does — a drag on the sky, a key, a tap anywhere —
+ * and starts under that gesture. Where the browser reports the page has
+ * already been interacted with, there is nothing to wait for.
+ */
+function armAutoStart(): void {
+  if (pendingAutoStart) return
+  const activation = (navigator as Navigator & {
+    userActivation?: { hasBeenActive: boolean }
+  }).userActivation
+  if (activation?.hasBeenActive) {
+    void enable()
+    return
+  }
+  const startFromGesture = (): void => {
+    disarmAutoStart()
+    if (preferenceEnabled.value && status.value !== 'playing') void enable()
+  }
+  pendingAutoStart = () => {
+    window.removeEventListener('pointerdown', startFromGesture)
+    window.removeEventListener('keydown', startFromGesture)
+    window.removeEventListener('touchend', startFromGesture)
+  }
+  window.addEventListener('pointerdown', startFromGesture, { once: true })
+  window.addEventListener('keydown', startFromGesture, { once: true })
+  window.addEventListener('touchend', startFromGesture, { once: true })
+}
+
+function disarmAutoStart(): void {
+  pendingAutoStart?.()
+  pendingAutoStart = null
 }
 
 function createEngine(): AmbientSoundEngine {
-  const preset = resolveAmbientSoundPreset(new URLSearchParams(window.location.search).get('ambience'))
   return new AmbientSoundEngine({
-    preset,
     initialViewpointId: activeViewpoint?.value ?? 'rooftop',
   })
 }
 
 async function enable(): Promise<void> {
   if (status.value === 'starting') return
+  disarmAutoStart()
   const token = ++operation
   status.value = 'starting'
   if (volume.value === 0) volume.value = lastNonZeroVolume
@@ -101,6 +148,13 @@ async function toggle(): Promise<void> {
     return
   }
   await enable()
+}
+
+/** The offer was made and turned down. Recorded so it is never made twice. */
+function decline(): void {
+  initialize()
+  disarmAutoStart()
+  writePreference(false)
 }
 
 function setVolume(value: number): void {
@@ -160,6 +214,7 @@ function installSceneWatcher(viewpoint: Readonly<Ref<ViewpointId>>): void {
 
 export function disposeAmbientSound(): void {
   ++operation
+  disarmAutoStart()
   engine?.dispose()
   engine = null
   resumeAfterVisibility = false
@@ -173,7 +228,9 @@ export function useAmbientSound(viewpoint: Readonly<Ref<ViewpointId>>): AmbientS
   return {
     status: readonly(status),
     volume: readonly(volume),
+    undecided: readonly(undecided),
     toggle,
     setVolume,
+    decline,
   }
 }

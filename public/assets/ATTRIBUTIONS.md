@@ -96,3 +96,19 @@ visualization rather than scientific analysis.
 - Files: `basis/basis_transcoder.js`, `basis/basis_transcoder.wasm`
 - Modifications: None. Byte copies of the files shipped with the pinned three.js release, kept in step by `tests/basis-transcoder.test.ts`.
 - Purpose: Decodes the `.ktx2` object maps on the GPU's own compressed format at runtime.
+
+## Ambient music
+
+- Source: Generated with Google Lyria in Google AI Studio
+- Author: Aliaksei Mazheika (prompts), Google Lyria (audio)
+- License: Google claims no ownership of content generated through the Gemini API (terms effective 2026-03-23). The SynthID watermark in each file is left intact.
+- Files: `audio/rooftop-*.mp3`, `audio/hilltop-*.mp3`, `audio/lakeside-*.mp3`, `audio/cabo-da-roca-*.mp3`
+- Modifications: `scripts/audio.sh` cuts a loopable section out of each master (skipping the intro and the outro fade), resamples to 44.1 kHz, normalises to −20 LUFS integrated with a −1.5 dBTP ceiling, bakes a four-second crossfade so the file's end runs into its own start, and encodes to 128 kbps MP3. The masters are not kept in the repository.
+- Purpose: One piece per viewpoint, looped and crossfaded on a viewpoint change. It replaced a Web Audio soundscape that listeners consistently read as dark rather than calm.
+- Generated: 2026-09-04
+
+All four share 58 bpm and F major leaning toward D minor, so a crossfade
+between viewpoints does not clash. Each prompt asks for felt piano over a
+sustained pad with a cold high synth tone above it, names the place, and
+forbids drums, vocals, build-ups and sentimental melody. The full prompts are
+in the implementation plan this change was built from.

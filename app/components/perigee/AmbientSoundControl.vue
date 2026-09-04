@@ -2,9 +2,12 @@
 import { PhSpeakerHigh, PhSpeakerSlash } from '@phosphor-icons/vue'
 
 /**
- * Ambient sound as one row of the "more" sheet: a toggle with its state, and
- * the volume beneath it while the sound is on. It used to be a lone circle in
- * the corner in the quietest ink, which nobody found.
+ * The music as one row of the "more" sheet: a toggle with its state, and the
+ * volume beneath it while it is playing. It used to be a lone circle in the
+ * corner in the quietest ink, which nobody found.
+ *
+ * This is the permanent home of the control. `AmbientSoundInvite.vue` is the
+ * one-time offer that points a first-time listener at it.
  */
 const { currentViewpointId } = usePerigee()
 const { status, volume, toggle, setVolume } = useAmbientSound(currentViewpointId)
@@ -33,7 +36,7 @@ function handleVolume(event: Event): void {
       <span class="flex items-center gap-3">
         <PhSpeakerHigh v-if="audible" :size="16" weight="regular" aria-hidden="true" />
         <PhSpeakerSlash v-else :size="16" weight="regular" aria-hidden="true" />
-        Ambient sound
+        Ambient music
       </span>
       <span class="more-state font-semibold uppercase">{{ stateLabel }}</span>
     </button>
@@ -42,7 +45,7 @@ function handleVolume(event: Event): void {
       <div v-if="audible" class="collapsible">
         <div>
           <label class="ambient-volume flex items-center gap-3" for="ambient-volume">
-            <span class="sr-only">Ambient volume</span>
+            <span class="sr-only">Music volume</span>
             <input
               id="ambient-volume"
               type="range"

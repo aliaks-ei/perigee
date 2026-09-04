@@ -1789,6 +1789,52 @@
   margin-left: 4px;
 }
 
+/* The one-time offer to play the music, in the slot the drag and rail hints
+   have already left. Unlike them it has to be tappable, so it carries a
+   surface: hint-weight type inside the same hairline-and-glass shell as the
+   "more" control. It is deliberately left out of the `chrome-idle` fade below
+   — it withdraws itself after sixteen seconds, and a viewer who has gone still
+   is exactly the one who has not read it yet. */
+.sound-invite {
+  left: 50%;
+  bottom: clamp(112px, 14vh, 132px);
+  gap: 2px;
+  padding: 3px 5px 3px 12px;
+  --center-x: -50%;
+  transform: translateX(var(--center-x));
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: rgba(3, 8, 15, 0.78);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+}
+
+.sound-invite-accept {
+  min-height: 30px;
+  padding: 0 6px;
+  color: var(--ink-label);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  transition: color var(--speed-fast) ease;
+}
+
+.sound-invite-accept svg,
+.sound-invite-dismiss {
+  color: var(--ink-tertiary);
+  transition: color var(--speed-fast) ease;
+}
+
+.sound-invite-accept:not(:disabled):hover svg,
+.sound-invite-accept:not(:disabled):focus-visible svg {
+  color: var(--accent-object);
+}
+
+.sound-invite-dismiss {
+  width: 26px;
+  height: 26px;
+}
+
 .drag-hint::before,
 .drag-hint::after {
   content: '';
@@ -2588,6 +2634,19 @@
     min-height: 44px;
   }
 
+  .sound-invite {
+    padding: 0 2px 0 14px;
+  }
+
+  .sound-invite-accept {
+    min-height: 44px;
+  }
+
+  .sound-invite-dismiss {
+    width: 40px;
+    height: 40px;
+  }
+
   .more-close {
     width: 44px;
     height: 44px;
@@ -2640,7 +2699,8 @@
   .capture-card,
   .tonight-card,
   .more-sheet,
-  .more-trigger {
+  .more-trigger,
+  .sound-invite {
     background: rgba(4, 8, 14, 0.94);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

@@ -18,7 +18,7 @@ and what is described rather than simulated.
 - Follow short guided encounters with optional prediction-and-reveal moments.
 - Open sourced, state-aware discoveries without leaving the live scene.
 - Capture a clean view, download it, or share a link that restores the same sky.
-- Enable an optional procedural ambient soundscape for each viewpoint.
+- Play optional ambient music, one piece per viewpoint, crossfaded as you move.
 - Use the complete experience with a keyboard or reduced motion enabled.
 
 Perigee is deliberately not a planetarium catalogue or physical-effects
@@ -30,7 +30,7 @@ surface treatments, and impossible proximity effects are authored visualizations
 - Nuxt 3 and Vue 3 for the application shell and accessible controls
 - Three.js and custom shaders for the sky, celestial objects, and environments
 - GSAP for interruptible scene choreography
-- Native Web Audio for the first-party procedural ambience
+- Native Web Audio for the looping, crossfaded ambient music
 - Vitest and strict TypeScript for scientific and product contracts
 - Static generation for deployment to Cloudflare Workers Static Assets
 
