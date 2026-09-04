@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import { PhArrowRight, PhPause, PhPlay, PhX } from '@phosphor-icons/vue'
+import { PhArrowRight, PhPlay, PhX } from '@phosphor-icons/vue'
 import { scienceSources } from '~/data/editorial'
 import { analytics } from '~/utils/analytics'
 
@@ -18,7 +18,6 @@ const {
   answerPrediction,
   nextEncounter,
   previousEncounter,
-  toggleEncounterPause,
   replayEncounter,
   exitEncounter,
 } = usePerigee()
@@ -96,7 +95,7 @@ function toggleSource(): void {
       </div>
     </template>
 
-    <template v-else-if="encounterStatus === 'active' || encounterStatus === 'paused'">
+    <template v-else-if="encounterStatus === 'active'">
       <button
         class="encounter-exit absolute inline-flex items-center gap-2 font-semibold uppercase"
         type="button"
@@ -156,7 +155,7 @@ function toggleSource(): void {
               :key="option.id"
               class="prediction-option"
               type="button"
-              :disabled="encounterStatus === 'paused' || encounterTransitioning"
+              :disabled="encounterTransitioning"
               @click="answerPrediction(option.id)"
             >
               {{ option.label }}
@@ -170,7 +169,6 @@ function toggleSource(): void {
               data-encounter-primary
               class="encounter-primary-action inline-flex items-center gap-2.5 font-semibold"
               type="button"
-              :disabled="encounterStatus === 'paused'"
               @click="nextEncounter"
             >
               {{ currentEncounterBeat?.actionLabel }}
@@ -223,26 +221,16 @@ function toggleSource(): void {
         </aside>
       </Transition>
 
-      <nav class="encounter-transport absolute grid items-center" aria-label="Encounter progress">
+      <nav class="encounter-transport absolute flex items-center justify-between" aria-label="Encounter progress">
         <span class="encounter-progress absolute overflow-hidden" aria-hidden="true"><i :style="{ width: `${progress}%` }" /></span>
         <span class="encounter-count lt-sm:hidden">{{ encounterBeatIndex + 1 }} of {{ currentEncounter.beats.length }}</span>
         <button
-          class="inline-flex items-center gap-1.5"
+          class="ml-auto inline-flex items-center gap-1.5"
           type="button"
           :disabled="encounterBeatIndex === 0 || encounterTransitioning"
           @click="previousEncounter"
         >
           Previous
-        </button>
-        <button
-          class="inline-flex items-center gap-1.5"
-          type="button"
-          :disabled="encounterTransitioning"
-          @click="toggleEncounterPause"
-        >
-          <PhPlay v-if="encounterStatus === 'paused'" :size="13" weight="fill" aria-hidden="true" />
-          <PhPause v-else :size="13" weight="fill" aria-hidden="true" />
-          {{ encounterStatus === 'paused' ? 'Resume' : 'Pause' }}
         </button>
       </nav>
     </template>

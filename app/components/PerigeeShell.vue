@@ -49,10 +49,10 @@ const {
   dismissNotice,
   nextEncounter,
   previousEncounter,
-  toggleEncounterPause,
   exitEncounter,
   dispose,
 } = usePerigee()
+const { capture, captureOpen, capturing } = useCapture()
 let observer: ResizeObserver | null = null
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -78,6 +78,21 @@ const railHintVisible = computed(() =>
 
 function handleKeydown(event: KeyboardEvent): void {
   noteActivity()
+  const target = event.target
+  const editing = target instanceof HTMLElement
+    && (target.matches('input, select, textarea') || target.isContentEditable)
+  if (
+    !event.metaKey && !event.ctrlKey && !event.altKey && !event.repeat
+    && event.key.toLowerCase() === 'c' && !editing
+  ) {
+    if (!captureOpen.value && !capturing.value && !loading.value && !capabilityError.value) {
+      if (objectBrowserOpen.value) toggleObjectBrowser(false)
+      if (moreOpen.value) toggleMore(false)
+      void capture()
+    }
+    event.preventDefault()
+    return
+  }
   if (encounterStatus.value !== 'idle') {
     if (event.key === 'Escape') {
       exitEncounter()
@@ -85,12 +100,10 @@ function handleKeydown(event: KeyboardEvent): void {
       event.preventDefault()
       return
     }
-    const target = event.target
     if (target instanceof HTMLElement && target.closest('button, a, input, select, textarea')) return
     if (encounterTransitioning.value) return
     if (event.key === 'ArrowRight') void nextEncounter()
     else if (event.key === 'ArrowLeft') void previousEncounter()
-    else if (event.key === ' ') toggleEncounterPause()
     else return
     event.preventDefault()
     return
@@ -108,7 +121,6 @@ function handleKeydown(event: KeyboardEvent): void {
   if (event.metaKey || event.ctrlKey || event.altKey) return
   // Only when the viewer is not inside a control, so the rail's own arrow-key
   // handling keeps working.
-  const target = event.target
   if (target instanceof HTMLElement && target.closest('button, input, select, textarea')) return
 
   if (event.key === ']' || event.key === 'ArrowRight') stepDistance(1)
@@ -207,7 +219,7 @@ onBeforeUnmount(() => {
     <Transition name="hint">
       <p
         v-if="railHintVisible"
-        class="drag-hint rail-hint text-shadow pointer-events-none absolute z-identity items-center font-semibold uppercase"
+        class="drag-hint rail-hint text-shadow pointer-events-none absolute z-identity items-center font-semibold uppercase lt-sm:hidden"
       >
         <span>Step the distance</span>
         <kbd aria-hidden="true">←</kbd>

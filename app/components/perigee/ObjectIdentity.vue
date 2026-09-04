@@ -52,8 +52,8 @@ async function open(): Promise<void> {
       <Transition name="hint">
         <p v-if="revealed('orient')" class="object-metadata text-shadow flex items-center gap-3">
           <span class="metadata-lead shrink-0">{{ formatAngularDiameter(angularDiameter) }}</span>
-          <span aria-hidden="true" class="metadata-rule shrink-0" />
-          <span class="shrink-0">{{ currentPreset.label }}</span>
+          <span aria-hidden="true" class="metadata-rule metadata-lead-rule shrink-0" />
+          <span class="metadata-preset shrink-0">{{ currentPreset.label }}</span>
           <span aria-hidden="true" class="metadata-rule metadata-detail-rule shrink-0" />
           <span class="metadata-detail">{{ currentPreset.metadataLabel ?? currentPreset.label }}</span>
         </p>
@@ -73,9 +73,9 @@ async function open(): Promise<void> {
          first; the guided encounter, a two-minute commitment, waits until the
          viewer has settled in and then arrives beside it.
 
-         Neither carries a resting box. They sit on one line and borrow the
+         Neither carries a resting box. They borrow the
          grammar of the metadata line above — micro-caps label, dot, content —
-         so the block reads as three lines of the same voice rather than a
+         so the block reads in the same voice rather than as a
          title with buttons stuck under it. The affordance is the accent play
          ring on one and the underline on the other; the surface behind them
          only appears on hover. -->

@@ -607,13 +607,6 @@ async function previousEncounter(): Promise<void> {
   await runEncounterBeat()
 }
 
-function toggleEncounterPause(): void {
-  const snapshot = encounterStatus.value === 'paused'
-    ? encounterDirector.resume()
-    : encounterDirector.pause()
-  applyEncounterSnapshot(snapshot)
-}
-
 async function replayEncounter(): Promise<void> {
   answeredPrediction.value = null
   applyEncounterSnapshot(encounterDirector.replay())
@@ -744,7 +737,6 @@ export function usePerigee() {
     answerPrediction,
     nextEncounter,
     previousEncounter,
-    toggleEncounterPause,
     replayEncounter,
     exitEncounter,
     getObjectScreenPosition,

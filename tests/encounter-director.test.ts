@@ -13,13 +13,11 @@ describe('EncounterDirector', () => {
     expect(director.snapshot.beatIndex).toBe(encounter.beats.length - 1)
   })
 
-  it('supports pause, resume, previous, replay, and exit', () => {
+  it('supports previous, replay, and exit', () => {
     const director = new EncounterDirector()
     director.invite(encounters[1]!)
     director.start()
     director.next()
-    expect(director.pause().status).toBe('paused')
-    expect(director.resume().status).toBe('active')
     expect(director.previous().beatIndex).toBe(0)
     director.next()
     expect(director.replay().beatIndex).toBe(0)

@@ -48,7 +48,8 @@ function updateLocator(): void {
   element.style.setProperty('--locator-x', `${x * 100}%`)
   element.style.setProperty('--locator-y', `${y * 100}%`)
   element.classList.toggle('off-screen', !point.onScreen)
-  element.classList.toggle('align-left', x > 0.72)
+  const alignThreshold = window.matchMedia('(max-width: 640px)').matches ? 0.6 : 0.72
+  element.classList.toggle('align-left', x > alignThreshold)
 }
 </script>
 

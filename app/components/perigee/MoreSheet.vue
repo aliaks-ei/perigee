@@ -41,6 +41,7 @@ const available = computed(() => !objectBrowserOpen.value)
 const shortcuts = [
   { keys: ['Drag'], action: 'Look around' },
   { keys: ['←', '→'], action: 'Step the distance' },
+  { keys: ['C'], action: 'Capture this sky' },
   { keys: ['Esc'], action: 'Close' },
 ]
 
@@ -154,6 +155,7 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
                 <PhCamera :size="16" weight="regular" aria-hidden="true" />
                 {{ capturing ? 'Capturing…' : 'Capture this sky' }}
               </span>
+              <kbd class="more-hotkey inline-grid place-items-center" aria-label="Keyboard shortcut C">C</kbd>
             </button>
           </div>
 

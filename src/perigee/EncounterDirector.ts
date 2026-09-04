@@ -1,6 +1,6 @@
 import type { EncounterDefinition } from '../../app/types/editorial'
 
-export type EncounterStatus = 'idle' | 'invited' | 'active' | 'paused' | 'complete'
+export type EncounterStatus = 'idle' | 'invited' | 'active' | 'complete'
 
 export interface EncounterSnapshot {
   encounter: EncounterDefinition | null
@@ -28,7 +28,7 @@ export class EncounterDirector {
 
   next(): EncounterSnapshot {
     const encounter = this.state.encounter
-    if (!encounter || !['active', 'paused'].includes(this.state.status)) return this.snapshot
+    if (!encounter || this.state.status !== 'active') return this.snapshot
     if (this.state.beatIndex >= encounter.beats.length - 1) {
       this.state = { ...this.state, status: 'complete' }
     } else {
@@ -44,16 +44,6 @@ export class EncounterDirector {
       beatIndex: Math.max(0, this.state.beatIndex - 1),
       status: 'active',
     }
-    return this.snapshot
-  }
-
-  pause(): EncounterSnapshot {
-    if (this.state.status === 'active') this.state = { ...this.state, status: 'paused' }
-    return this.snapshot
-  }
-
-  resume(): EncounterSnapshot {
-    if (this.state.status === 'paused') this.state = { ...this.state, status: 'active' }
     return this.snapshot
   }
 

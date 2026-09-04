@@ -267,6 +267,17 @@
   white-space: nowrap;
 }
 
+.more-hotkey {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  color: var(--ink-tertiary);
+  font-family: inherit;
+  font-size: 10.5px;
+}
+
 .ambient-sound.audible .more-state {
   color: var(--accent-object);
 }
@@ -461,12 +472,7 @@
   background: var(--ink-quiet);
 }
 
-/* Everything that can appear later has its slot from the first frame, and the
-   slot is a fixed height rather than a floor. The block is anchored to its
-   bottom edge, so a slot that grew — a metadata line wrapping for one object
-   and not the next, an action row breaking onto two lines — would lift the
-   title and the button the viewer was already aiming at, then drop them back
-   on the way out. Each row is kept to one line so the height cannot change. */
+/* Everything that can appear later has its slot from the first frame. */
 .identity-metadata-slot {
   height: 20px;
 }
@@ -546,14 +552,13 @@
 
 .encounter-card-title {
   flex: 1 1 auto;
-  overflow: hidden;
   min-width: 0;
   color: var(--ink-primary);
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.35;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /* The aside, one step quieter: no glyph, and an underline that is the whole of
@@ -702,7 +707,8 @@
 
 .encounter-exit {
   top: clamp(24px, 4.4vh, 46px);
-  right: clamp(30px, 3.7vw, 62px);
+  right: auto;
+  left: clamp(30px, 3.7vw, 62px);
   min-height: 44px;
   color: var(--ink-label);
   font-size: 11px;
@@ -957,7 +963,6 @@
   left: clamp(24px, 3.7vw, 62px);
   right: clamp(24px, 3.7vw, 62px);
   bottom: max(clamp(18px, 2.5vh, 28px), calc(env(safe-area-inset-bottom, 0px) + 8px));
-  grid-template-columns: 1fr auto auto;
   gap: clamp(18px, 3vw, 46px);
 }
 
@@ -1606,7 +1611,8 @@
   right: clamp(18px, 2.5vh, 28px);
   bottom: calc(clamp(18px, 2.5vh, 28px) + 58px);
   width: min(320px, calc(100vw - 40px));
-  padding: 14px 16px 16px;
+  max-height: calc(100svh - 116px);
+  padding: 10px 12px 14px;
   border-top: 1px solid color-mix(in srgb, var(--accent-object) 48%, var(--hairline));
   background: linear-gradient(180deg, rgba(3, 8, 15, 0.86), rgba(3, 8, 15, 0.66));
   backdrop-filter: blur(14px);
@@ -1615,8 +1621,41 @@
   line-height: 1.5;
 }
 
+.capture-heading {
+  min-height: 44px;
+  padding-left: 4px;
+}
+
+.capture-heading h2 {
+  margin: 0;
+  color: var(--ink-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 .capture-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-raised);
   color: var(--ink-tertiary);
+  transition:
+    color var(--speed-fast) ease,
+    border-color var(--speed-fast) ease,
+    background-color var(--speed-fast) ease;
+}
+
+.capture-close:hover,
+.capture-close:focus-visible {
+  border-color: var(--hairline-strong);
+  background: var(--surface-raised-hover);
+  color: var(--ink-primary);
+}
+
+.capture-body {
+  padding: 4px 4px 0;
 }
 
 .capture-preview {
@@ -1633,16 +1672,16 @@
 }
 
 .capture-actions {
-  gap: 8px;
+  gap: 6px;
   margin-top: 14px;
 }
 
-/* Buttons, not links: pills with a border, the primary one filled. */
+/* Two direct outcomes, presented as a quiet utility list. */
 .capture-card .capture-actions button {
   min-height: 44px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   color: var(--ink-secondary);
   font-size: 11px;
   font-weight: 600;
@@ -1661,40 +1700,10 @@
   color: var(--ink-primary);
 }
 
-.capture-card .capture-actions .capture-primary {
-  border-color: var(--accent-object);
-  background: color-mix(in srgb, var(--accent-object) 22%, transparent);
-  color: var(--ink-primary);
-}
-
-.capture-card .capture-actions .capture-primary:not(:disabled):hover,
-.capture-card .capture-actions .capture-primary:not(:disabled):focus-visible {
-  background: color-mix(in srgb, var(--accent-object) 34%, transparent);
-}
-
-.capture-toggle {
-  min-height: 44px;
-  margin-top: 12px;
-  color: var(--ink-label);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.capture-toggle input {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--accent-object);
-}
-
-/* Reserves its line, so an outcome message never nudges the panel's height. */
-.capture-message {
-  min-height: 16px;
-  margin: 8px 0 0;
+.capture-action-feedback {
   color: var(--accent-object);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
 }
 
 /* The prerendered body of a curated encounter route. Only a crawler or a
@@ -2175,6 +2184,14 @@
     display: none;
   }
 
+  .identity-actions {
+    height: 58px;
+  }
+
+  .encounter-card-title {
+    white-space: normal;
+  }
+
   .control-panel {
     width: calc(100vw - 32px);
   }
@@ -2278,35 +2295,49 @@
     width: auto;
   }
 
-  /* `right` as well as `left`, so the block spans the screen: the action line
-     below is a long title that has to ellipse at the edge, not shrink-wrap. */
+  /* Full width is reserved for the selected object's one useful descriptive
+     line; scale and preset remain available in the control immediately below. */
   .object-identity {
     left: 18px;
     right: 18px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
     max-width: none;
   }
 
   .object-identity h1 {
-    margin-bottom: 8px;
-    font-size: clamp(32px, 9.5vw, 46px);
-    letter-spacing: 0.075em;
+    margin-bottom: 5px;
+    font-size: clamp(28px, 8.2vw, 38px);
+    letter-spacing: 0.065em;
   }
 
   .object-metadata {
-    gap: 8px;
-    font-size: 12px;
+    gap: 0;
+    font-size: 11.5px;
+    line-height: 1.35;
+    white-space: normal;
   }
 
   .identity-metadata-slot {
-    height: 18px;
+    height: 32px;
+  }
+
+  .metadata-lead,
+  .metadata-lead-rule,
+  .metadata-preset,
+  .metadata-detail-rule {
+    display: none;
+  }
+
+  .metadata-detail {
+    overflow: visible;
+    text-overflow: clip;
   }
 
   /* Only one contextual action is visible on a phone: discovery first, then
      the guided encounter after the note has been opened. Either way the block
      is three lines and nothing else. */
   .identity-actions {
-    height: 44px;
+    height: 48px;
     margin-top: 6px;
   }
 
@@ -2344,8 +2375,7 @@
     content: none;
   }
 
-  /* The row has one line to spend, so the beat title takes whatever is left and
-     ellipses at the edge of the screen. */
+  /* The title keeps its full two-line allowance on narrow screens. */
   .encounter-card-title {
     font-size: 12.5px;
   }
@@ -2363,13 +2393,13 @@
   }
 
   .control-rail {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
     max-width: calc(100vw - 20px);
   }
 
   .object-trigger {
-    width: calc(100vw - 20px);
-    max-width: 100%;
+    width: min(340px, calc(100vw - 20px));
+    min-height: 48px;
   }
 
   /* Touching a segment focuses it. Keep the rail shell physically and
@@ -2390,13 +2420,13 @@
   .trigger-object {
     flex: 1 1 auto;
     min-width: 0;
-    gap: 8px;
-    padding: 6px 10px 6px 7px;
+    gap: 6px;
+    padding: 4px 8px 4px 5px;
   }
 
   .trigger-thumb {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
   }
 
   .trigger-kicker {
@@ -2419,7 +2449,7 @@
   }
 
   .trigger-viewpoint {
-    flex: 0 0 52px;
+    flex: 0 0 48px;
     justify-content: center;
     padding: 0 5px;
     border-left: 0;
@@ -2539,20 +2569,20 @@
   }
 
   .locator-label {
-    left: 36px;
-    top: -50px;
+    left: 0;
+    top: -64px;
     max-width: 126px;
     font-size: 11px;
   }
 
   .celestial-locator.align-left .locator-label {
-    right: 36px;
+    right: 0;
   }
 
   .locator-arrow {
-    top: -34px;
-    width: 66px;
-    height: 35px;
+    top: -30px;
+    width: 60px;
+    height: 32px;
   }
 
   .encounter-discovery {
@@ -2565,8 +2595,22 @@
   .capture-card,
   .free-discovery {
     right: 18px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
     width: calc(100vw - 36px);
+  }
+
+  .capture-card {
+    top: max(calc(env(safe-area-inset-top, 0px) + 14px), 14px);
+    bottom: auto;
+    max-height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 28px);
+  }
+
+  .capture-preview {
+    max-height: 42svh;
+    object-fit: contain;
+  }
+
+  .free-discovery {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
   }
 
   .free-discovery {
