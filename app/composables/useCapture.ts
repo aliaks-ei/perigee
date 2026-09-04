@@ -76,7 +76,7 @@ export function useCapture() {
       objectId: currentObject.value.id,
       objectLabel: currentObject.value.label,
       presetId: currentPreset.value.id,
-      presetLabel: currentPreset.value.metadataLabel ?? currentPreset.value.label,
+      presetLabel: currentPreset.value.label,
       viewpointId: currentViewpointId.value,
       viewpointLabel: viewpoint?.label ?? currentViewpointId.value,
       angularDiameterDegrees: angularDiameter.value,

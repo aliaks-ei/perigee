@@ -60,7 +60,7 @@ const rungs = object.presets.map((preset) => {
   const degrees = angularDiameterDegrees(object.diameterKm, preset.distanceKm)
   return {
     id: preset.id,
-    label: preset.metadataLabel ?? preset.label,
+    label: preset.label,
     question: editorial.questions[preset.id] ?? '',
     observation: editorial.whatYouSee[preset.id] ?? '',
     distance: formatDistance(preset.distanceKm),

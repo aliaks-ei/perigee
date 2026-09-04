@@ -15,6 +15,8 @@ export type QualityTier = 'high' | 'balanced' | 'safe'
 export interface DistancePreset {
   id: string
   label: string
+  /** A compact value for the closed mobile stepper. */
+  shortLabel?: string
   metadataLabel?: string
   distanceKm: number
   hazardCopy?: string
@@ -95,7 +97,7 @@ export interface PerigeeController {
   setObject(objectId: SkyObjectId, presetId: string, immediate?: boolean): Promise<void>
   setDistance(presetId: string): Promise<void>
   setViewpoint(viewpointId: ViewpointId): Promise<void>
-  getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null
+  getObjectScreenPosition(): { x: number, y: number, onScreen: boolean, diameterPixels: number } | null
   /**
    * Renders one fresh frame and copies it out. The drawing buffer is not
    * preserved, so the copy has to happen in the same task as the render.

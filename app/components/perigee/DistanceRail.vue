@@ -220,12 +220,15 @@ async function openViewpoints(): Promise<void> {
               type="button"
               role="radio"
               :aria-checked="currentPresetId === preset.id"
-              class="whitespace-nowrap"
+              class="inline-flex flex-col items-center justify-center whitespace-nowrap"
               :class="{ selected: currentPresetId === preset.id }"
               @click="selectDistanceAndClose(preset.id)"
               @keydown="onDistanceKeydown($event, index)"
             >
-              {{ preset.label }}
+              <span>{{ preset.label }}</span>
+              <span v-if="preset.metadataLabel" class="distance-option-meaning hidden lt-sm:block">
+                {{ preset.metadataLabel }}
+              </span>
             </button>
           </div>
           <p class="distance-meaning lt-lg:hidden">{{ currentPreset.metadataLabel ?? currentPreset.label }}</p>
@@ -263,7 +266,7 @@ async function openViewpoints(): Promise<void> {
               <i v-else class="block h-1 w-1 rounded-full bg-accent" />
             </span>
             <span class="size-value">{{ formatDegrees(angularDiameter) }}</span>
-            <span class="lt-sm:hidden">across your sky</span>
+            <span class="lt-sm:hidden">across · {{ currentPreset.label }}</span>
           </span>
           <span class="trigger-name">{{ currentObject.label }}</span>
         </span>
@@ -281,9 +284,10 @@ async function openViewpoints(): Promise<void> {
           type="button"
           role="radio"
           :aria-checked="currentPresetId === preset.id"
-          :aria-label="preset.metadataLabel ?? preset.label"
+          :aria-label="preset.metadataLabel ? `${preset.label}, ${preset.metadataLabel}` : preset.label"
           :data-label="preset.label"
           :data-ladder-step="preset.id"
+          :style="{ '--step-size': `${7 - index * 0.55}px` }"
           :tabindex="currentPresetId === preset.id ? 0 : -1"
           class="ladder-step grid place-items-center"
           :class="{ selected: currentPresetId === preset.id, passed: index < currentPresetIndex }"
@@ -299,7 +303,7 @@ async function openViewpoints(): Promise<void> {
           type="button"
           class="grid place-items-center"
           :disabled="currentPresetIndex === 0"
-          aria-label="Move one distance step farther away"
+          aria-label="Move one distance step closer"
           @click="stepMobileDistance(-1)"
         >
           <PhCaretLeft :size="14" weight="bold" aria-hidden="true" />
@@ -313,13 +317,13 @@ async function openViewpoints(): Promise<void> {
           :aria-label="`Choose distance, ${mobileStepLabel}`"
           @click="openCompactPanel('distance')"
         >
-          {{ currentPresetIndex + 1 }}/{{ currentObject.presets.length }}
+          {{ currentPreset.shortLabel ?? currentPreset.label }}
         </button>
         <button
           type="button"
           class="grid place-items-center"
           :disabled="currentPresetIndex === currentObject.presets.length - 1"
-          aria-label="Move one distance step closer"
+          aria-label="Move one distance step farther away"
           @click="stepMobileDistance(1)"
         >
           <PhCaretRight :size="14" weight="bold" aria-hidden="true" />

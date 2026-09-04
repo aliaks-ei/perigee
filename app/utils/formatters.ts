@@ -3,7 +3,10 @@ const LY_KM = 9_460_730_472_580.8
 
 /** Bare angular measure, for places that already carry their own label. */
 export function formatDegrees(degrees: number): string {
-  if (degrees < 0.1) return `${degrees.toFixed(2)}°`
+  const arcseconds = degrees * 3_600
+  if (arcseconds < 1) return `${Math.max(1, Math.round(arcseconds * 1_000))} mas`
+  if (arcseconds < 60) return `${arcseconds.toFixed(1)}″`
+  if (degrees < 1) return `${(degrees * 60).toFixed(1)}′`
   if (degrees < 100) return `${degrees.toFixed(1)}°`
   return `${Math.round(degrees).toLocaleString('en-US')}°`
 }

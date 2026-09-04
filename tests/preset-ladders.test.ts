@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { skyObjects } from '../app/data/objects'
+import { resolveObjectPresetId, skyObjects } from '../app/data/objects'
 import { angularDiameterRadians } from '../src/perigee/math/angularSize'
 
 describe('distance ladders', () => {
@@ -12,7 +12,16 @@ describe('distance ladders', () => {
         expect(Number.isFinite(preset.distanceKm)).toBe(true)
         expect(angularDiameterRadians(object.diameterKm, preset.distanceKm)).toBeGreaterThan(0)
       }
+      const distances = object.presets.map((preset) => preset.distanceKm)
+      expect(distances).toEqual([...distances].sort((a, b) => a - b))
+      const angularSizes = distances.map((distance) => angularDiameterRadians(object.diameterKm, distance))
+      expect(angularSizes).toEqual([...angularSizes].sort((a, b) => b - a))
     }
+  })
+
+  it('gives every object its own physical distance ladder', () => {
+    const signatures = skyObjects.map((object) => object.presets.map((preset) => preset.distanceKm).join(':'))
+    expect(new Set(signatures).size).toBe(skyObjects.length)
   })
 
   it('only adds hazard copy to the intentionally impossible star preset', () => {
@@ -23,33 +32,47 @@ describe('distance ladders', () => {
     }
   })
 
-  it('keeps the planet distance labels in the approved order', () => {
+  it('keeps the Saturn distance labels closest to farthest', () => {
     const saturn = skyObjects.find((object) => object.id === 'saturn')!
     expect(saturn.presets.map((preset) => preset.label)).toEqual([
-      'Real',
       'Moon swap',
-      'Close',
-      'Near',
-      'Neighbor',
+      'Close pass',
+      'Near pass',
+      'Across the system',
+      'Real distance',
     ])
   })
 
-  it('walks the galaxy ladder inward through the Local Group', () => {
+  it('names every true position as the real distance', () => {
+    for (const object of skyObjects) {
+      expect(object.presets.at(-1)).toMatchObject({ id: 'real', label: 'Real distance' })
+    }
+  })
+
+  it('walks the galaxy ladder outward through the Local Group', () => {
     const andromeda = skyObjects.find((object) => object.id === 'andromeda')!
     expect(andromeda.kind).toBe('galaxy')
     expect(andromeda.presets.map((preset) => preset.id)).toEqual([
-      'real',
-      'one-million',
-      'half-million',
-      'quarter-million',
       'touching',
+      'quarter-million',
+      'half-million',
+      'one-million',
+      'real',
     ])
 
-    // Strictly inward, and the closest step still fits inside a single frame.
+    // Strictly outward, and the closest step still fits inside a single frame.
     const distances = andromeda.presets.map((preset) => preset.distanceKm)
-    expect(distances).toEqual([...distances].sort((a, b) => b - a))
-    const closest = angularDiameterRadians(andromeda.diameterKm, distances.at(-1)!)
+    expect(distances).toEqual([...distances].sort((a, b) => a - b))
+    const closest = angularDiameterRadians(andromeda.diameterKm, distances[0]!)
     expect(closest * (180 / Math.PI)).toBeLessThan(60)
+  })
+
+  it('maps legacy shared links onto canonical object-specific steps', () => {
+    const betelgeuse = skyObjects.find((object) => object.id === 'betelgeuse')!
+    const jupiter = skyObjects.find((object) => object.id === 'jupiter')!
+    expect(resolveObjectPresetId(betelgeuse, 'hundredth-ly')).toBe('near-1000-au')
+    expect(resolveObjectPresetId(jupiter, 'near')).toBe('ten-million')
+    expect(resolveObjectPresetId(jupiter, 'unknown')).toBeNull()
   })
 
   it('derives Andromeda\'s real apparent size rather than asserting it', () => {

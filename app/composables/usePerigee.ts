@@ -1,5 +1,5 @@
 import { computed, readonly, ref, shallowRef } from 'vue'
-import { skyObjects, skyObjectsById } from '~/data/objects'
+import { resolveObjectPresetId, skyObjects, skyObjectsById } from '~/data/objects'
 import { viewpoints } from '~/data/viewpoints'
 import {
   discoveries,
@@ -198,28 +198,31 @@ function defaultPresetId(object: SkyObjectDefinition): string {
 }
 
 /**
- * Keeps the viewer's place on the distance ladder across an object change. The
- * two ladders share the `real` step, and jumping someone back to the default
- * every time they compare two objects loses the comparison they were making.
+ * Keeps the viewer's relative place on the distance ladder across an object
+ * change. Every ladder now runs closest to farthest, so rank is the stable
+ * comparison; ids and physical distances deliberately differ by object.
  */
 function carriedPresetId(object: SkyObjectDefinition): string {
-  return object.presets.some((preset) => preset.id === currentPresetId.value)
-    ? currentPresetId.value
-    : defaultPresetId(object)
+  const currentIndex = currentObject.value.presets.findIndex(
+    (preset) => preset.id === currentPresetId.value,
+  )
+  return object.presets[Math.min(Math.max(currentIndex, 0), object.presets.length - 1)]?.id
+    ?? defaultPresetId(object)
 }
 
 function readSelectionFromUrl(): Partial<PerigeeSelection> {
   const params = new URLSearchParams(window.location.search)
   const objectId = params.get('object') as SkyObjectId | null
   const object = objectId && objectId in skyObjectsById ? skyObjectsById[objectId] : null
-  const presetId = params.get('distance')
+  const requestedPresetId = params.get('distance')
+  const presetId = object && requestedPresetId
+    ? resolveObjectPresetId(object, requestedPresetId)
+    : null
   const viewpointId = params.get('view') as ViewpointId | null
 
   return {
     ...(object ? { objectId: object.id } : {}),
-    ...(object && presetId && object.presets.some((preset) => preset.id === presetId)
-      ? { presetId }
-      : {}),
+    ...(presetId ? { presetId } : {}),
     ...(viewpointId && viewpoints.some((viewpoint) => viewpoint.id === viewpointId)
       ? { viewpointId }
       : {}),
@@ -649,7 +652,7 @@ function resize(width: number, height: number, dpr: number): void {
   controller.value?.resize(width, height, dpr)
 }
 
-function getObjectScreenPosition(): { x: number, y: number, onScreen: boolean } | null {
+function getObjectScreenPosition(): { x: number, y: number, onScreen: boolean, diameterPixels: number } | null {
   return controller.value?.getObjectScreenPosition() ?? null
 }
 

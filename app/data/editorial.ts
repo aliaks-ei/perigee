@@ -264,7 +264,7 @@ export const encounters: EncounterDefinition[] = [
         locatorLabel: 'Betelgeuse · real distance',
         prediction: {
           id: 'betelgeuse-first-step',
-          question: 'One step closer is still a hundredth of a light year away. Will the point already become a surface?',
+          question: 'One step closer is still a thousand astronomical units away. Will the point already become a surface?',
           options: [
             {
               id: 'still-a-point',
@@ -274,14 +274,14 @@ export const encounters: EncounterDefinition[] = [
             {
               id: 'a-surface',
               label: 'A surface',
-              response: 'You expected a surface. See how much of one a hundredth of a light year gives you.',
+              response: 'You expected a surface. See how much of one a thousand astronomical units gives you.',
             },
           ],
         },
       },
       {
         id: 'betelgeuse-surface',
-        selection: { objectId: 'betelgeuse', presetId: 'hundredth-ly', viewpointId: 'hilltop' },
+        selection: { objectId: 'betelgeuse', presetId: 'near-1000-au', viewpointId: 'hilltop' },
         observation: 'Closer in, a stellar surface begins to replace the point.',
         actionLabel: 'Cross the final distance',
         transitionLabel: 'Crossing the stellar distance',

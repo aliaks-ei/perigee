@@ -10,6 +10,7 @@ import {
 import type { QualityTier } from '../../../app/types/perigee'
 import type { ViewpointId } from '../../../app/types/perigee'
 import { createEnvironmentLayer } from './createEnvironmentLayer'
+import { createMeteorLayer } from './createMeteorLayer'
 import {
   colorForIndex,
   fluxForMagnitude,
@@ -162,7 +163,7 @@ function buildGeometry(records: StarRecord[], random: () => number): BufferGeome
   return geometry
 }
 
-export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
+export function createSkyScene(initialQuality: QualityTier, reducedMotion = false): SkySceneBundle {
   const scene = new Scene()
 
   // No sky dome: the environment layer is an opaque full-screen backdrop that
@@ -170,6 +171,8 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
   // The palette still drives star density and the backdrop's tint.
   const environment = createEnvironmentLayer(initialQuality)
   scene.add(environment.mesh)
+  const meteors = createMeteorLayer(reducedMotion)
+  scene.add(meteors.mesh)
 
   const random = seededRandom(731_992)
   const background = backgroundStars(random, 3_600)
@@ -288,15 +291,18 @@ export function createSkyScene(initialQuality: QualityTier): SkySceneBundle {
     },
     setView(yaw, pitch, verticalFovDegrees, viewportAspect) {
       environment.setView(yaw, pitch, verticalFovDegrees, viewportAspect)
+      meteors.setAspect(viewportAspect)
     },
     update(time) {
       pointsMaterial.uniforms.uTime!.value = time
       stars.rotation.y = time * 0.0007
       environment.update(time)
+      meteors.update(time)
     },
     dispose() {
       disposed = true
       environment.dispose()
+      meteors.dispose()
       geometry.dispose()
       pointsMaterial.dispose()
     },
