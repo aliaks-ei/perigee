@@ -15,32 +15,32 @@ const moonPresets = [
 const marsPresets = [
   { id: 'close-pass', label: 'Impossible close pass', shortLabel: 'Close', metadataLabel: '32,000 km away', distanceKm: 32_000 },
   { id: 'near-pass', label: 'Near pass', shortLabel: 'Near', metadataLabel: '96,000 km away', distanceKm: 96_000 },
-  { id: 'moon-swap', label: 'Moon swap', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
-  { id: 'hundredth-au', label: 'Across near space', shortLabel: 'Space', metadataLabel: '1.5 million km away', distanceKm: AU_KM * 0.01 },
+  { id: 'moon-swap', label: 'At the Moon\'s distance', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
+  { id: 'hundredth-au', label: 'Across near space', shortLabel: 'Far', metadataLabel: '1.5 million km away', distanceKm: AU_KM * 0.01 },
   { id: 'real', label: 'Real distance', shortLabel: 'Real', metadataLabel: '54.6 million km at closest approach', distanceKm: 54_600_000 },
 ]
 
 const jupiterPresets = [
-  { id: 'moon-swap', label: 'Moon swap', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
+  { id: 'moon-swap', label: 'At the Moon\'s distance', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
   { id: 'two-million', label: 'Close pass', shortLabel: 'Close', metadataLabel: '2 million km away', distanceKm: 2_000_000 },
   { id: 'ten-million', label: 'Near pass', shortLabel: 'Near', metadataLabel: '10 million km away', distanceKm: 10_000_000 },
-  { id: 'hundred-million', label: 'Across the system', shortLabel: 'System', metadataLabel: '100 million km away', distanceKm: 100_000_000 },
+  { id: 'hundred-million', label: 'Across the system', shortLabel: 'Far', metadataLabel: '100 million km away', distanceKm: 100_000_000 },
   { id: 'real', label: 'Real distance', shortLabel: 'Real', metadataLabel: '588 million km at closest approach', distanceKm: 588_000_000 },
 ]
 
 const saturnPresets = [
-  { id: 'moon-swap', label: 'Moon swap', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
+  { id: 'moon-swap', label: 'At the Moon\'s distance', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
   { id: 'close', label: 'Close pass', shortLabel: 'Close', metadataLabel: '1.5 million km away', distanceKm: AU_KM * 0.01 },
   { id: 'ten-million', label: 'Near pass', shortLabel: 'Near', metadataLabel: '10 million km away', distanceKm: 10_000_000 },
-  { id: 'hundred-million', label: 'Across the system', shortLabel: 'System', metadataLabel: '100 million km away', distanceKm: 100_000_000 },
+  { id: 'hundred-million', label: 'Across the system', shortLabel: 'Far', metadataLabel: '100 million km away', distanceKm: 100_000_000 },
   { id: 'real', label: 'Real distance', shortLabel: 'Real', metadataLabel: '1.2 billion km at closest approach', distanceKm: 1_195_000_000 },
 ]
 
 const neptunePresets = [
-  { id: 'moon-swap', label: 'Moon swap', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
+  { id: 'moon-swap', label: 'At the Moon\'s distance', shortLabel: 'Moon', metadataLabel: '384,400 km away', distanceKm: MOON_DISTANCE_KM },
   { id: 'two-million', label: 'Close pass', shortLabel: 'Close', metadataLabel: '2 million km away', distanceKm: 2_000_000 },
   { id: 'twelve-million', label: 'Near pass', shortLabel: 'Near', metadataLabel: '12 million km away', distanceKm: 12_000_000 },
-  { id: 'hundred-twenty-million', label: 'Across the system', shortLabel: 'System', metadataLabel: '120 million km away', distanceKm: 120_000_000 },
+  { id: 'hundred-twenty-million', label: 'Across the system', shortLabel: 'Far', metadataLabel: '120 million km away', distanceKm: 120_000_000 },
   { id: 'real', label: 'Real distance', shortLabel: 'Real', metadataLabel: '4.3 billion km at closest approach', distanceKm: 4_300_000_000 },
 ]
 

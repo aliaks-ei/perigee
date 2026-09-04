@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PhMusicNotesSimple } from '@phosphor-icons/vue'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from '~/utils/seo'
 import { formatDegrees } from '~/utils/formatters'
 
@@ -21,9 +22,12 @@ const sceneCanvas = ref<HTMLCanvasElement | null>(null)
 const {
   currentObject,
   currentPreset,
+  currentViewpointId,
   angularDiameter,
   loading,
   loadingProgress,
+  sceneReady,
+  enter,
   busy,
   capabilityError,
   objectBrowserOpen,
@@ -53,6 +57,8 @@ const {
   dispose,
 } = usePerigee()
 const { capture, captureOpen, capturing } = useCapture()
+const { toggle: toggleSound, decline: declineSound } = useAmbientSound(currentViewpointId)
+const enterButton = ref<HTMLButtonElement | null>(null)
 let observer: ResizeObserver | null = null
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -70,10 +76,37 @@ if (!props.encounterSlug) {
 }
 
 const loadingPercent = computed(() => Math.round(loadingProgress.value * 100))
+/**
+ * The loading screen ends in a choice, not a fade. Once everything is ready
+ * it says so and waits: the viewer enters with music or in silence, and the
+ * sky, its hints and its arrival approach start on that tap. The tap is also
+ * the gesture the browser needs before it will play anything, so the music
+ * can start at once. No browser starts audio on its own, and an offer that
+ * arrived later covered the sky. Nothing about music appears over the sky
+ * after this; the toggle beside "more" is the control from then on.
+ */
+const ready = computed(() => loading.value && sceneReady.value && !capabilityError.value)
+
+watch(ready, async (isReady) => {
+  if (!isReady) return
+  await nextTick()
+  enterButton.value?.focus({ preventScroll: true })
+})
+
+function enterWithMusic(): void {
+  void toggleSound()
+  enter()
+}
+
+function enterInSilence(): void {
+  declineSound()
+  enter()
+}
 /** The one-time nudge toward the ladder, between the drag hint and the first change. */
 const railHintVisible = computed(() =>
   revealed('orient') && !revealed('explore') && !hintVisible.value
-  && !objectBrowserOpen.value && !loading.value && !capabilityError.value,
+  && !objectBrowserOpen.value && !loading.value && !capabilityError.value
+  && encounterStatus.value === 'idle',
 )
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -96,7 +129,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (encounterStatus.value !== 'idle') {
     if (event.key === 'Escape') {
       exitEncounter()
-      nextTick(() => document.querySelector<HTMLButtonElement>('[data-encounter-invite]')?.focus())
+      nextTick(() => document.querySelector<HTMLButtonElement>('[data-more-trigger]')?.focus())
       event.preventDefault()
       return
     }
@@ -203,13 +236,11 @@ onBeforeUnmount(() => {
     />
     <PerigeeDiscoveryNote />
     <PerigeeCaptureCard />
-    <PerigeeTonightsSky v-if="!loading && !capabilityError" />
     <PerigeeMoreSheet v-if="!loading && !capabilityError" />
-    <PerigeeAmbientSoundInvite />
 
     <Transition name="hint">
       <p
-        v-if="hintVisible && !loading && !capabilityError && !objectBrowserOpen"
+        v-if="hintVisible && !loading && !capabilityError && !objectBrowserOpen && encounterStatus === 'idle'"
         class="drag-hint text-shadow pointer-events-none absolute z-identity items-center font-semibold uppercase"
       >
         <span>Drag to look around</span>
@@ -237,8 +268,8 @@ onBeforeUnmount(() => {
         class="loading-state absolute inset-0 z-loading flex flex-col items-center justify-center font-semibold uppercase"
         aria-live="polite"
       >
-        <span class="loading-dot animate-approach" />
-        <p>Bringing the sky into focus</p>
+        <span class="loading-dot" :class="{ 'animate-approach': !ready }" />
+        <p>{{ ready ? 'Everything is ready' : 'Bringing the sky into focus' }}</p>
         <span
           class="loading-track block overflow-hidden"
           role="progressbar"
@@ -249,6 +280,20 @@ onBeforeUnmount(() => {
         >
           <i :style="{ transform: `scaleX(${Math.max(loadingProgress, 0.04)})` }" />
         </span>
+        <Transition name="hint">
+          <div v-if="ready" class="arrival-sound flex items-center">
+            <button
+              ref="enterButton"
+              type="button"
+              class="arrival-sound-accept inline-flex items-center rounded-full"
+              @click="enterWithMusic"
+            >
+              <PhMusicNotesSimple :size="14" weight="regular" aria-hidden="true" />
+              <span>Enter with music</span>
+            </button>
+            <button type="button" class="arrival-sound-decline" @click="enterInSilence">Enter in silence</button>
+          </div>
+        </Transition>
       </div>
     </Transition>
 

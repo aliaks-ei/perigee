@@ -35,7 +35,7 @@ describe('distance ladders', () => {
   it('keeps the Saturn distance labels closest to farthest', () => {
     const saturn = skyObjects.find((object) => object.id === 'saturn')!
     expect(saturn.presets.map((preset) => preset.label)).toEqual([
-      'Moon swap',
+      'At the Moon\'s distance',
       'Close pass',
       'Near pass',
       'Across the system',

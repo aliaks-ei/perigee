@@ -95,7 +95,11 @@ export interface PerigeeInitOptions {
 export interface PerigeeController {
   initialize(canvas: HTMLCanvasElement, options?: PerigeeInitOptions): Promise<void>
   setObject(objectId: SkyObjectId, presetId: string, immediate?: boolean): Promise<void>
-  setDistance(presetId: string): Promise<void>
+  /**
+   * `duration` is in seconds and only lengthens a shot; reduced motion still
+   * wins. The arrival approach uses it so the first size change can be watched.
+   */
+  setDistance(presetId: string, options?: { duration?: number }): Promise<void>
   setViewpoint(viewpointId: ViewpointId): Promise<void>
   getObjectScreenPosition(): { x: number, y: number, onScreen: boolean, diameterPixels: number } | null
   /**

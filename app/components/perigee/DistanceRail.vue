@@ -104,7 +104,10 @@ function onDistanceKeydown(event: KeyboardEvent, index: number): void {
   if (next) selectDistance(next.id)
 }
 
-/** The dots on the pill step without wrapping, like the arrow keys do. */
+/**
+ * The dots on the pill, and the track on a phone, step without wrapping, like
+ * the arrow keys do. Focus moves within the group the key came from.
+ */
 function onLadderKeydown(event: KeyboardEvent, index: number): void {
   if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return
   event.preventDefault()
@@ -112,7 +115,8 @@ function onLadderKeydown(event: KeyboardEvent, index: number): void {
   const nextIndex = Math.min(Math.max(index + (event.key === 'ArrowRight' ? 1 : -1), 0), presets.length - 1)
   const next = presets[nextIndex]
   if (!next) return
-  document.querySelector<HTMLButtonElement>(`[data-ladder-step="${next.id}"]`)?.focus({ preventScroll: true })
+  const group = (event.currentTarget as HTMLElement | null)?.parentElement
+  group?.querySelector<HTMLButtonElement>(`[data-step="${next.id}"]`)?.focus({ preventScroll: true })
   void selectDistance(next.id)
 }
 
@@ -286,7 +290,7 @@ async function openViewpoints(): Promise<void> {
           :aria-checked="currentPresetId === preset.id"
           :aria-label="preset.metadataLabel ? `${preset.label}, ${preset.metadataLabel}` : preset.label"
           :data-label="preset.label"
-          :data-ladder-step="preset.id"
+          :data-step="preset.id"
           :style="{ '--step-size': `${7 - index * 0.55}px` }"
           :tabindex="currentPresetId === preset.id ? 0 : -1"
           class="ladder-step grid place-items-center"

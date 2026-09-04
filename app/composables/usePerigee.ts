@@ -1,13 +1,8 @@
 import { computed, readonly, ref, shallowRef } from 'vue'
 import { resolveObjectPresetId, skyObjects, skyObjectsById } from '~/data/objects'
+import { ARRIVAL_APPROACH_SECONDS, pickArrival } from '~/data/arrivals'
 import { viewpoints } from '~/data/viewpoints'
-import {
-  discoveries,
-  discoveriesById,
-  encounters,
-  encountersById,
-  encountersBySlug,
-} from '~/data/editorial'
+import { discoveries, encounters, encountersById, encountersBySlug } from '~/data/editorial'
 import { resolveDiscovery } from '~/utils/discoveryCalculations'
 import { analytics } from '~/utils/analytics'
 import {
@@ -45,6 +40,13 @@ const objectBrowserOpen = ref(false)
 const moreOpen = ref(false)
 const loading = ref(true)
 const loadingProgress = ref(0)
+/**
+ * The assets are in and the first frame could be drawn, but the sky waits
+ * for the viewer to enter. The loading screen turns into a ready state with
+ * the music choice, and nothing starts until one of the two is taken.
+ */
+const sceneReady = ref(false)
+let pendingEntry: (() => void) | null = null
 /** A shot is running. Controls stay live; only the object being swapped waits. */
 const busy = ref(false)
 const pendingObjectId = ref<SkyObjectId | null>(null)
@@ -69,8 +71,6 @@ const encounterStatus = ref<EncounterStatus>('idle')
 const encounterBeatIndex = ref(0)
 const encounterTransitioning = ref(false)
 const encounterBeatRevealed = ref(false)
-/** The prediction the viewer answered, kept so the next beat can respond. */
-const answeredPrediction = ref<{ beatId: string, optionId: string } | null>(null)
 let hazardTimer: ReturnType<typeof setTimeout> | null = null
 let hintTimer: ReturnType<typeof setTimeout> | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
@@ -94,22 +94,6 @@ const angularDiameter = computed(() =>
 )
 const hazardCopy = computed(() => hazardReady.value ? currentPreset.value.hazardCopy : undefined)
 const currentEncounterBeat = computed(() => currentEncounter.value?.beats[encounterBeatIndex.value] ?? null)
-const currentDiscovery = computed(() => {
-  const discoveryId = currentEncounterBeat.value?.discoveryId
-  const discovery = discoveryId ? discoveriesById[discoveryId] : undefined
-  return discovery ? resolveDiscovery(discovery) : null
-})
-const currentPrediction = computed(() => currentEncounterBeat.value?.prediction ?? null)
-/** The response belongs to the beat after the answered one: the reveal itself. */
-const predictionResponse = computed(() => {
-  const answer = answeredPrediction.value
-  const beats = currentEncounter.value?.beats
-  if (!answer || !beats) return null
-  const answeredIndex = beats.findIndex((beat) => beat.id === answer.beatId)
-  if (answeredIndex < 0 || answeredIndex + 1 !== encounterBeatIndex.value) return null
-  return beats[answeredIndex]?.prediction?.options
-    .find((option) => option.id === answer.optionId)?.response ?? null
-})
 /** The editorial note for the view at rest, if the catalogue has one. */
 const freeDiscovery = computed(() => {
   const discovery = discoveries.find((candidate) =>
@@ -118,24 +102,16 @@ const freeDiscovery = computed(() => {
   )
   return discovery ? resolveDiscovery(discovery) : null
 })
-const availableEncounter = computed(() => {
-  const matching = encounters.filter((encounter) =>
-    encounter.beats[0]?.selection.objectId === currentObjectId.value,
-  )
-  return matching.find((encounter) =>
-    encounter.beats[0]?.selection.viewpointId === currentViewpointId.value,
-  ) ?? matching.find((encounter) =>
-    encounter.beats[0]?.selection.viewpointId === 'rooftop',
-  ) ?? matching[0] ?? null
-})
-
 /**
  * The chrome steps back only once everything has a home (the last stage), and
- * never while a panel is open or a guided encounter is running.
+ * never while a panel is open, a shot is landing or an encounter is running.
+ * A control that fades while the sky it changed is still moving reads as the
+ * interface giving up on the viewer.
  */
 const chromeIdle = computed(() =>
   idle.value
   && stage.value === 'deepen'
+  && !busy.value
   && !objectBrowserOpen.value
   && !moreOpen.value
   && encounterStatus.value === 'idle',
@@ -284,26 +260,33 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
   const loadStartedAt = performance.now()
   loading.value = true
   loadingProgress.value = 0
+  sceneReady.value = false
   capabilityError.value = null
 
   const selection = readSelectionFromUrl()
   const slug = encounterSlug ?? new URLSearchParams(window.location.search).get('encounter')
   const linkedEncounter = slug ? encountersBySlug[slug] : undefined
+  const sharedView = Object.keys(selection).length > 0
   // A shared view or a curated route brought the viewer for a specific sky;
   // they skip the orientation steps.
-  stage.value = initialStage({
-    sharedView: Object.keys(selection).length > 0,
-    encounter: Boolean(linkedEncounter),
-  })
+  stage.value = initialStage({ sharedView, encounter: Boolean(linkedEncounter) })
   if (linkedEncounter) {
     applyEncounterSnapshot(encounterDirector.invite(linkedEncounter))
     applyEncounterSnapshot(encounterDirector.start())
     const firstBeat = linkedEncounter.beats[0]
     if (firstBeat) Object.assign(selection, firstBeat.selection)
   }
+  // Nobody asked for a particular sky, so one of the arrival frames is chosen
+  // and approached from the object's real distance: the first thing on screen
+  // is the size change, not a finished picture.
+  const arrival = !sharedView && !linkedEncounter ? pickArrival() : null
+  if (arrival) Object.assign(selection, arrival)
   if (selection.objectId) currentObjectId.value = selection.objectId
   currentPresetId.value = selection.presetId ?? defaultPresetId(currentObject.value)
   if (selection.viewpointId) currentViewpointId.value = selection.viewpointId
+  const approachFrom = arrival && !prefersReducedMotion()
+    ? currentObject.value.presets.at(-1)?.id ?? null
+    : null
 
   try {
     const { PerigeeScene } = await import('../../src/perigee/PerigeeScene')
@@ -312,19 +295,28 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
     await scene.initialize(canvas, {
       selection: {
         objectId: currentObjectId.value,
-        presetId: currentPresetId.value,
+        presetId: approachFrom ?? currentPresetId.value,
         viewpointId: currentViewpointId.value,
       },
       onProgress: (ratio) => { loadingProgress.value = ratio },
     })
+    loadingProgress.value = 1
+    sceneReady.value = true
+    analytics.track('scene_ready', { loadMs: Math.round(performance.now() - loadStartedAt) })
+    // The viewer enters on their own tap, with or without music. That tap is
+    // also the gesture the browser needs before it will play anything.
+    await new Promise<void>((resolve) => { pendingEntry = resolve })
+    pendingEntry = null
+    if (!canvas.isConnected) return
     loading.value = false
     analytics.clock.start()
-    analytics.track('scene_ready', { loadMs: Math.round(performance.now() - loadStartedAt) })
+    if (arrival) analytics.track('arrival', arrival)
     encounterBeatRevealed.value = Boolean(linkedEncounter)
     syncUrl()
     queueHazard()
     scheduleStageFallback()
     noteActivity()
+    if (approachFrom && approachFrom !== currentPresetId.value) void runApproach(currentPresetId.value)
     // Offered once the scene has settled, and withdrawn on its own: it is the
     // only thing on screen a touch viewer may never dismiss.
     hintTimer = setTimeout(() => {
@@ -333,9 +325,34 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
     }, HINT_DELAY_MS)
   } catch (error) {
     loading.value = false
+    sceneReady.value = false
     capabilityError.value = error instanceof Error && error.message === 'WEBGL2_UNAVAILABLE'
       ? 'webgl2'
       : 'asset'
+  }
+}
+
+/** The viewer's tap on the ready state. Lets `initialize` carry on. */
+function enter(): void {
+  pendingEntry?.()
+}
+
+/**
+ * The arrival's own shot: from the real distance to the landing frame, slowly.
+ * It is a distance change like any other, so a drag, a key or a tap during it
+ * simply takes over, and the landing frame is already the state the interface
+ * shows and the URL carries.
+ */
+async function runApproach(presetId: string): Promise<void> {
+  const token = ++shotToken
+  busy.value = true
+  try {
+    await controller.value?.setDistance(presetId, { duration: ARRIVAL_APPROACH_SECONDS })
+  } catch {
+    // The sky is on screen either way; a failed approach leaves it at the real
+    // distance, which is a true picture rather than an error.
+  } finally {
+    if (token === shotToken) busy.value = false
   }
 }
 
@@ -551,40 +568,25 @@ async function runEncounterBeat(): Promise<void> {
   }
 }
 
-function inviteEncounter(encounterId?: string): void {
-  const encounter = encounterId ? encountersById[encounterId] : availableEncounter.value
+/**
+ * Starts an encounter at its first beat. There is no invitation step: the
+ * viewer chose it by name from the "more" sheet or arrived on its own route,
+ * and a second "Begin" in between was a confirmation of a thing they could not
+ * yet picture.
+ */
+async function beginEncounter(encounterId: string): Promise<void> {
+  const encounter = encountersById[encounterId]
   if (!encounter) return
   objectBrowserOpen.value = false
   moreOpen.value = false
   discoveryOpen.value = false
+  recordInteraction('encounter')
   applyEncounterSnapshot(encounterDirector.invite(encounter))
+  applyEncounterSnapshot(encounterDirector.start())
   encounterBeatRevealed.value = false
   syncUrl()
-}
-
-async function startEncounter(): Promise<void> {
-  recordInteraction('encounter')
-  applyEncounterSnapshot(encounterDirector.start())
-  if (currentEncounter.value) analytics.track('encounter_start', { encounterId: currentEncounter.value.id })
+  analytics.track('encounter_start', { encounterId: encounter.id })
   await runEncounterBeat()
-}
-
-/**
- * Answering is optional and never scored. It records the choice and runs the
- * next beat, so the scene delivers the reveal without an extra step.
- */
-async function answerPrediction(optionId: string): Promise<void> {
-  const beat = currentEncounterBeat.value
-  const encounter = currentEncounter.value
-  if (!beat?.prediction || !encounter || encounterTransitioning.value) return
-  if (!beat.prediction.options.some((option) => option.id === optionId)) return
-  answeredPrediction.value = { beatId: beat.id, optionId }
-  analytics.track('prediction_answer', {
-    encounterId: encounter.id,
-    predictionId: beat.prediction.id,
-    optionId,
-  })
-  await nextEncounter()
 }
 
 async function nextEncounter(): Promise<void> {
@@ -597,19 +599,12 @@ async function nextEncounter(): Promise<void> {
     applyEncounterSnapshot(encounterDirector.exit())
     encounterTransitioning.value = false
     encounterBeatRevealed.value = false
-    answeredPrediction.value = null
     syncUrl()
   }
 }
 
 async function previousEncounter(): Promise<void> {
   applyEncounterSnapshot(encounterDirector.previous())
-  await runEncounterBeat()
-}
-
-async function replayEncounter(): Promise<void> {
-  answeredPrediction.value = null
-  applyEncounterSnapshot(encounterDirector.replay())
   await runEncounterBeat()
 }
 
@@ -620,7 +615,6 @@ function exitEncounter(sync = true): void {
   applyEncounterSnapshot(encounterDirector.exit())
   encounterTransitioning.value = false
   encounterBeatRevealed.value = false
-  answeredPrediction.value = null
   if (sync) syncUrl()
   if (sync && exiting) analytics.track('encounter_exit', { encounterId: exiting.id, beatIndex: exitingBeat })
 }
@@ -666,6 +660,11 @@ function dispose(): void {
   hintTimer = null
   stageTimer = null
   idleTimer = null
+  // An entry never taken is dropped with the mount; `initialize` checks the
+  // canvas is still connected when it resumes, so resolving it here is safe.
+  pendingEntry?.()
+  pendingEntry = null
+  sceneReady.value = false
   // The state is a module singleton, so a client-side navigation remounts on
   // whatever the last page left here. A viewer arriving on a fresh mount has
   // made no changes and has nothing open.
@@ -694,12 +693,8 @@ export function usePerigee() {
     freeDiscovery,
     discoveryOpen: readonly(discoveryOpen),
     encounters,
-    availableEncounter,
     currentEncounter: readonly(currentEncounter),
     currentEncounterBeat,
-    currentDiscovery,
-    currentPrediction,
-    predictionResponse,
     encounterStatus: readonly(encounterStatus),
     encounterBeatIndex: readonly(encounterBeatIndex),
     encounterTransitioning: readonly(encounterTransitioning),
@@ -712,6 +707,8 @@ export function usePerigee() {
     revealed: (required: DisclosureStage): boolean => stageAtLeast(stage.value, required),
     loading: readonly(loading),
     loadingProgress: readonly(loadingProgress),
+    sceneReady: readonly(sceneReady),
+    enter,
     busy: readonly(busy),
     pendingObjectId: readonly(pendingObjectId),
     capabilityError: readonly(capabilityError),
@@ -732,12 +729,9 @@ export function usePerigee() {
     dismissHint,
     dismissNotice,
     resetExperience,
-    inviteEncounter,
-    startEncounter,
-    answerPrediction,
+    beginEncounter,
     nextEncounter,
     previousEncounter,
-    replayEncounter,
     exitEncounter,
     getObjectScreenPosition,
     subscribeFrame,

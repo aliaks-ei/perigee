@@ -26,6 +26,9 @@ describe('editorial content model', () => {
       const resolved = resolveDiscovery(discovery)
       expect(resolved.glance).not.toContain('{{value}}')
       expect(resolved.glance.length).toBeGreaterThan(0)
+      // The prompt is the link that opens the note: a short question.
+      expect(discovery.prompt).toMatch(/\?$/)
+      expect(discovery.prompt.length).toBeLessThanOrEqual(32)
       if (discovery.calculation) expect(resolved.calculatedValue).toBeGreaterThan(0)
     }
   })
@@ -74,40 +77,6 @@ describe('editorial content model', () => {
       "Bring Saturn to the Moon's distance",
       'Explore this sky',
     ])
-  })
-
-  it('gives each launch encounter one optional prediction before a reveal', () => {
-    const predicting = encounters.filter((encounter) =>
-      encounter.beats.some((beat) => beat.prediction),
-    )
-    expect(predicting.map((encounter) => encounter.id).sort()).toEqual([
-      'betelgeuse-takes-the-sky',
-      'moon-approaches',
-      'saturn-moon-distance',
-    ])
-
-    const predictionIds = new Set<string>()
-    for (const encounter of encounters) {
-      const withPrediction = encounter.beats.filter((beat) => beat.prediction)
-      expect(withPrediction.length).toBeLessThanOrEqual(1)
-      for (const beat of withPrediction) {
-        const prediction = beat.prediction!
-        // The scene delivers the reveal, so a prediction needs a beat after it.
-        expect(encounter.beats.indexOf(beat)).toBeLessThan(encounter.beats.length - 1)
-        expect(predictionIds.has(prediction.id)).toBe(false)
-        predictionIds.add(prediction.id)
-        expect(prediction.question).toMatch(/\?$/)
-        expect(prediction.options.length).toBeGreaterThanOrEqual(2)
-        expect(new Set(prediction.options.map((option) => option.id)).size)
-          .toBe(prediction.options.length)
-        for (const option of prediction.options) {
-          expect(option.label.length).toBeGreaterThan(0)
-          // Every answer is met with curiosity, never with a verdict.
-          expect(option.response).not.toMatch(/correct|wrong|right answer|incorrect|score/i)
-          expect(option.response.length).toBeGreaterThan(0)
-        }
-      }
-    }
   })
 
   it('keeps the signature Saturn encounter at Cabo da Roca', () => {

@@ -18,9 +18,10 @@ import { featureArchive, featureForMonth, formatFeatureMonth } from '~/utils/mon
 const {
   moreOpen,
   objectBrowserOpen,
+  encounterStatus,
   busy,
   toggleMore,
-  inviteEncounter,
+  beginEncounter,
 } = usePerigee()
 const { capture, capturing } = useCapture()
 
@@ -33,10 +34,11 @@ const currentEncounter = currentFeature ? encountersById[currentFeature.encounte
 /**
  * Not staged. The control shares the header row with the wordmark, so it rises
  * with the rest of the interface; a header that grows a button later is a worse
- * first impression than one that is simply complete. It steps aside only for
- * the object browser, which owns the whole screen.
+ * first impression than one that is simply complete. It steps aside for the
+ * object browser, which owns the whole screen, and for a running encounter,
+ * whose exit control takes the same corner.
  */
-const available = computed(() => !objectBrowserOpen.value)
+const available = computed(() => !objectBrowserOpen.value && encounterStatus.value === 'idle')
 
 const shortcuts = [
   { keys: ['Drag'], action: 'Look around' },
@@ -92,13 +94,14 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
     placement,
   })
   close(false)
-  inviteEncounter(feature.encounterId)
+  void beginEncounter(feature.encounterId)
 }
 </script>
 
 <template>
   <Transition name="chrome">
-    <div v-if="available" ref="root" class="more-control pointer-events-auto absolute z-encounter">
+    <div v-if="available" ref="root" class="more-control pointer-events-auto absolute z-encounter flex items-center gap-2.5">
+      <PerigeeSoundToggle />
       <Transition name="dock">
         <section
           v-if="moreOpen"

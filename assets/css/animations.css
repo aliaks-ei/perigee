@@ -207,3 +207,11 @@
     opacity: 1;
   }
 }
+
+/* The ring behind the music toggle while it plays: one slow breath, so the
+   corner says "on" without a label. */
+@keyframes sound-pulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  70% { transform: scale(1.45); opacity: 0; }
+  100% { transform: scale(1.45); opacity: 0; }
+}

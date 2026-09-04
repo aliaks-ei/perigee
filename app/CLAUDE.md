@@ -92,14 +92,32 @@ again) with a time fallback for a passive viewer; a shared link or a curated rou
 
 | Stage | Shows |
 | --- | --- |
-| `arrive` | Scene, brand, the "more" control, object name. The drag hint after 2 s. |
+| `arrive` | Scene, brand, the "more" control and the music toggle, object name. The drag hint after 2 s. |
 | `orient` | Metadata line, the pill with the ladder dots, the "step the distance" hint. |
 | `explore` | Discovery note trigger, hazard line, landscape chooser and pill segment. |
-| `deepen` | Encounter card, tonight's sky card, idle fade after 6 s. |
+| `deepen` | Nothing new. The idle fade after 15 s, never while a shot runs. |
 
 Every function that is not the sky lives behind the "more" control at the top right
 (`MoreSheet.vue`): featured skies, sound, capture, shortcuts. A new secondary feature goes there,
-not into a new corner.
+not into a new corner. The one control beside it is the music toggle (`SoundToggle.vue`), because
+a sound switch in the top corner is what every immersive site trains people to look for.
+
+The music is offered once, on the loading screen, where the viewer is already waiting and the
+accepting tap is the gesture the browser needs. It is never offered over the sky.
+
+Nothing timed ever covers the sky. There is no card, invitation or dialog that arrives on its own;
+the hints are single lines that share one slot and withdraw themselves. An encounter starts from
+its curated route or from the "more" sheet, straight into its first beat, and ends with one
+action that hands the viewer back to the free interface.
+
+A fresh visit, with no link and no route, lands on one of `data/arrivals.ts`'s frames and
+approaches it from the object's real distance over four seconds (`runApproach` in `usePerigee`).
+The approach is an ordinary distance shot: anything the viewer does takes over from it, and the
+interface and the URL already show the landing frame while it runs. Reduced motion lands directly.
+
+The title block ends in a question (`prompt` on the discovery) that opens the note for this view,
+and at the closest rung in the next object. On a phone the row shows one of them, the next object
+winning.
 
 **Every interactive element needs a visible hover and focus state.** `base.css` gives every
 non-disabled button a colour lift and every link an underline treatment, both on `:hover` and
