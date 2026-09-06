@@ -184,4 +184,12 @@ a three upgrade leaves it behind (copy the two files from
   `history.replaceState`. `public/_headers` carries the static-host cache rules.
 - A visit with no query string lands on a random frame from `app/data/arrivals.ts` and approaches
   it from the real distance; `tests/arrival-frames.test.ts` keeps those frames inside the ladders
-  and away from the hazard presets. Shared links and `/e/` routes bypass it.
+  and away from the hazard presets. Shared links and `/e/` routes bypass it. The arrival is
+  deliberately random every time — the last sky is not remembered.
+- What a returning visitor keeps lives in one versioned record under `perigee:settings`
+  (`app/utils/settingsStore.ts`): the answer to the music offer, the volume, and the highest
+  disclosure stage reached. `parseSettings` validates every field and drops the record whole on
+  anything unexpected, so the worst case is a first visit. A record older than
+  `SETTINGS_MAX_AGE_MS` (90 days) expires, and every write restamps it. The store is read once per
+  page and cached; storage that is missing or refuses a write leaves the settings live for the page
+  lifetime.

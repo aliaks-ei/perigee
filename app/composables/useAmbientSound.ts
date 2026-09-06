@@ -4,10 +4,12 @@ import type {
   AmbientSoundStatus,
 } from '~/types/ambientSound'
 import type { ViewpointId } from '~/types/perigee'
+import { readSettings, saveSettings } from '~/utils/settingsStore'
 import { AmbientSoundEngine } from '../../src/perigee/audio/AmbientSoundEngine'
 
-export const AMBIENT_SOUND_STORAGE_KEY = 'perigee:ambient-sound'
 export const DEFAULT_AMBIENT_VOLUME = 0.35
+/** A slider fires on every input event; storage does not need every frame of a drag. */
+const VOLUME_WRITE_DELAY_MS = 500
 
 const status = ref<AmbientSoundStatus>('off')
 const volume = ref(DEFAULT_AMBIENT_VOLUME)
@@ -23,6 +25,8 @@ let activeViewpoint: Readonly<Ref<ViewpointId>> | null = null
 let resumeAfterVisibility = false
 let operation = 0
 let pendingAutoStart: (() => void) | null = null
+let volumeTimer: ReturnType<typeof setTimeout> | null = null
+let pendingVolume: number | null = null
 
 export function resolveAmbientSoundPreference(value: string | null): boolean {
   return value === 'on'
@@ -33,30 +37,22 @@ export function hasAmbientSoundDecision(value: string | null): boolean {
   return value === 'on' || value === 'off'
 }
 
-function readStoredPreference(): string | null {
-  try {
-    return window.localStorage.getItem(AMBIENT_SOUND_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
 function writePreference(enabled: boolean): void {
   undecided.value = false
-  try {
-    window.localStorage.setItem(AMBIENT_SOUND_STORAGE_KEY, enabled ? 'on' : 'off')
-  } catch {
-    // Storage can be unavailable in private or locked-down contexts. Sound is
-    // still usable for the current page lifetime.
-  }
+  saveSettings({ sound: enabled ? 'on' : 'off' })
 }
 
 function initialize(): void {
   if (initialized || !import.meta.client) return
   initialized = true
-  const stored = readStoredPreference()
+  const settings = readSettings()
+  const stored = settings?.sound ?? null
   preferenceEnabled.value = resolveAmbientSoundPreference(stored)
   undecided.value = !hasAmbientSoundDecision(stored)
+  if (settings?.volume != null) {
+    volume.value = settings.volume
+    if (settings.volume > 0) lastNonZeroVolume = settings.volume
+  }
   if (preferenceEnabled.value) {
     status.value = 'suspended'
     armAutoStart()
@@ -110,13 +106,17 @@ async function enable(): Promise<void> {
   const token = ++operation
   status.value = 'starting'
   if (volume.value === 0) volume.value = lastNonZeroVolume
+  // Recorded at the moment of asking, not on the outcome. The likeliest way
+  // this fails is a track that did not download, and a listener who asked for
+  // music should be asked no further questions — the next visit simply tries
+  // again. `preferenceEnabled` still waits for the music to actually start.
+  writePreference(true)
   try {
     engine ??= createEngine()
     engine.setVolume(volume.value)
     await engine.start()
     if (token !== operation) return
     preferenceEnabled.value = true
-    writePreference(true)
     status.value = 'playing'
   } catch {
     if (token !== operation) return
@@ -162,6 +162,18 @@ function setVolume(value: number): void {
   volume.value = next
   if (next > 0) lastNonZeroVolume = next
   engine?.setVolume(next)
+  pendingVolume = next
+  if (volumeTimer) clearTimeout(volumeTimer)
+  volumeTimer = setTimeout(flushVolume, VOLUME_WRITE_DELAY_MS)
+}
+
+/** Also called on teardown, so a slider released as the page goes away is kept. */
+function flushVolume(): void {
+  if (volumeTimer) clearTimeout(volumeTimer)
+  volumeTimer = null
+  if (pendingVolume === null) return
+  saveSettings({ volume: pendingVolume })
+  pendingVolume = null
 }
 
 async function handleVisibility(): Promise<void> {
@@ -215,6 +227,7 @@ function installSceneWatcher(viewpoint: Readonly<Ref<ViewpointId>>): void {
 export function disposeAmbientSound(): void {
   ++operation
   disarmAutoStart()
+  flushVolume()
   engine?.dispose()
   engine = null
   resumeAfterVisibility = false

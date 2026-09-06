@@ -27,6 +27,7 @@ const {
   loading,
   loadingProgress,
   sceneReady,
+  entryRequired,
   enter,
   busy,
   capabilityError,
@@ -84,11 +85,16 @@ const loadingPercent = computed(() => Math.round(loadingProgress.value * 100))
  * can start at once. No browser starts audio on its own, and an offer that
  * arrived later covered the sky. Nothing about music appears over the sky
  * after this; the toggle beside "more" is the control from then on.
+ *
+ * The choice is made once, not once per visit. A viewer who has answered it
+ * before goes straight from the loading screen into the sky, and their music,
+ * if they asked for it, starts on the first thing they touch.
  */
 const ready = computed(() => loading.value && sceneReady.value && !capabilityError.value)
+const entryOffered = computed(() => ready.value && entryRequired.value)
 
-watch(ready, async (isReady) => {
-  if (!isReady) return
+watch(entryOffered, async (offered) => {
+  if (!offered) return
   await nextTick()
   enterButton.value?.focus({ preventScroll: true })
 })
@@ -281,7 +287,7 @@ onBeforeUnmount(() => {
           <i :style="{ transform: `scaleX(${Math.max(loadingProgress, 0.04)})` }" />
         </span>
         <Transition name="hint">
-          <div v-if="ready" class="arrival-sound flex items-center">
+          <div v-if="entryOffered" class="arrival-sound flex items-center">
             <button
               ref="enterButton"
               type="button"

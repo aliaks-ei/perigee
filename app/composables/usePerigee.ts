@@ -17,6 +17,7 @@ import {
   stageForAction,
   type DisclosureStage,
 } from '~/utils/disclosureStages'
+import { readSettings, saveSettings, touchSettings } from '~/utils/settingsStore'
 import type { EncounterDefinition } from '~/types/editorial'
 import type {
   PerigeeController,
@@ -46,6 +47,13 @@ const loadingProgress = ref(0)
  * the music choice, and nothing starts until one of the two is taken.
  */
 const sceneReady = ref(false)
+/**
+ * Whether the loading screen has to end in the music choice. Only a visitor
+ * who has never answered it does: a returning one has their answer stored, so
+ * the sky starts on its own and the music, if they wanted it, joins on the
+ * first thing they touch (`armAutoStart` in `useAmbientSound`).
+ */
+const entryRequired = ref(true)
 let pendingEntry: (() => void) | null = null
 /** A shot is running. Controls stay live; only the object being swapped waits. */
 const busy = ref(false)
@@ -130,6 +138,9 @@ function setStage(target: DisclosureStage): void {
   const next = advanceStage(stage.value, target)
   if (next === stage.value) return
   stage.value = next
+  // Remembered, so a returning viewer keeps the interface they have already
+  // opened rather than watching it assemble itself again.
+  saveSettings({ stage: next })
   scheduleStageFallback()
 }
 
@@ -267,13 +278,20 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
   sceneReady.value = false
   capabilityError.value = null
 
+  const stored = readSettings()
+  entryRequired.value = stored?.sound == null
   const selection = readSelectionFromUrl()
   const slug = encounterSlug ?? new URLSearchParams(window.location.search).get('encounter')
   const linkedEncounter = slug ? encountersBySlug[slug] : undefined
   const sharedView = Object.keys(selection).length > 0
   // A shared view or a curated route brought the viewer for a specific sky;
-  // they skip the orientation steps.
-  stage.value = initialStage({ sharedView, encounter: Boolean(linkedEncounter) })
+  // they skip the orientation steps. A viewer who has been here before resumes
+  // at the stage they left, and the ladder still only climbs, so whichever of
+  // the two is further along wins.
+  stage.value = advanceStage(
+    initialStage({ sharedView, encounter: Boolean(linkedEncounter) }),
+    stored?.stage ?? 'arrive',
+  )
   if (linkedEncounter) {
     applyEncounterSnapshot(encounterDirector.invite(linkedEncounter))
     applyEncounterSnapshot(encounterDirector.start())
@@ -309,12 +327,17 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
     loadingProgress.value = 1
     sceneReady.value = true
     analytics.track('scene_ready', { loadMs: Math.round(performance.now() - loadStartedAt) })
-    // The viewer enters on their own tap, with or without music. That tap is
-    // also the gesture the browser needs before it will play anything.
-    await new Promise<void>((resolve) => { pendingEntry = resolve })
-    pendingEntry = null
+    // A first-time viewer enters on their own tap, with or without music. That
+    // tap is also the gesture the browser needs before it will play anything.
+    if (entryRequired.value) {
+      await new Promise<void>((resolve) => { pendingEntry = resolve })
+      pendingEntry = null
+    }
     if (request !== initializationRequest || !canvas.isConnected) return
     loading.value = false
+    // Marks the visit, so someone who comes back often but changes nothing
+    // does not age out of their own settings.
+    if (stored) touchSettings()
     analytics.clock.start()
     if (arrival) analytics.track('arrival', arrival)
     encounterBeatRevealed.value = Boolean(linkedEncounter)
@@ -324,11 +347,14 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
     noteActivity()
     if (approachFrom && approachFrom !== currentPresetId.value) void runApproach(currentPresetId.value)
     // Offered once the scene has settled, and withdrawn on its own: it is the
-    // only thing on screen a touch viewer may never dismiss.
-    hintTimer = setTimeout(() => {
-      hintVisible.value = true
-      hintTimer = setTimeout(dismissHint, HINT_LIFETIME_MS)
-    }, HINT_DELAY_MS)
+    // only thing on screen a touch viewer may never dismiss. Anyone who has
+    // already got past `arrive` has found the sky, so it is not offered again.
+    if (!stageAtLeast(stage.value, 'orient')) {
+      hintTimer = setTimeout(() => {
+        hintVisible.value = true
+        hintTimer = setTimeout(dismissHint, HINT_LIFETIME_MS)
+      }, HINT_DELAY_MS)
+    }
   } catch (error) {
     if (request !== initializationRequest) return
     controller.value?.dispose()
@@ -726,6 +752,7 @@ export function usePerigee() {
     loading: readonly(loading),
     loadingProgress: readonly(loadingProgress),
     sceneReady: readonly(sceneReady),
+    entryRequired: readonly(entryRequired),
     enter,
     busy: readonly(busy),
     pendingObjectId: readonly(pendingObjectId),

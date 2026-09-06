@@ -102,8 +102,16 @@ Every function that is not the sky lives behind the "more" control at the top ri
 not into a new corner. The one control beside it is the music toggle (`SoundToggle.vue`), because
 a sound switch in the top corner is what every immersive site trains people to look for.
 
+The staged reveal is a first-visit experience. The highest stage reached is stored (see the root
+`CLAUDE.md` on `perigee:settings`) and restored on the next visit, so someone coming back gets the
+whole interface at once. The drag hint goes with it: it is only offered to a viewer still at
+`arrive`.
+
 The music is offered once, on the loading screen, where the viewer is already waiting and the
-accepting tap is the gesture the browser needs. It is never offered over the sky.
+accepting tap is the gesture the browser needs. It is never offered over the sky, and it is offered
+once in a visitor's life, not once a visit — a stored answer means the loading screen has no
+buttons and the sky starts on its own (`entryRequired` in `usePerigee`). Their music then starts on
+the first drag, tap or key, because no browser will play anything without a gesture.
 
 Nothing timed ever covers the sky. There is no card, invitation or dialog that arrives on its own;
 the hints are single lines that share one slot and withdraw themselves. An encounter starts from
