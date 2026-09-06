@@ -3,12 +3,11 @@ import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from '~/utils/
 
 /**
  * The home route. It is prerendered (see `routeRules` in `nuxt.config.ts`) so
- * the root URL carries a real title, description, card and body. It previously
- * shipped an empty SPA shell, which meant the site's main URL was invisible to
- * every crawler that does not run JavaScript.
+ * the root URL carries a real title, description, card and body — otherwise the
+ * site's main URL would be invisible to any crawler that does not run JavaScript.
  *
  * The live scene still mounts client-side only, exactly as the encounter routes
- * do. `PerigeeLanding` is what lands in the prerendered HTML.
+ * do. `PrerenderLanding` is what lands in the prerendered HTML.
  */
 const config = useRuntimeConfig()
 const siteUrl = String(config.public.siteUrl ?? '')

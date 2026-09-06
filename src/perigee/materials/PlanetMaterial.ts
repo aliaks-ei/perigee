@@ -132,7 +132,7 @@ export function createPlanetMaterial(
       uSunDirection: { value: sunDirection },
       uLimbColor: { value: limbColor },
       uBodyTint: { value: bodyTint },
-      // Saturn is cream, not gold. The tint now only nudges the map.
+      // Saturn is cream, not gold; the tint only nudges the map.
       uBodyTintStrength: { value: saturn ? 0.08 : 0 },
       uNightLift: { value: NIGHT_LIFT[definition.material] },
       // Rocky bodies have a sharp terminator; thick atmospheres smear it.

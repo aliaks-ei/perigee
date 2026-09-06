@@ -3,8 +3,7 @@ import { PhSpeakerHigh, PhSpeakerSlash } from '@phosphor-icons/vue'
 
 /**
  * The music as one row of the "more" sheet: a toggle with its state, and the
- * volume beneath it while it is playing. It used to be a lone circle in the
- * corner in the quietest ink, which nobody found.
+ * volume beneath it while it is playing.
  *
  * The volume lives only here. The on/off toggle also rests in the header
  * beside "more" (`SoundToggle.vue`), and the offer to start the music is made
