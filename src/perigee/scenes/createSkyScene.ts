@@ -1,3 +1,4 @@
+import { environmentTintStrength } from '../math/sceneAppearance'
 import {
   BufferAttribute,
   BufferGeometry,
@@ -32,8 +33,11 @@ export interface SkySceneBundle {
   /** Warms the other viewpoints' backdrops while the main thread is idle. */
   prefetch: () => void
   setPixelRatio: (pixelRatio: number) => void
+  finish: () => void
+  setPaused: (paused: boolean) => void
+  setReducedMotion: (reduced: boolean) => void
   setQuality: (tier: QualityTier) => void
-  setViewpoint: (viewpointId: ViewpointId, immediate?: boolean) => Promise<void>
+  setViewpoint: (viewpointId: ViewpointId, immediate?: boolean, onReady?: () => void) => Promise<void>
   setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
   update: (time: number) => void
   dispose: () => void
@@ -163,13 +167,14 @@ function buildGeometry(records: StarRecord[], random: () => number): BufferGeome
   return geometry
 }
 
-export function createSkyScene(initialQuality: QualityTier, reducedMotion = false): SkySceneBundle {
+export function createSkyScene(initialQuality: QualityTier, reducedMotion = false, invalidate: () => void = () => undefined): SkySceneBundle {
   const scene = new Scene()
 
   // No sky dome: the environment layer is an opaque full-screen backdrop that
   // covers every pixel behind the hero, so a dome would only ever be overdrawn.
   // The palette still drives star density and the backdrop's tint.
-  const environment = createEnvironmentLayer(initialQuality)
+  const environment = createEnvironmentLayer(initialQuality, invalidate)
+  environment.setReducedMotion(reducedMotion)
   scene.add(environment.mesh)
   const meteors = createMeteorLayer(reducedMotion)
   scene.add(meteors.mesh)
@@ -243,6 +248,7 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
         stars.geometry = rebuilt
         geometry.dispose()
         geometry = rebuilt
+        invalidate()
       })
       .catch(() => undefined)
   }
@@ -266,9 +272,7 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
       environment.setTint(nextPalette[2], 0.09)
     },
     setGlow(color, strength, glow) {
-      const environmentStrength = strength > 0.08
-        ? Math.min(0.58, strength * 4.6)
-        : Math.min(0.11, 0.045 + strength)
+      const environmentStrength = environmentTintStrength(strength)
       environment.setTint(color, environmentStrength)
       environment.setGlow(glow.color, glow.strength)
     },
@@ -281,21 +285,28 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
     prefetch() {
       environment.prefetch()
     },
+    finish() { environment.finish() },
+    setPaused(value) { environment.setPaused(value) },
+    setReducedMotion(reduced) {
+      reducedMotion = reduced
+      environment.setReducedMotion(reduced)
+      meteors.setReducedMotion(reduced)
+    },
     setQuality(tier) {
       qualityOpacity = tier === 'safe' ? 0.82 : 1
       applyStarOpacity()
       environment.setQuality(tier)
     },
-    setViewpoint(viewpointId, immediate) {
-      return environment.setViewpoint(viewpointId, immediate)
+    setViewpoint(viewpointId, immediate, onReady) {
+      return environment.setViewpoint(viewpointId, immediate, onReady)
     },
     setView(yaw, pitch, verticalFovDegrees, viewportAspect) {
       environment.setView(yaw, pitch, verticalFovDegrees, viewportAspect)
       meteors.setAspect(viewportAspect)
     },
     update(time) {
-      pointsMaterial.uniforms.uTime!.value = time
-      stars.rotation.y = time * 0.0007
+      pointsMaterial.uniforms.uTime!.value = reducedMotion ? 0 : time
+      stars.rotation.y = reducedMotion ? 0 : time * 0.0007
       environment.update(time)
       meteors.update(time)
     },

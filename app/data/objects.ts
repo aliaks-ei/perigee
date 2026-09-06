@@ -172,7 +172,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       accent: '#d8c7a4',
     },
     thumbnail: '/assets/objects/thumbs/saturn.webp',
-    attributionIds: ['solar-system-scope-textures'],
+    attributionIds: ['solar-system-scope-textures', 'perigee-saturn-art'],
   },
   {
     id: 'neptune',

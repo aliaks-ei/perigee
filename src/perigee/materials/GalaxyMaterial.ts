@@ -9,6 +9,7 @@ export interface GalaxyMaterialSet {
    * high-frequency octaves buys back the fill rate a full-sky disc spends.
    */
   setQuality: (tier: QualityTier) => void
+  setProjectedSize: (pixels: number) => void
 }
 
 export interface GalaxyMaterialOptions {
@@ -63,6 +64,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
       uCosInclination: { value: Math.cos((options.inclinationDegrees * Math.PI) / 180) },
       uOpacity: { value: 1 },
       uDetail: { value: 1 },
+      uProjectedSize: { value: 2048 },
     },
     vertexShader: `
       varying vec2 vSky;
@@ -80,6 +82,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
       uniform float uCosInclination;
       uniform float uOpacity;
       uniform float uDetail;
+      uniform float uProjectedSize;
       varying vec2 vSky;
 
       float hash(vec2 p) {
@@ -147,11 +150,14 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
         // one grid the cells line up into a dotted seam along the ring, which
         // reads as a repeating pattern rather than as clumping.
         vec2 spun = vec2(structuredPlane.x * 0.8 - structuredPlane.y * 0.6, structuredPlane.x * 0.6 + structuredPlane.y * 0.8);
+        float footprint = max(length(dFdx(structuredPlane)), length(dFdy(structuredPlane)));
+        float mediumWeight = smoothstep(100.0, 300.0, uProjectedSize) * (1.0 - smoothstep(0.025, 0.07, footprint));
+        float fineWeight = smoothstep(300.0, 700.0, uProjectedSize) * (1.0 - smoothstep(0.012, 0.035, footprint));
         float coarse = noise(structuredPlane * 5.2);
         float knots = coarse;
-        if (uDetail > 0.25) knots = noise(spun * 15.0 + vec2(31.7, 12.4));
+        if (uDetail > 0.25 && mediumWeight > 0.0) knots = mix(coarse, noise(spun * 15.0 + vec2(31.7, 12.4)), mediumWeight);
         float grain = knots;
-        if (uDetail > 0.75) grain = noise(structuredPlane * 31.0 + vec2(7.3, 41.2));
+        if (uDetail > 0.75 && fineWeight > 0.0) grain = mix(knots, noise(structuredPlane * 31.0 + vec2(7.3, 41.2)), fineWeight);
         float mottle = pow(max(coarse * 0.5 + knots * 0.34 + grain * 0.16, 0.0), 1.5);
 
         // Logarithmic spiral: an arm sits where the angle keeps pace with the
@@ -267,6 +273,7 @@ export function createGalaxyMaterial(options: GalaxyMaterialOptions): GalaxyMate
 
   return {
     material,
+    setProjectedSize(pixels) { material.uniforms.uProjectedSize!.value = Math.max(0, pixels) },
     setQuality(tier) {
       material.uniforms.uDetail!.value = tier === 'high' ? 1 : tier === 'balanced' ? 0.5 : 0
     },

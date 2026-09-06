@@ -1,3 +1,4 @@
+import { RING_INNER_RADIUS, RING_OUTER_RADIUS, SATURN_SOLAR_ANGULAR_RADIUS, RING_PARALLEL_EPSILON } from '../math/ringShadow'
 import {
   Color,
   DataTexture,
@@ -43,8 +44,8 @@ const SURFACE_RESPONSE: Record<SkyObjectDefinition['material'], {
   warmth: number
 }> = {
   'rocky': { contrast: 1.12, saturation: 0.94, detail: 0.34, specular: 0.018, specularPower: 34, warmth: 0.015 },
-  'gas-giant': { contrast: 1.08, saturation: 0.96, detail: 0.16, specular: 0.055, specularPower: 52, warmth: 0.11 },
-  'ice-giant': { contrast: 1.06, saturation: 1.04, detail: 0.1, specular: 0.075, specularPower: 58, warmth: 0 },
+  'gas-giant': { contrast: 1.08, saturation: 0.96, detail: 0, specular: 0, specularPower: 52, warmth: 0.11 },
+  'ice-giant': { contrast: 1.06, saturation: 1.04, detail: 0, specular: 0, specularPower: 58, warmth: 0 },
   'stellar': { contrast: 1, saturation: 1, detail: 0, specular: 0, specularPower: 1, warmth: 0 },
   'galactic': { contrast: 1, saturation: 1, detail: 0, specular: 0, specularPower: 1, warmth: 0 },
 }
@@ -61,9 +62,12 @@ const SHARED_VERTEX = `
   varying vec3 vBitangentView;
   varying vec3 vViewDirection;
   varying vec2 vUv;
+  varying vec3 vBodyPosition;
+  uniform float uPolarRatio;
 
   void main() {
     vUv = uv;
+    vBodyPosition = position * vec3(1.0, uPolarRatio, 1.0);
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vNormalView = normalize(normalMatrix * normal);
     vec3 axis = abs(normal.y) > 0.999 ? vec3(1.0, 0.0, 0.0) : normalize(cross(vec3(0.0, 1.0, 0.0), normal));
@@ -88,22 +92,28 @@ function neutralNormalMap(): DataTexture {
   return neutralNormal
 }
 
+export function disposePlanetResources(): void {
+  neutralNormal?.dispose()
+  neutralNormal = null
+}
+
 export interface PlanetMaterialSet {
   surface: ShaderMaterial
   /** Sun direction must be supplied in view space, refreshed per frame. */
-  setSunDirection: (viewSpaceDirection: Vector3) => void
+  setSunDirection: (viewSpaceDirection: Vector3, localDirection?: Vector3) => void
 }
 
 export function createPlanetMaterial(
   definition: SkyObjectDefinition,
   texture: Texture,
   normalMap: Texture | null = null,
+  ringMap: Texture | null = null,
 ): PlanetMaterialSet {
   texture.colorSpace = SRGBColorSpace
 
   const source = texture.image as { width?: number, height?: number } | null
   const texelSize = new Vector2(1 / (source?.width ?? 4_096), 1 / (source?.height ?? 2_048))
-  const limbColor = new Color(LIMB_COLORS[definition.material])
+  const limbColor = new Color(definition.id === 'moon' ? '#ffffff' : definition.id === 'mars' ? '#dfac89' : LIMB_COLORS[definition.material])
   const bodyTint = new Color(definition.id === 'saturn' ? '#d8aa70' : '#ffffff')
   const sunDirection = new Vector3(0, 0, 1)
   const rocky = definition.material === 'rocky'
@@ -112,6 +122,12 @@ export function createPlanetMaterial(
 
   const surface = new ShaderMaterial({
     uniforms: {
+      uRingMap: { value: ringMap ?? texture },
+      uRingShadow: { value: ringMap ? 1 : 0 },
+      uSunLocal: { value: new Vector3(0, 0, 1) },
+      uPolarRatio: { value: 1 - (definition.flattening ?? 0) },
+      uMars: { value: definition.id === 'mars' ? 1 : 0 },
+      uAtmosphere: { value: definition.id === 'moon' ? 0 : rocky ? 0.015 : 0.045 },
       uMap: { value: texture },
       uSunDirection: { value: sunDirection },
       uLimbColor: { value: limbColor },
@@ -127,7 +143,7 @@ export function createPlanetMaterial(
       uSaturation: { value: response.saturation },
       // Real elevation wins where it exists; the albedo gradient is the
       // stand-in for bodies whose relief is cloud banding, not ground.
-      uRelief: { value: normalMap ? 0 : (response.detail + (saturn ? 0.08 : 0)) * 2.6 },
+      uRelief: { value: normalMap || !rocky ? 0 : response.detail * 2.6 },
       uTexelSize: { value: texelSize },
       uNormalMap: { value: normalMap ?? neutralNormalMap() },
       uNormalStrength: { value: normalMap ? 1 : 0 },
@@ -141,6 +157,12 @@ export function createPlanetMaterial(
     vertexShader: SHARED_VERTEX,
     fragmentShader: `
       uniform sampler2D uMap;
+      uniform sampler2D uRingMap;
+      uniform float uRingShadow;
+      uniform vec3 uSunLocal;
+      uniform float uMars;
+      uniform float uAtmosphere;
+      varying vec3 vBodyPosition;
       uniform vec3 uSunDirection;
       uniform vec3 uLimbColor;
       uniform vec3 uBodyTint;
@@ -169,6 +191,24 @@ export function createPlanetMaterial(
 
       float brightness(vec2 uv) {
         return dot(texture2D(uMap, uv).rgb, vec3(0.2126, 0.7152, 0.0722));
+      }
+
+      // Equatorial ring plane in body coordinates. The local sun is refreshed
+      // with the rotating surface; the plane itself is invariant under spin.
+      float ringTransmission() {
+        if (uRingShadow < 0.5 || abs(uSunLocal.y) < ${RING_PARALLEL_EPSILON.toFixed(5)}) return 1.0;
+        float t = -vBodyPosition.y / uSunLocal.y;
+        float radius = length((vBodyPosition + t * uSunLocal).xz);
+        float band = (radius - ${RING_INNER_RADIUS.toFixed(2)}) / ${(RING_OUTER_RADIUS - RING_INNER_RADIUS).toFixed(2)};
+        // Solar angular radius at Saturn (~0.00049 rad), plus pixel footprint.
+        float width = max(fwidth(band), t * ${SATURN_SOLAR_ANGULAR_RADIUS.toFixed(5)} / ${(RING_OUTER_RADIUS - RING_INNER_RADIUS).toFixed(2)});
+        if (t <= 0.0 || band <= 0.0 || band >= 1.0) return 1.0;
+        float opacity = (texture2D(uRingMap, vec2(clamp(band - width, 0.0, 1.0), 0.5)).a
+          + 2.0 * texture2D(uRingMap, vec2(band, 0.5)).a
+          + texture2D(uRingMap, vec2(clamp(band + width, 0.0, 1.0), 0.5)).a) * 0.25;
+        float edge = smoothstep(0.0, max(width, 0.001), band) * (1.0 - smoothstep(1.0 - max(width, 0.001), 1.0, band));
+        // Alpha is an authored proxy for optical depth, not a measured tau map.
+        return 1.0 - opacity * edge * 0.85;
       }
 
       void main() {
@@ -212,7 +252,8 @@ export function createPlanetMaterial(
           lit = min(1.15, 2.0 * incident / (incident + mu + 0.05));
           // Opposition surge: regolith backscatters, so a body seen with the
           // sun at the viewer's back brightens sharply.
-          lit *= 1.0 + 0.25 * pow(max(dot(sun, view), 0.0), 8.0);
+          lit *= 1.0 + mix(0.25, 0.1, uMars) * pow(max(dot(sun, view), 0.0), mix(8.0, 4.0, uMars));
+          lit = mix(lit, lit * 0.65 + max(mu0, 0.0) * 0.35, uMars);
         } else {
           // Wrapped diffuse. A hard clamp gives the CG "pasted sphere" look;
           // the wrap is what makes a body read as sitting in real light.
@@ -220,6 +261,7 @@ export function createPlanetMaterial(
           lit = pow(lit, 0.82);
         }
 
+        lit *= ringTransmission();
         vec3 color = albedo * lit;
         // Never crush the night side to pure black — scattered light survives.
         color += albedo * uLimbColor * uNightLift * (1.0 - lit);
@@ -230,6 +272,8 @@ export function createPlanetMaterial(
         float highlight = pow(max(dot(normal, halfVector), 0.0), uSpecularPower);
         color += uLimbColor * highlight * uSpecular * smoothstep(-0.05, 0.35, mu0);
 
+        // Atmospheric limb scattering is independent of solid-surface relief.
+        color += uLimbColor * uAtmosphere * pow(1.0 - mu, 3.0) * smoothstep(-0.12, 0.3, mu0);
         gl_FragColor = vec4(color * uExposure, uOpacity);
       }
     `,
@@ -237,8 +281,9 @@ export function createPlanetMaterial(
 
   return {
     surface,
-    setSunDirection(viewSpaceDirection) {
+    setSunDirection(viewSpaceDirection, localDirection) {
       sunDirection.copy(viewSpaceDirection).normalize()
+      if (localDirection) surface.uniforms.uSunLocal!.value.copy(localDirection).normalize()
     },
   }
 }

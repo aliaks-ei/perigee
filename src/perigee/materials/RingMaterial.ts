@@ -1,3 +1,4 @@
+import { SATURN_SOLAR_ANGULAR_RADIUS } from '../math/ringShadow'
 import {
   DoubleSide,
   SRGBColorSpace,
@@ -17,7 +18,7 @@ export interface RingMaterialSet {
   setSunDirection: (localDirection: Vector3, viewDirection: Vector3) => void
 }
 
-export function createRingMaterial(texture: Texture): RingMaterialSet {
+export function createRingMaterial(texture: Texture, polarRatio = 1): RingMaterialSet {
   texture.colorSpace = SRGBColorSpace
 
   const sunDirection = new Vector3(0.45, 0.72, 0.86).normalize()
@@ -30,6 +31,7 @@ export function createRingMaterial(texture: Texture): RingMaterialSet {
       uSunView: { value: sunView },
       /** Planet radius in ring-local units, for the cast shadow. */
       uPlanetRadius: { value: 1 },
+      uPolarRatio: { value: polarRatio },
       uOpacity: { value: 1 },
     },
     vertexShader: `
@@ -51,6 +53,7 @@ export function createRingMaterial(texture: Texture): RingMaterialSet {
       uniform vec3 uSunDirection;
       uniform vec3 uSunView;
       uniform float uPlanetRadius;
+      uniform float uPolarRatio;
       uniform float uOpacity;
       varying vec2 vUv;
       varying vec3 vNormal;
@@ -64,7 +67,8 @@ export function createRingMaterial(texture: Texture): RingMaterialSet {
         float band = (radial - 0.5345) / 0.4655;
         // Soft edges instead of a discard, so the anti-aliasing pass has a
         // gradient to resolve rather than a stair-step.
-        float inside = smoothstep(0.0, 0.006, band) * (1.0 - smoothstep(0.994, 1.0, band));
+        float edgeWidth = max(fwidth(band), 0.001);
+        float inside = smoothstep(0.0, edgeWidth, band) * (1.0 - smoothstep(1.0 - edgeWidth, 1.0, band));
         vec4 ring = texture2D(uMap, vec2(clamp(band, 0.0, 1.0), 0.5));
         float alpha = ring.a * inside;
 
@@ -94,10 +98,14 @@ export function createRingMaterial(texture: Texture): RingMaterialSet {
         // Planet shadow. The ring is inside the body's shadow cylinder when it
         // lies behind the planet along the sun axis and within its radius. The
         // sun is a disc, not a point, so both edges get a penumbra.
-        float along = dot(vLocal, sun);
-        float offset = length(vLocal - sun * along);
-        float behind = 1.0 - smoothstep(-0.06, 0.06, along);
-        float shadow = behind * (1.0 - smoothstep(uPlanetRadius * 0.94, uPlanetRadius * 1.06, offset));
+        // Transform the oblate planet into a unit sphere in ring-local space.
+        vec3 ellipsoid = vec3(1.0, 1.0, 1.0 / max(uPolarRatio, 0.1));
+        vec3 origin = vLocal * ellipsoid;
+        vec3 ray = normalize(sun * ellipsoid);
+        float along = dot(origin, ray);
+        float offset = length(origin - ray * along);
+        float penumbra = max(fwidth(offset), max(-along, 0.0) * ${SATURN_SOLAR_ANGULAR_RADIUS.toFixed(5)});
+        float shadow = step(along, 0.0) * (1.0 - smoothstep(uPlanetRadius - penumbra, uPlanetRadius + max(penumbra, 0.00001), offset));
         light *= 1.0 - shadow * 0.92;
 
         vec3 ringColor = clamp((ring.rgb - 0.5) * 1.12 + 0.5, 0.0, 1.0);

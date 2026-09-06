@@ -56,6 +56,7 @@ export interface StellarMaterialSet {
    * is the cheapest way to buy back a whole tier's worth of fill rate.
    */
   setQuality: (tier: QualityTier) => void
+  setProjectedSize: (pixels: number) => void
   /**
    * 0 at the real distance, 1 at the impossible close pass. A hot star this
    * close is a blinding source with limb detail, not a readable texture, so
@@ -76,6 +77,7 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
       uHigh: { value: new Color(high) },
       uOpacity: { value: 1 },
       uDetail: { value: 1 },
+      uProjectedSize: { value: 2048 },
       uCellScale: { value: look.cellScale },
       uContrast: { value: look.contrast },
       uWarp: { value: look.warp },
@@ -99,6 +101,7 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
       uniform vec3 uHigh;
       uniform float uOpacity;
       uniform float uDetail;
+      uniform float uProjectedSize;
       uniform float uCellScale;
       uniform float uContrast;
       uniform float uWarp;
@@ -153,6 +156,9 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
 
       void main() {
         vec3 p = normalize(vPosition);
+        float footprint = max(length(dFdx(p)), length(dFdy(p)));
+        float mediumWeight = smoothstep(80.0, 220.0, uProjectedSize) * (1.0 - smoothstep(0.02, 0.06, footprint));
+        float fineWeight = smoothstep(220.0, 520.0, uProjectedSize) * (1.0 - smoothstep(0.008, 0.025, footprint));
         float mu = max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0);
 
         // The hot stars: four octaves of value noise blended into a soft
@@ -163,9 +169,9 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
           float large = noise(p * 3.8 + flow);
           float mottle = noise(p * 10.5 - flow * 1.7);
           float granules = mottle;
-          if (uDetail > 0.25) granules = noise(p * 34.0 + flow * 2.3);
+          if (uDetail > 0.25 && mediumWeight > 0.0) granules = mix(mottle, noise(p * 34.0 + flow * 2.3), mediumWeight);
           float filaments = granules;
-          if (uDetail > 0.75) filaments = noise(p * 68.0 - flow * 1.2);
+          if (uDetail > 0.75 && fineWeight > 0.0) filaments = mix(granules, noise(p * 68.0 - flow * 1.2), fineWeight);
 
           float convection = large * 0.48 + mottle * 0.3 + granules * 0.17 + filaments * 0.05;
           float warmth = smoothstep(0.2, 0.82, convection);
@@ -197,9 +203,9 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
         // value on the lower tiers, so contrast survives at every tier.
         float coarse = 1.0 - smoothstep(0.0, 0.95, cells(q * uCellScale + drift * 0.6));
         float medium = 0.5;
-        if (uDetail > 0.25) medium = 1.0 - smoothstep(0.0, 1.15, cells(q * uCellScale * 2.4 - drift * 1.3 + 4.0));
+        if (uDetail > 0.25 && mediumWeight > 0.0) medium = mix(medium, 1.0 - smoothstep(0.0, 1.15, cells(q * uCellScale * 2.4 - drift * 1.3 + 4.0)), mediumWeight);
         float fine = 0.5;
-        if (uDetail > 0.75) fine = noise(q * uCellScale * 7.0 + drift * 2.2);
+        if (uDetail > 0.75 && fineWeight > 0.0) fine = mix(fine, noise(q * uCellScale * 7.0 + drift * 2.2), fineWeight);
 
         float heat = coarse * (0.72 + 0.28 * medium) + (fine - 0.5) * 0.12;
         heat = pow(clamp(heat, 0.0, 1.0), uContrast);
@@ -222,6 +228,7 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
 
   return {
     material,
+    setProjectedSize(pixels) { material.uniforms.uProjectedSize!.value = Math.max(0, pixels) },
     setQuality(tier) {
       material.uniforms.uDetail!.value = tier === 'high' ? 1 : tier === 'balanced' ? 0.5 : 0
     },

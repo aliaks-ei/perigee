@@ -65,7 +65,12 @@ export function environmentAssetFor(
   tier: QualityTier,
   viewportAspect: number,
 ): EnvironmentAsset {
-  if (viewpointId !== 'cabo-da-roca') return fixedAssets[viewpointId]
+  if (viewpointId !== 'cabo-da-roca') {
+    const master = fixedAssets[viewpointId]
+    if (tier === 'high') return master
+    return { url: master.url.replace('-4k.', tier === 'safe' ? '-safe.' : '-2k.'),
+      width: tier === 'safe' ? 1280 : 2048, height: tier === 'safe' ? 801 : 1281 }
+  }
   const orientation = viewportAspect < 0.8 ? 'portrait' : 'landscape'
   return caboAssets[orientation][tier]
 }
@@ -75,7 +80,7 @@ export function environmentWarmupAssets(
   viewportAspect: number,
 ): string[] {
   return [
-    ...Object.values(fixedAssets).map((asset) => asset.url),
+    ...(['rooftop', 'hilltop', 'lakeside'] as const).map((view) => environmentAssetFor(view, tier, viewportAspect).url),
     environmentAssetFor('cabo-da-roca', tier, viewportAspect).url,
   ]
 }

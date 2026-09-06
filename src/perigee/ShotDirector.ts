@@ -1,8 +1,10 @@
 import { gsap } from 'gsap'
 
+export type ShotResult = 'completed' | 'interrupted' | 'disposed'
+
 interface ActiveShot {
   timeline: gsap.core.Timeline
-  resolve: () => void
+  resolve: (result: ShotResult) => void
   settled: boolean
 }
 
@@ -16,18 +18,26 @@ interface ActiveShot {
 export class ShotDirector {
   private active: ActiveShot | null = null
 
-  replace(build: (timeline: gsap.core.Timeline) => void): Promise<void> {
-    this.finish()
+  replace(build: (timeline: gsap.core.Timeline) => void): Promise<ShotResult> {
+    this.interrupt()
 
-    return new Promise<void>((resolve) => {
+    return new Promise<ShotResult>((resolve, reject) => {
       const shot: ActiveShot = {
         timeline: gsap.timeline({ defaults: { ease: 'power3.inOut' } }),
         resolve,
         settled: false,
       }
-      shot.timeline.eventCallback('onComplete', () => this.settle(shot))
+      shot.timeline.eventCallback('onComplete', () => this.settle(shot, 'completed'))
       this.active = shot
-      build(shot.timeline)
+      try {
+        build(shot.timeline)
+        if (shot.timeline.duration() === 0) this.finish()
+      } catch (error) {
+        shot.timeline.kill()
+        shot.settled = true
+        if (this.active === shot) this.active = null
+        reject(error)
+      }
     })
   }
 
@@ -35,22 +45,31 @@ export class ShotDirector {
   finish(): void {
     const shot = this.active
     if (!shot) return
-    shot.timeline.progress(1, true)
+    shot.timeline.progress(1, false)
     shot.timeline.kill()
-    this.settle(shot)
+    this.settle(shot, 'completed')
+  }
+
+  get running(): boolean { return this.active !== null }
+
+  interrupt(): void {
+    const shot = this.active
+    if (!shot) return
+    shot.timeline.kill()
+    this.settle(shot, 'interrupted')
   }
 
   kill(): void {
     const shot = this.active
     if (!shot) return
     shot.timeline.kill()
-    this.settle(shot)
+    this.settle(shot, 'disposed')
   }
 
-  private settle(shot: ActiveShot): void {
+  private settle(shot: ActiveShot, result: ShotResult): void {
     if (shot.settled) return
     shot.settled = true
     if (this.active === shot) this.active = null
-    shot.resolve()
+    shot.resolve(result)
   }
 }

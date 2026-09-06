@@ -10,6 +10,7 @@ import { MeteorScheduler } from '../MeteorScheduler'
 
 export interface MeteorLayer {
   mesh: Mesh<PlaneGeometry, ShaderMaterial>
+  setReducedMotion: (reduced: boolean) => void
   setAspect: (aspect: number) => void
   update: (time: number) => void
   dispose: () => void
@@ -26,7 +27,7 @@ function seededRandom(seed: number): () => number {
 /** A single reusable screen-space streak; the scheduler guarantees quiet gaps. */
 export function createMeteorLayer(reducedMotion: boolean): MeteorLayer {
   const random = seededRandom(420_911)
-  const scheduler = new MeteorScheduler(random, !reducedMotion)
+  let scheduler = new MeteorScheduler(random, !reducedMotion)
   const material = new ShaderMaterial({
     uniforms: {
       uAspect: { value: 1 },
@@ -119,6 +120,7 @@ export function createMeteorLayer(reducedMotion: boolean): MeteorLayer {
 
   return {
     mesh,
+    setReducedMotion(reduced) { scheduler = new MeteorScheduler(random, !reduced); mesh.visible = false; wasActive = false },
     setAspect(aspect) {
       material.uniforms.uAspect!.value = Math.max(aspect, 0.1)
     },

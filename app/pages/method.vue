@@ -141,6 +141,21 @@ useHead({
       </li>
     </ul>
 
+    <h2>How are motion and surface detail presented?</h2>
+    <p>
+      Planet rotation uses the recorded rotation periods at 60 times real time.
+      The Moon keeps its Earth-facing presentation; stars and Andromeda do not spin.
+      Background-star drift is an authored effect. Motion pauses while the tab is
+      hidden, and reduced motion freezes ambient animation.
+    </p>
+    <p>
+      Moon and Mars relief comes from elevation-derived normal maps, exaggerated
+      by 1.8 and 5.2 times respectively. These change surface lighting without
+      displacing the surface or casting crater shadows. Environmental illumination
+      at impossible distances is authored, and Saturn's ring alpha is an
+      approximation of optical depth for its cast shadows.
+    </p>
+
     <h2>What Perigee is not</h2>
     <p>
       Perigee is not a planetarium catalogue and not a physics simulator. It does

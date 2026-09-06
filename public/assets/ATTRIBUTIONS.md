@@ -6,7 +6,7 @@
 - Author: INOVE / Solar System Scope
 - License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 - Files: `moon.jpg`, `mars.jpg`, `jupiter.jpg`, `neptune.jpg`, `saturn-ring-2k.webp`, the 2048×1024 siblings `moon-2k.jpg`, `mars-2k.jpg`, `jupiter-2k.jpg`, and the derived thumbnails in `thumbs/`
-- Modifications: Moon and Mars resampled to 4096×2048; Jupiter retained at 4096×2048. The `-2k` siblings are the same maps resampled to 2048×1024 for the balanced and safe quality tiers, where the disc never resolves more than that. Saturn's ring downsampled from the source 8192×500 to 2048×64 as `saturn-ring-2k.webp`: the shader samples a single row of the strip, so the original's height was never read and its width cost 16 MB of GPU memory. The unmodified `saturn.jpg`, `saturn-ring.png` and `star-surface.jpg` were removed once nothing loaded them — Saturn renders from the enhanced map below, and stars are procedural. Runtime treatment adds color-managed lighting, fine-detail recovery, restrained surface response, and slow rotation.
+- Modifications: Moon and Mars resampled to 4096×2048; Jupiter retained at 4096×2048. The `-2k` siblings are the same maps resampled to 2048×1024 for the safe quality tier; balanced and high retain the larger source maps. Saturn's ring downsampled from the source 8192×500 to 2048×64 as `saturn-ring-2k.webp`: the shader samples a single row of the strip, so the original's height was never read and its width cost 16 MB of GPU memory. The unmodified `saturn.jpg`, `saturn-ring.png` and `star-surface.jpg` were removed once nothing loaded them — Saturn renders from the enhanced map below, and stars are procedural. Runtime treatment adds color-managed lighting, fine-detail recovery, restrained surface response, and slow rotation.
 - Downloaded: 2026-08-28
 
 ### Interface thumbnails
@@ -21,6 +21,8 @@ areas are reconstructed by the asset author, and the maps are intended for
 visualization rather than scientific analysis.
 
 ### Saturn atmosphere enhancement
+
+Attribution ID: `perigee-saturn-art`.
 
 - Source: Original AI-assisted texture generated for Perigee with OpenAI image generation, art-directed from the supplied Cassini-style reference
 - Files: `saturn-atmosphere-v2.webp`, and `saturn-atmosphere-v2-2k.webp` (the same map at 2048×1024 for the lower quality tiers)
@@ -40,13 +42,18 @@ visualization rather than scientific analysis.
 
 ## Viewpoint landscapes
 
+Attribution ID: `perigee-environment-art`.
+
 - Source: Original AI-assisted project artwork, generated for Perigee with OpenAI image generation
 - Files: `rooftop-cinematic-4k.webp`, `hilltop-cinematic-4k.webp`, `lakeside-cinematic-4k.webp`
 - Modifications: Generated 1586×992 masters were resampled to 3172×1984 and exported as high-quality WebP. Each plate contains a continuous sky, atmospheric horizon, and low foreground with no celestial object or interface content. `thumbs/rooftop.webp`, `thumbs/hilltop.webp` and `thumbs/lakeside.webp` are 320×180 crops of the lower part of each plate, lifted slightly in brightness, for the landscape chooser.
 - Purpose: Seamless full-frame environment layers rendered inside the Three.js sky pass. Camera-linked UV motion, overscan, crossfades, and object-aware tinting keep the horizon and celestial render visually coherent.
+- Derived variants (2026-09-06): `*-cinematic-2k.webp` (2048×1281) and `*-cinematic-safe.webp` (1280×801), produced by `scripts/environment-variants.sh`. Same crop and grade as the delivered masters. These are resamples, not additional native detail.
 - Created: 2026-08-29
 
 ### Cabo da Roca viewpoint
+
+Attribution ID: `cabo-da-roca-reference`.
 
 - Source: [Cabo da Roca Lighthouse and coastal cliffs, Portugal — May 2025](https://commons.wikimedia.org/wiki/File:Cabo_da_Roca_Lighthouse_and_coastal_cliffs,_Portugal_-_May_2025.jpg)
 - Author: LensaCibi
