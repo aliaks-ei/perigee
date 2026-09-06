@@ -337,8 +337,7 @@ export class PerigeeScene implements PerigeeController {
 
     // Bloom sits in a pass of its own so it can be switched off for the
     // planets, whose exposures never cross its threshold: for them the whole
-    // mip chain ran and contributed nothing. The mipmap chain already starts at
-    // half resolution.
+    // mip chain ran and contributed nothing.
     this.bloom = new BloomEffect({
       intensity: 0.52,
       luminanceThreshold: 0.98,

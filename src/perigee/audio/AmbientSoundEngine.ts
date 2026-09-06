@@ -3,14 +3,7 @@ import { AudioLoader } from './AudioLoader'
 import { claimPlaybackOutput, releasePlaybackOutput } from './audioOutput'
 import type { ViewpointId } from '../../../app/types/perigee'
 
-/**
- * One looped piece of music per viewpoint, crossfaded when the viewpoint
- * changes. The soundscape used to be synthesized in Web Audio — three noise
- * beds, a sustained major chord and a pulse near a resting heart rate — and
- * listeners read the result as dark rather than calm. Written music does the
- * job the synthesis was trying to do, so the engine's only remaining work is
- * playback: fetch, decode, loop, crossfade, and stay out of the way.
- */
+/** One looped piece of music per viewpoint: fetch, decode, loop, crossfade. */
 
 /** Long enough that switching the sound off is itself a calm event. */
 const FADE_OUT_SECONDS = 2.5
@@ -29,25 +22,18 @@ interface TrackTransition {
 const START_TRANSITION: TrackTransition = { out: 0, delay: 0, into: 4 }
 
 /**
- * A viewpoint change.
- *
- * These are four separate compositions, not four layers of one, so they must
- * not be crossfaded like stems. Overlapping them properly — equal power, both
- * sides at 1/√2 through the middle — means two piano melodies playing over
- * each other at nearly full level for several seconds, which is heard as a
- * pile-up rather than as a transition.
- *
- * So the transition is mostly sequential: one piece leaves, the next arrives,
- * and they touch only near their quiet ends. The overlap is there to keep the
- * level from reaching zero, not to blend the two — at the crossing each track
- * is already well down, so the ear follows a handover instead of a chord.
+ * A viewpoint change. These are four separate compositions, not layers of
+ * one, so a proper equal-power crossfade plays two full melodies over each
+ * other and sounds like a pile-up. This transition is mostly sequential
+ * instead — one piece leaves, the next arrives, and they touch only near
+ * their quiet ends. Do not widen the overlap to "smooth" it; that is the
+ * thing that sounded wrong.
  */
 const SCENE_TRANSITION: TrackTransition = { out: 2.5, delay: 1.7, into: 3.5 }
 /**
- * Not every MP3 decoder trims the encoder's priming and padding, and the
- * silence that survives lands exactly on the loop point. Looping inside both
- * ends discards it. `scripts/audio.sh` bakes a four-second crossfade into each
- * file, so losing fifty milliseconds of that join cannot be heard.
+ * Not every MP3 decoder trims the encoder's priming/padding silence, which
+ * lands exactly on the loop point. `scripts/audio.sh` bakes a four-second
+ * crossfade into each file, so trimming 50ms off the join is inaudible.
  */
 const LOOP_EDGE_SECONDS = 0.05
 /** Headroom for the moment the two tracks overlap during a viewpoint change. */
@@ -91,20 +77,13 @@ function ramp(param: AudioParam, value: number, time: number): void {
 }
 
 /**
- * The shape of every fade a listener hears on a deck.
- *
- * Two uncorrelated signals add in power, not in amplitude, so a crossfade
- * holds its level only if both sides sit at 1/√2 halfway through rather than
- * at 1/2. `cos` out against `sin` in is that curve: cos² + sin² = 1 at every
- * point, so the pair sums to a flat level from end to end.
- *
- * The obvious alternative is worse than a linear fade, not better. An
- * exponential ramp is the right shape for a single fade to silence, but run
- * from a floor low enough to stand in for zero it spends almost all of its
- * length inaudible: halfway through an eight-second ramp from 1e-5, a track is
- * 50 dB down. Crossing two of those put four seconds of near-silence in the
- * middle of every viewpoint change, which is what a scene change used to sound
- * like.
+ * The shape of every fade a listener hears on a deck. Two uncorrelated
+ * signals add in power, not amplitude, so a crossfade holds its level only
+ * if both sides sit at 1/√2 halfway through. `cos` out against `sin` in is
+ * that curve (cos² + sin² = 1 at every point). An exponential ramp from a
+ * near-zero floor is not a substitute: it is inaudible for most of its
+ * length, so a pair of them puts several seconds of near-silence in the
+ * middle of every viewpoint change.
  */
 const FADE_CURVE_STEPS = 64
 
@@ -306,11 +285,7 @@ export class AmbientSoundEngine {
     })
   }
 
-  /**
-   * Fades the given track up and everything else down. Resolves once the new
-   * deck is playing, so the interface can wait for the first track before it
-   * calls the sound on.
-   */
+  /** Resolves once the new deck is playing, so callers can wait for the first track before turning the sound on. */
   private async playTrack(track: AmbientTrack, transition: TrackTransition): Promise<void> {
     if (this.playingUrl === track.url) return
     const context = this.context
@@ -362,17 +337,10 @@ export class AmbientSoundEngine {
   }
 
   /**
-   * Where in its loop an incoming track starts.
-   *
-   * The four pieces share a tempo and a key, so the swap sounds like one
-   * continuous piece only if the new one joins where the old one had got to.
-   * Starting every track at its own beginning restarts the music at each
-   * viewpoint change, and does it at the loop join baked into the head of the
-   * file — the one passage that is two parts of the piece layered over each
-   * other, and the worst place to enter.
-   *
-   * The clock is the context's, so it is deterministic: two engines started
-   * together stay together, and no random offset is involved.
+   * Where in its loop an incoming track starts. The four pieces share a tempo
+   * and key, so the swap sounds continuous only if the new track joins where
+   * the old one had got to, rather than restarting at its own head — which is
+   * also the baked-in loop join, the one passage where the piece overlaps itself.
    */
   private loopPositionAt(now: number, loopStart: number, loopEnd: number): number {
     if (this.musicOrigin === null) {
@@ -383,7 +351,6 @@ export class AmbientSoundEngine {
     return loopStart + ((now - this.musicOrigin) % body)
   }
 
-  /** Fades a deck out and stops it once the fade has finished. */
   private retireDeck(deck: Deck, seconds: number): void {
     const context = this.context!
     const now = context.currentTime

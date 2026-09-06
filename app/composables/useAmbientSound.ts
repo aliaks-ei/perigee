@@ -60,11 +60,8 @@ function initialize(): void {
 }
 
 /**
- * A listener who has already turned the sound on gets it back without being
- * asked again. No browser will start audio unprompted, so the music waits on
- * the first thing the viewer does — a drag on the sky, a key, a tap anywhere —
- * and starts under that gesture. Where the browser reports the page has
- * already been interacted with, there is nothing to wait for.
+ * No browser starts audio unprompted, so a returning listener who already
+ * said yes gets the music back under the first gesture the page sees.
  */
 function armAutoStart(): void {
   if (pendingAutoStart) return
@@ -106,10 +103,8 @@ async function enable(): Promise<void> {
   const token = ++operation
   status.value = 'starting'
   if (volume.value === 0) volume.value = lastNonZeroVolume
-  // Recorded at the moment of asking, not on the outcome. The likeliest way
-  // this fails is a track that did not download, and a listener who asked for
-  // music should be asked no further questions — the next visit simply tries
-  // again. `preferenceEnabled` still waits for the music to actually start.
+  // Recorded on asking, not on outcome: a failed download shouldn't make us
+  // ask again next visit. `preferenceEnabled` still waits for actual start.
   writePreference(true)
   try {
     engine ??= createEngine()

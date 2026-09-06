@@ -747,7 +747,6 @@ export function usePerigee() {
     moreOpen: readonly(moreOpen),
     stage: readonly(stage),
     chromeIdle,
-    /** Whether the interface has reached `required`. */
     revealed: (required: DisclosureStage): boolean => stageAtLeast(stage.value, required),
     loading: readonly(loading),
     loadingProgress: readonly(loadingProgress),

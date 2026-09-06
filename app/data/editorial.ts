@@ -86,7 +86,7 @@ export const scienceSources: ScienceSource[] = [
 ]
 
 /**
- * Launch-scope editorial records live here rather than in Vue components. The
+ * Launch-scope editorial records live here rather than in Vue components.
  * Content is approved only after source, simulation-boundary, and live-scene review.
  */
 export const discoveries: DiscoveryDefinition[] = [
