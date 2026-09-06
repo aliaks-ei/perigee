@@ -34,6 +34,7 @@ const fragmentShader = `
 
 export class FilmEffect extends Effect {
   private elapsed = 0
+  private reducedMotion = false
 
   constructor(grain = 0.35) {
     super('FilmEffect', fragmentShader, {
@@ -45,13 +46,15 @@ export class FilmEffect extends Effect {
     })
   }
 
+  setReducedMotion(reduced: boolean): void { this.reducedMotion = reduced }
+
   /** `amount` is relative to the pixel's own brightness: 0.35 is a light stock. */
   setGrain(amount: number): void {
     this.uniforms.get('uGrain')!.value = amount
   }
 
   override update(_renderer: WebGLRenderer, _inputBuffer: WebGLRenderTarget, deltaTime?: number): void {
-    this.elapsed += deltaTime ?? 1 / 60
+    if (!this.reducedMotion) this.elapsed += deltaTime ?? 1 / 60
     this.uniforms.get('uTime')!.value = this.elapsed
   }
 }

@@ -3,7 +3,7 @@ import { Euler, MathUtils, PerspectiveCamera, Quaternion } from 'three'
 export class CameraRig {
   private readonly canvas: HTMLCanvasElement
   private readonly camera: PerspectiveCamera
-  private readonly ambientMotion: boolean
+  private ambientMotion: boolean
   /**
    * Standing tilt. Pitching slightly up drops the horizon into the lower third
    * so the ground reads as ground and the hero object gets the sky above it.
@@ -64,7 +64,21 @@ export class CameraRig {
     this.camera.quaternion.copy(this.quaternion)
   }
 
+  setReducedMotion(reduced: boolean): void {
+    this.ambientMotion = !reduced
+    this.hoverYaw = 0
+    this.hoverPitch = 0
+  }
+
+  get settled(): boolean {
+    return this.pointerId === null && Math.abs(this.yaw - this.manualYaw - this.hoverYaw) < 0.00001
+      && Math.abs(this.pitch - this.manualPitch - this.hoverPitch) < 0.00001
+  }
+
   dispose(): void {
+    window.removeEventListener('resize', this.onResize)
+    if (this.pointerId !== null && this.canvas.hasPointerCapture(this.pointerId)) this.canvas.releasePointerCapture(this.pointerId)
+    this.pointerId = null
     this.canvas.removeEventListener('pointerdown', this.onPointerDown)
     this.canvas.removeEventListener('pointermove', this.onPointerMove)
     this.canvas.removeEventListener('pointerup', this.onPointerUp)

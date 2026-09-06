@@ -120,32 +120,11 @@ export default defineNuxtConfig({
       // visible, which is the whole point of it being there.
       style: [{ innerHTML: '[data-js] .prerender-fallback{display:none}' }],
       script: [{ innerHTML: "document.documentElement.dataset.js='1'" }],
-      // The first frame cannot be drawn until these two land, and they are
-      // otherwise only discovered after the engine chunk has parsed. The
-      // texture cache pulls them with `fetch()`, so the hints are `as: 'fetch'`
-      // with anonymous credentials: a hint whose mode differs from the real
-      // request is discarded and the file is downloaded twice.
       link: [
         { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
         { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
         { rel: 'manifest', href: '/site.webmanifest' },
-        {
-          rel: 'preload',
-          as: 'fetch',
-          crossorigin: 'anonymous',
-          href: '/assets/environments/rooftop-cinematic-4k.webp',
-        },
-        {
-          rel: 'preload',
-          as: 'fetch',
-          crossorigin: 'anonymous',
-          // The file the loader will actually ask for: the compressed map
-          // while KTX2 is on, the WebP otherwise.
-          href: compressedTextures === '1'
-            ? '/assets/objects/saturn-atmosphere-v2.ktx2'
-            : '/assets/objects/saturn-atmosphere-v2.webp',
-        },
       ],
     },
   },

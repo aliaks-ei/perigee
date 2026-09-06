@@ -15,7 +15,7 @@ describe('ShotDirector', () => {
       timeline.to(target, { value: 1, duration: 0.01 })
     })
 
-    await expect(shot).resolves.toBeUndefined()
+    await expect(shot).resolves.toBe('completed')
     expect(target.value).toBe(1)
   })
 
@@ -31,7 +31,7 @@ describe('ShotDirector', () => {
     // This is what a backgrounded tab does: rAF stops, so GSAP stops with it.
     director.finish()
 
-    await expect(shot).resolves.toBeUndefined()
+    await expect(shot).resolves.toBe('completed')
     expect(target.value).toBe(1)
   })
 
@@ -50,7 +50,7 @@ describe('ShotDirector', () => {
 
     await first
     expect(previousSettled).toBe(true)
-    await expect(second).resolves.toBeUndefined()
+    await expect(second).resolves.toBe('completed')
   })
 
   it('settles the promise when the director is killed on teardown', async () => {
@@ -61,6 +61,43 @@ describe('ShotDirector', () => {
     })
     director.kill()
 
-    await expect(shot).resolves.toBeUndefined()
+    await expect(shot).resolves.toBe('disposed')
+  })
+})
+
+describe('shot interruption state', () => {
+  it('finishes proxy-owned state before its first tick exactly once', async () => {
+    const director = new ShotDirector()
+    const proxy = { value: 0 }
+    let rendered = 0
+    let updates = 0
+    const shot = director.replace((timeline) => {
+      timeline.to(proxy, { value: 1, duration: 30, onUpdate: () => { rendered = proxy.value; updates += 1 } })
+    })
+    director.finish()
+    director.finish()
+    director.kill()
+    expect(await shot).toBe('completed')
+    expect(rendered).toBe(1)
+    expect(updates).toBe(1)
+  })
+
+  it('replaces from the rendered midpoint instead of the abandoned endpoint', async () => {
+    const director = new ShotDirector()
+    const proxy = { value: 0 }
+    const first = director.replace((timeline) => {
+      timeline.to(proxy, { value: 100, duration: 30, ease: 'none' })
+      timeline.progress(0.5)
+    })
+    const second = director.replace((timeline) => { timeline.to(proxy, { value: 20, duration: 30 }) })
+    expect(await first).toBe('interrupted')
+    expect(proxy.value).toBe(50)
+    director.finish()
+    expect(await second).toBe('completed')
+    expect(proxy.value).toBe(20)
+  })
+
+  it('settles an empty shot', async () => {
+    expect(await new ShotDirector().replace(() => undefined)).toBe('completed')
   })
 })

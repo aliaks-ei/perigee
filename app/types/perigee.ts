@@ -101,6 +101,9 @@ export interface PerigeeController {
    */
   setDistance(presetId: string, options?: { duration?: number }): Promise<void>
   setViewpoint(viewpointId: ViewpointId): Promise<void>
+  getSelection(): PerigeeSelection
+  /** Internal estimates and timing signals; never sent to analytics. */
+  getDiagnostics(): Readonly<Record<string, unknown>>
   getObjectScreenPosition(): { x: number, y: number, onScreen: boolean, diameterPixels: number } | null
   /**
    * Renders one fresh frame and copies it out. The drawing buffer is not

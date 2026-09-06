@@ -6,3 +6,5 @@ export function configureCompressedTextures(_renderer: WebGLRenderer): void {}
 export async function loadCompressedTexture(_url: string): Promise<Texture | null> {
   return null
 }
+
+export function disposeCompressedTextures(): void {}

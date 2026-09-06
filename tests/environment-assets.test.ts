@@ -22,7 +22,9 @@ describe('environment asset selection', () => {
     const high = environmentAssetFor('rooftop', 'high', 16 / 9)
     const safe = environmentAssetFor('rooftop', 'safe', 390 / 844)
 
-    expect(safe).toEqual(high)
+    expect(safe.url).not.toBe(high.url)
+    expect(safe.width).toBeLessThan(high.width)
+    expect(safe.width / safe.height).toBeCloseTo(high.width / high.height, 2)
     expect(high.width / high.height).toBeCloseTo(3172 / 1984)
   })
 

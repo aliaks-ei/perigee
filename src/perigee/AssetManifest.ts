@@ -1,3 +1,4 @@
+import { environmentAssetFor } from './scenes/environmentAssets'
 import type { QualityTier } from '../../app/types/perigee'
 
 export interface AssetEntry {
@@ -31,7 +32,7 @@ export const assetManifest: AssetEntry[] = [
   url: url!,
   kind: kind as 'jpg' | 'png' | 'webp',
   requiredFor: [requiredFor!],
-  attributionId: url!.includes('-normal') ? 'planetary-elevation-data' : 'solar-system-scope-textures',
+  attributionId: url!.includes('-normal') ? 'planetary-elevation-data' : url!.includes('saturn-atmosphere') ? 'perigee-saturn-art' : 'solar-system-scope-textures',
 }))
 
 /**
@@ -54,3 +55,16 @@ export function surfaceMapFor(url: string, tier: QualityTier): string {
   if (tier !== 'safe') return url
   return SURFACE_MAP_VARIANTS[url] ?? url
 }
+
+/** Environment derivatives share the same runtime selector as demand loading. */
+export const environmentAssetManifest: AssetEntry[] = [...new Map(
+  (['rooftop', 'hilltop', 'lakeside', 'cabo-da-roca'] as const).flatMap((viewpoint) =>
+    (['safe', 'balanced', 'high'] as const).flatMap((tier) => [0.5, 1.6].map((aspect) => {
+      const asset = environmentAssetFor(viewpoint, tier, aspect)
+      const entry: AssetEntry = { id: asset.url.split('/').at(-1)!.replace('.webp', ''),
+        url: asset.url, kind: 'webp', requiredFor: [viewpoint],
+        attributionId: viewpoint === 'cabo-da-roca' ? 'cabo-da-roca-reference' : 'perigee-environment-art' }
+      return [asset.url, entry] as const
+    })),
+  ),
+).values()]

@@ -82,6 +82,9 @@ let lastActivityAt = 0
 let changeCount = 0
 /** Identifies the newest shot, so a superseded one cannot clear the lock. */
 let shotToken = 0
+let initializationRequest = 0
+let objectRequest = 0
+let viewpointRequest = 0
 let encounterToken = 0
 
 const currentObject = computed(() => skyObjectsById[currentObjectId.value])
@@ -257,6 +260,7 @@ function dismissHint(): void {
  * encounter through one path.
  */
 async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Promise<void> {
+  const request = ++initializationRequest
   const loadStartedAt = performance.now()
   loading.value = true
   loadingProgress.value = 0
@@ -290,6 +294,7 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
 
   try {
     const { PerigeeScene } = await import('../../src/perigee/PerigeeScene')
+    if (request !== initializationRequest) return
     const scene = new PerigeeScene()
     controller.value = scene
     await scene.initialize(canvas, {
@@ -300,6 +305,7 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
       },
       onProgress: (ratio) => { loadingProgress.value = ratio },
     })
+    if (request !== initializationRequest) return
     loadingProgress.value = 1
     sceneReady.value = true
     analytics.track('scene_ready', { loadMs: Math.round(performance.now() - loadStartedAt) })
@@ -307,7 +313,7 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
     // also the gesture the browser needs before it will play anything.
     await new Promise<void>((resolve) => { pendingEntry = resolve })
     pendingEntry = null
-    if (!canvas.isConnected) return
+    if (request !== initializationRequest || !canvas.isConnected) return
     loading.value = false
     analytics.clock.start()
     if (arrival) analytics.track('arrival', arrival)
@@ -324,6 +330,9 @@ async function initialize(canvas: HTMLCanvasElement, encounterSlug?: string): Pr
       hintTimer = setTimeout(dismissHint, HINT_LIFETIME_MS)
     }, HINT_DELAY_MS)
   } catch (error) {
+    if (request !== initializationRequest) return
+    controller.value?.dispose()
+    controller.value = null
     loading.value = false
     sceneReady.value = false
     capabilityError.value = error instanceof Error && error.message === 'WEBGL2_UNAVAILABLE'
@@ -375,6 +384,7 @@ async function selectObject(objectId: SkyObjectId): Promise<void> {
   discoveryOpen.value = false
   syncUrl()
 
+  const request = ++objectRequest
   const token = ++shotToken
   pendingObjectId.value = objectId
   busy.value = true
@@ -382,16 +392,15 @@ async function selectObject(objectId: SkyObjectId): Promise<void> {
     await controller.value?.setObject(objectId, presetId)
     if (token === shotToken) queueHazard()
   } catch {
-    if (token !== shotToken) return
-    currentObjectId.value = previous.objectId
-    currentPresetId.value = previous.presetId
+    if (request !== objectRequest) return
+    const committed = controller.value?.getSelection()
+    currentObjectId.value = committed?.objectId ?? previous.objectId
+    currentPresetId.value = committed?.presetId ?? previous.presetId
     syncUrl()
     notify(`${object.label} could not be loaded. Check your connection and try again.`)
   } finally {
-    if (token === shotToken) {
-      pendingObjectId.value = null
-      busy.value = false
-    }
+    if (request === objectRequest) pendingObjectId.value = null
+    if (token === shotToken) busy.value = false
   }
 }
 
@@ -413,7 +422,9 @@ async function selectDistance(presetId: string): Promise<void> {
     if (token === shotToken) queueHazard()
   } catch {
     if (token !== shotToken) return
-    currentPresetId.value = previousPresetId
+    const committed = controller.value?.getSelection()
+    if (committed) currentObjectId.value = committed.objectId
+    currentPresetId.value = committed?.presetId ?? previousPresetId
     syncUrl()
   } finally {
     if (token === shotToken) busy.value = false
@@ -437,13 +448,14 @@ async function selectViewpoint(viewpointId: ViewpointId): Promise<void> {
   currentViewpointId.value = viewpointId
   syncUrl()
 
+  const request = ++viewpointRequest
   const token = ++shotToken
   busy.value = true
   try {
     await controller.value?.setViewpoint(viewpointId)
   } catch {
-    if (token !== shotToken) return
-    currentViewpointId.value = previousViewpointId
+    if (request !== viewpointRequest) return
+    currentViewpointId.value = controller.value?.getSelection().viewpointId ?? previousViewpointId
     syncUrl()
     notify('That viewpoint could not be loaded.')
   } finally {
@@ -652,6 +664,12 @@ function captureFrame(): HTMLCanvasElement | null {
 }
 
 function dispose(): void {
+  initializationRequest += 1
+  objectRequest += 1
+  viewpointRequest += 1
+  shotToken += 1
+  busy.value = false
+  pendingObjectId.value = null
   if (hazardTimer) clearTimeout(hazardTimer)
   if (hintTimer) clearTimeout(hintTimer)
   if (noticeTimer) clearTimeout(noticeTimer)
@@ -734,6 +752,7 @@ export function usePerigee() {
     previousEncounter,
     exitEncounter,
     getObjectScreenPosition,
+    getDiagnostics: () => controller.value?.getDiagnostics() ?? null,
     subscribeFrame,
     captureFrame,
     pause,

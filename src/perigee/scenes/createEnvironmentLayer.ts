@@ -1,3 +1,4 @@
+import { ShotDirector } from '../ShotDirector'
 import {
   Color,
   Mesh,
@@ -7,7 +8,7 @@ import {
   Vector2,
 } from 'three'
 import type { QualityTier, ViewpointId } from '../../../app/types/perigee'
-import { loadTexture, prefetchTextures } from '../TextureCache'
+import { acquireTexture, prefetchTextures, type TextureLease } from '../TextureCache'
 import { FLIP_V } from '../materials/shaderChunks'
 import {
   environmentAssetFor,
@@ -19,7 +20,10 @@ const TRANSITION_SECONDS = 0.9
 
 export interface EnvironmentLayer {
   mesh: Mesh<PlaneGeometry, ShaderMaterial>
-  setViewpoint: (viewpointId: ViewpointId, immediate?: boolean) => Promise<void>
+  setViewpoint: (viewpointId: ViewpointId, immediate?: boolean, onReady?: () => void) => Promise<void>
+  finish: () => void
+  setPaused: (paused: boolean) => void
+  setReducedMotion: (reduced: boolean) => void
   setQuality: (tier: QualityTier) => void
   setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
   setTint: (color: string, strength: number) => void
@@ -37,7 +41,7 @@ export interface EnvironmentLayer {
   dispose: () => void
 }
 
-export function createEnvironmentLayer(initialQuality: QualityTier): EnvironmentLayer {
+export function createEnvironmentLayer(initialQuality: QualityTier, invalidate: () => void = () => undefined): EnvironmentLayer {
   const lookOffset = new Vector2()
   const heroScreen = new Vector2(0.5, 0.5)
   const material = new ShaderMaterial({
@@ -134,60 +138,82 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
   mesh.frustumCulled = false
   mesh.renderOrder = -100
 
-  let currentTexture: Texture | null = null
-  let nextTexture: Texture | null = null
-  let transitionStart = 0
-  let lastTime = 0
-  let transitioning = false
+  let currentLease: TextureLease | null = null
+  let nextLease: TextureLease | null = null
   let currentViewpointId: ViewpointId = 'rooftop'
+  let committedViewpointId: ViewpointId = 'rooftop'
   let currentAsset: EnvironmentAsset | null = null
   let quality = initialQuality
-  let viewportAspect = typeof window === 'undefined'
-    ? 1
-    : window.innerWidth / Math.max(window.innerHeight, 1)
+  let reducedMotion = false
+  let paused = false
+  let disposed = false
+  let viewportAspect = typeof window === 'undefined' ? 1 : window.innerWidth / Math.max(window.innerHeight, 1)
   let generation = 0
+  let requestAbort: AbortController | null = null
+  let selectionReady: (() => void) | undefined
+  const director = new ShotDirector()
+  let transition: Promise<unknown> = Promise.resolve()
 
-  const setTexture = async (asset: EnvironmentAsset, immediate = false): Promise<void> => {
-    if (currentAsset?.url === asset.url && currentTexture) return
+  const setTexture = async (asset: EnvironmentAsset, immediate = false, onReady?: () => void): Promise<void> => {
     const request = ++generation
-    const texture = await loadTexture(asset.url)
-    if (request !== generation) return
-    if (!currentTexture || immediate) {
-      currentTexture = texture
-      nextTexture = texture
-      currentAsset = asset
-      material.uniforms.uCurrent!.value = texture
-      material.uniforms.uNext!.value = texture
-      material.uniforms.uCurrentImageAspect!.value = asset.width / asset.height
-      material.uniforms.uNextImageAspect!.value = asset.width / asset.height
-      material.uniforms.uMix!.value = 0
-      transitioning = false
-      return
+    const requestedViewpointId = currentViewpointId
+    requestAbort?.abort()
+    const abort = new AbortController()
+    requestAbort = abort
+    // Finish an already visible blend before starting the latest prepared plate.
+    // This bounds residency to two plates and never resets a visible mix to zero.
+    await transition
+    if (disposed || request !== generation) return
+    let lease: TextureLease
+    try { lease = await acquireTexture(asset.url, abort.signal) }
+    catch (error) {
+      if (disposed || request !== generation) return
+      currentViewpointId = committedViewpointId
+      selectionReady = undefined
+      throw error
     }
-
-    nextTexture = texture
-    currentAsset = asset
-    material.uniforms.uNext!.value = texture
+    if (disposed || request !== generation) { lease.release(); return }
+    if (currentAsset?.url === asset.url) { lease.release(); onReady?.(); selectionReady = undefined; return }
+    onReady?.()
+    if (request === generation) selectionReady = undefined
+    nextLease = lease
+    material.uniforms.uNext!.value = lease.texture
     material.uniforms.uNextImageAspect!.value = asset.width / asset.height
+    if (currentLease && !immediate && !reducedMotion && !paused) {
+      transition = director.replace((timeline) => {
+        timeline.to(material.uniforms.uMix!, { value: 1, duration: TRANSITION_SECONDS, ease: 'none', onUpdate: invalidate })
+      })
+      await transition
+    }
+    if (disposed) return
+    currentLease?.release()
+    currentLease = lease
+    nextLease = null
+    currentAsset = asset
+    committedViewpointId = requestedViewpointId
+    material.uniforms.uCurrent!.value = lease.texture
+    material.uniforms.uCurrentImageAspect!.value = asset.width / asset.height
     material.uniforms.uMix!.value = 0
-    transitionStart = lastTime
-    transitioning = true
+    invalidate()
   }
 
-  const syncActiveAsset = (immediate = false): Promise<void> => setTexture(
-    environmentAssetFor(currentViewpointId, quality, viewportAspect),
-    immediate,
+  const syncActiveAsset = (immediate = false, onReady?: () => void): Promise<void> => setTexture(
+    environmentAssetFor(currentViewpointId, quality, viewportAspect), immediate, onReady ?? selectionReady,
   )
 
   return {
     mesh,
-    async setViewpoint(viewpointId, immediate = false) {
+    async setViewpoint(viewpointId, immediate = false, onReady) {
       currentViewpointId = viewpointId
-      await syncActiveAsset(immediate)
+      selectionReady = onReady
+      await syncActiveAsset(immediate, onReady)
     },
+    finish() { director.finish() },
+    setPaused(value) { paused = value; if (value) director.finish() },
+    setReducedMotion(reduced) { reducedMotion = reduced; if (reduced) director.finish() },
     setQuality(tier) {
       quality = tier
-      void syncActiveAsset()
+      if (currentAsset) void syncActiveAsset().catch(() => undefined)
     },
     setView(yaw, pitch, verticalFovDegrees, nextViewportAspect) {
       const verticalFov = verticalFovDegrees * Math.PI / 180
@@ -201,7 +227,7 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
       material.uniforms.uViewportAspect!.value = nextViewportAspect
       const nextOrientation = nextViewportAspect < 0.8
       if (currentViewpointId === 'cabo-da-roca' && previousOrientation !== nextOrientation) {
-        void syncActiveAsset()
+        if (currentAsset) void syncActiveAsset().catch(() => undefined)
       }
     },
     setTint(color, strength) {
@@ -219,21 +245,16 @@ export function createEnvironmentLayer(initialQuality: QualityTier): Environment
     prefetch() {
       prefetchTextures(environmentWarmupAssets(quality, viewportAspect))
     },
-    update(time) {
-      lastTime = time
-      if (!transitioning) return
-      const progress = Math.min((time - transitionStart) / TRANSITION_SECONDS, 1)
-      material.uniforms.uMix!.value = progress
-      if (progress < 1 || !nextTexture) return
-      currentTexture = nextTexture
-      material.uniforms.uCurrent!.value = currentTexture
-      material.uniforms.uCurrentImageAspect!.value = material.uniforms.uNextImageAspect!.value
-      material.uniforms.uNext!.value = currentTexture
-      material.uniforms.uMix!.value = 0
-      transitioning = false
-    },
+    update() {},
     dispose() {
-      // Textures belong to the shared cache, which outlives this layer.
+      disposed = true
+      generation += 1
+      requestAbort?.abort()
+      director.kill()
+      currentLease?.release()
+      nextLease?.release()
+      currentLease = null
+      nextLease = null
       mesh.geometry.dispose()
       material.dispose()
     },

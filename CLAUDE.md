@@ -43,28 +43,37 @@ Rendering is a hybrid and the switch is inverted on purpose:
   galaxy), then vignette, AgX tone mapping and the film dither/grain, then SMAA — SMAA is last on
   purpose, because its edge detection is tuned for tone-mapped luma, not raw HDR. High quality also
   uses 4x composer multisampling to preserve crisp hero silhouettes; balanced and safe do not.
-- `TextureCache.ts` owns every texture: one per URL for the life of the session, decoded off the main
-  thread into an `ImageBitmap`, uploaded to the GPU on load (`renderer.initTexture`) so no shot pays
-  for it, prefetched on idle after the first frame by tier. Every texture leaves the cache with
-  `flipY` off and the materials flip V once when they sample (`FLIP_V` in `materials/shaderChunks.ts`),
-  so ImageBitmap and KTX2 uploads behave the same. It also carries the KTX2/Basis path
-  (`scripts/textures.sh`, `VITE_KTX2_TEXTURES`, opt-in), which is tree-shaken out of the bundle when
-  the flag is off. `AssetManifest.surfaceMapFor` swaps the 4K maps for their 2K siblings only on the
-  safe tier.
-- `ShotDirector.ts` owns the single running GSAP timeline and returns the promise the UI awaits to
-  unlock controls. `tests/shot-director.test.ts` covers its exit paths.
-- `QualityManager.ts` chooses a fixed session tier from device memory/cores. Runtime frame deltas are
-  deliberately not used as GPU timings. `setQuality` re-derives the DPR cap, composer multisampling,
-  bloom intensity, star opacity and the stellar shader's octave count.
+- `TextureCache.ts` owns URL-deduplicated textures through explicit leases. Active and transitioning
+  heroes/plates pin their maps. Unpinned entries are evicted by recency against 256/160/96 MiB
+  estimated high/balanced/safe budgets. Speculation decodes at most two candidates without uploading;
+  demand uploads before the shot. Abandoned demand requests can be cancelled. Retired owned
+  ImageBitmaps are closed. KTX2 remains opt-in, and loaders/workers are disposed at teardown.
+- `ShotDirector.ts` distinguishes completion, interruption and disposal. `finish()` applies callbacks;
+  replacement preserves the rendered state. Object opacity, distance and viewpoint movement have
+  separate directors so distance input cannot strand an object fade. Object preparation is transactional
+  through texture loading and shader compilation. `compileScene.ts` preserves Three r185's asynchronous
+  readiness checks with cancellation and captured program references; revisit it when upgrading Three.
+- `QualityManager.ts` is the authoritative mutable policy. Device hints choose an initial tier,
+  then valid GPU queries (or explicitly labeled frame pacing) drive hysteretic adaptation with
+  warmup exclusion and slower recovery. Buffers are bounded by both DPR and total pixels. Surface
+  maps already in use remain pinned across tier changes. Internal `getDiagnostics()` reports estimates
+  and timing source without adding UI or telemetry.
 - `materials/` are hand-written `ShaderMaterial`s. Hero materials light themselves, so
   `updateHeroLighting()` feeds them the sun direction transformed into their own space.
 - The backdrop takes the hero's projected position and radius each frame and paints its glow into
   the sky and onto the lit parts of the plate. A star's halo is a billboard (`GlareMaterial`), not
   bloom.
-- Surface relief has two paths. The rocky bodies carry a normal map built from real elevation data
-  (`scripts/normal-maps.py`); everything else falls back to a gradient read out of the albedo. Both
-  use the tangent frame `SHARED_VERTEX` derives from the sphere's equirectangular mapping, where +x
-  is east and +y is north.
+- Rocky relief uses aligned elevation-derived normal maps (`scripts/normal-maps.py`) with the
+  existing tangent/V-flip convention. Cloud decks no longer infer slopes from albedo brightness.
+  Saturn's equatorial rings cast and receive shadows using the same local Sun direction; the
+  ring-alpha-to-optical-depth approximation is authored, as documented on `/method`.
+- Reduced motion freezes hero spin, shader time, film time, star drift/twinkle and meteors. Settled
+  scenes render on invalidation; pointer input, resources, selection, resize and recovery wake the
+  same frame loop. Normal motion remains full cadence. Planets use recorded periods at 60x time;
+  the Moon, stars and Andromeda have no solid-body spin.
+- Viewpoint loading precedes composition movement. An active two-plate blend completes before the
+  newest queued plate starts, bounding sampler/residency cost without resetting visible mix. Its
+  promise covers both loading and the fade. Foreground masks and water reflections are not shipped.
 
 **`src/perigee/audio/` — ambient music**
 
@@ -83,10 +92,11 @@ Rendering is a hybrid and the switch is inverted on purpose:
 ## Contracts to preserve
 
 - **The device pixel ratio is capped inside `PerigeeScene.resize`, never at the call site.** The
-  resize observer reports the raw ratio; clamping anywhere else lets an ordinary window resize undo
-  the quality tier's cap and render a low-end phone at 3x. Caps are fixed at 2x for high, 1.5x for
-  balanced and 1x for safe.
-- **Textures and geometry are shared, so `disposeObject` only releases materials.** Anything that
+  resize observer reports the raw ratio. DPR ceilings are 2x/1.5x/1x and pixel budgets are
+  8,294,400/3,686,400/2,073,600 for high/balanced/safe, also bounded by texture dimensions.
+  Repeated identical resizes do not reallocate buffers; responsive placement preserves the
+  current angular scale instead of snapping an interrupted distance animation to its target.
+- **Textures and geometry are shared; `disposeObject` releases materials and texture leases.** Anything that
   disposes a cached texture or the shared sphere/ring geometry breaks every later swap.
 - **Every shot must be interruptible, and its promise must settle on every exit path** — completion,
   interruption by a new shot, `finish()` on tab hide, `kill()` on dispose. A promise that never
@@ -124,12 +134,12 @@ Rendering is a hybrid and the switch is inverted on purpose:
 - **Every track swap must survive being superseded.** `playTrack` bumps a generation before it
   loads and drops a stale result, so two fast viewpoint changes leave one deck playing, not two. A
   failed load keeps the current track running: the wrong place is a better answer than silence.
-- Reduced motion: every animated path checks `prefers-reduced-motion` and shortens durations
-  (`PerigeeScene`, `usePerigee.queueHazard`). Keep new animation behind the same check.
+- Reduced motion is live: media-query changes settle shots and freeze ambient shader/camera motion.
+  Keep new animation behind that policy, including invalidation when a static scene changes.
 - WebGL2 is required. `initialize()` throws `WEBGL2_UNAVAILABLE`, which `usePerigee` maps to the
   `CapabilityFallback` component. Asset load failures fall into the `'asset'` branch.
-- Disposal is manual and explicit: `disposeObject` walks geometries, maps, and materials on every
-  hero swap. New Three.js objects need matching disposal.
+- Disposal is explicit and idempotent. Cancel asynchronous work before retiring resources, retain
+  resources until compiler checks settle, and never dispose shared geometry on a hero swap.
 
 ## Assets
 
