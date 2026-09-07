@@ -3,6 +3,9 @@
 .output
 dist
 
+# Wrangler local simulation state
+.wrangler
+
 # Dependencies
 node_modules
 
@@ -21,3 +24,8 @@ coverage
 
 # Local visual QA captures
 tmp/
+
+# Observational asset trees, stored in R2 and restored by `npm run assets`.
+# See scripts/asset-bundles.json.
+/public/assets/objects/planets/
+/public/assets/objects/andromeda/

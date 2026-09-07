@@ -31,5 +31,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The planet and Andromeda trees are not in the repository. Both
+      # `planet-assets` and `galaxy-assets` assert that every shipped file
+      # exists, so the tests need the real bytes, not a stub. The paths are
+      # version-hashed, so the cache key only moves when the assets do.
+      - name: Restore asset bundles
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: tmp/asset-bundles
+          key: asset-bundles-${{ hashFiles('scripts/asset-bundles.json') }}
+
+      - name: Restore observational assets
+        run: npm run assets
+
       - name: Verify application
         run: npm run verify
