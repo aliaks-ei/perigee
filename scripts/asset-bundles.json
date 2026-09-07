@@ -1,0 +1,18 @@
+{
+  "bucket": "perigee-assets",
+  "baseUrl": "https://pub-53e364c5cb0c4500a4487d3f3ad3ca93.r2.dev",
+  "bundles": [
+    {
+      "key": "planets-1b448275b234.tar",
+      "directory": "public/assets/objects/planets/1b448275b234",
+      "sha256": "8717ca5b191bc0ff02484c1d17aaac9a1517304d5dd8d03541da1f07fb6573d3",
+      "bytes": 144015360
+    },
+    {
+      "key": "andromeda-55825fd3438b.tar",
+      "directory": "public/assets/objects/andromeda/55825fd3438b",
+      "sha256": "60443f1e5dd477c73f57fe831f9745d15dcb446c6a6531d7d33aed0da50f3884",
+      "bytes": 84530688
+    }
+  ]
+}

@@ -10,6 +10,8 @@
   },
   "scripts": {
     "postinstall": "nuxt prepare",
+    "assets": "node scripts/assets.mjs pull",
+    "assets:pack": "node scripts/assets.mjs pack",
     "dev": "nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",

@@ -5,7 +5,8 @@ Thanks for helping improve Perigee. Start with an issue for substantial changes 
 ## Development workflow
 
 1. Fork the repository and create a focused branch from `main`.
-2. Install the locked dependency set with `npm ci`.
+2. Install the locked dependency set with `npm ci`, then restore the
+   observational asset trees with `npm run assets`.
 3. Make the smallest coherent change and add deterministic regression tests where relevant.
 4. Run `npm run verify`.
 5. Open a pull request using the repository template.
@@ -20,5 +21,7 @@ Pull requests must pass the required checks before they can be merged. Direct pu
 - Include desktop and mobile evidence for visual changes.
 - Record the source, licence, and any modifications for runtime assets in `public/assets/ATTRIBUTIONS.md`.
 - Do not commit secrets, `.env` files, generated output, or dependency directories.
+- Do not commit the planet or Andromeda surface trees. They are stored in
+  Cloudflare R2 and described in `scripts/asset-bundles.json`.
 
 Report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
