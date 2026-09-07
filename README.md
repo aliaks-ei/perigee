@@ -9,7 +9,7 @@ and what is described rather than simulated.
 
 [Explore Perigee live](https://perigee.observer)
 
-![Saturn at the Moon's distance above the Perigee rooftop](public/assets/readme/perigee-overview.jpg)
+<img width="7680" height="4250" alt="perigee-saturn-moon-swap-cabo-da-roca" src="https://github.com/user-attachments/assets/71da35ae-0d01-41cc-8575-f7aac32c6565" />
 
 ## Highlights
 
