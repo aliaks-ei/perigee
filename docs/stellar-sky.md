@@ -86,8 +86,11 @@ Sources and reproducible processing:
   Store the completed CSV as `/private/tmp/perigee-gaia-bright.csv`.
   Preserve full service precision; source serialization can change hashes even
   when query values are unchanged.
-- Keep the existing `public/assets/stars/bsc5.bin` from `scripts/star-catalogue.py`.
-  Use Python with numpy, scipy, astropy and astropy-healpix; run
+- The pipeline reuses `bsc5.bin` from the active versioned sky directory selected
+  by `src/perigee/scenes/skyManifest.json`. To rebuild Yale from its original
+  catalogue, run `python scripts/star-catalogue.py /private/tmp/bsc5.dat /private/tmp/bsc5.bin`;
+  a `bsc5.bin` in the supplied source cache takes precedence. No unversioned
+  catalogue is shipped. Use Python with numpy, scipy, astropy and astropy-healpix; run
   `python scripts/sky-assets.py /private/tmp`. Source masters are external and
   `/private/tmp` is ephemeral. Reacquire them if absent.
 - `src/perigee/scenes/skyManifest.json` records exact source/output SHA-256 hashes,

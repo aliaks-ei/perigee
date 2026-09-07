@@ -78,6 +78,10 @@ adjustments remain separate from shader lighting.
 
 ## Runtime and resource bounds
 
+Version `1b448275b234` contains 1,354 image derivatives totaling 139,975,140
+file bytes, excluding provenance. These are demand-loaded; the total is not an
+initial download or GPU-memory measurement.
+
 Moon/Mars have complete 2048×1024 bases and bordered 4096/8192/16384 colour tile
 levels. Each tile has 512 inner pixels and an 8-pixel border on every side.
 WebP quality 94 is used for colour detail; terrain normals are lossless WebP.

@@ -1,7 +1,7 @@
 import {
   AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, DataTexture,
   DataUtils, Group, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, Mesh,
-  Points, RedFormat, RepeatWrapping, Scene, ShaderMaterial, SphereGeometry, Vector3,
+  Points, Quaternion, RedFormat, RepeatWrapping, Scene, ShaderMaterial, SphereGeometry, Vector3,
 } from 'three'
 import type { QualityTier, SkyObjectId, ViewpointId } from '../../../app/types/perigee'
 import { createEnvironmentLayer } from './createEnvironmentLayer'
@@ -14,7 +14,8 @@ import manifest from './skyManifest.json'
 export interface SkySceneBundle {
   scene: Scene
   stars: Points
-  setTarget: (id: SkyObjectId, position: Vector3) => void
+  /** Object fades supply progress; placement updates preserve the active blend. */
+  setTarget: (id: SkyObjectId, position: Vector3, progress?: number) => void
   setPalette: (palette: [string, string, string]) => void
   /**
    * Warm sky-glow thrown up from the ground, matched to the viewpoint, and the
@@ -74,6 +75,8 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
   let viewpoint: ViewpointId = 'rooftop'
   let targetId: SkyObjectId = 'saturn'
   const targetPosition = new Vector3(86, 118, -500)
+  const rotationOrigin = new Quaternion()
+  let targetProgress = 1
   const atmosphere = {
     uExtinction: { value: skyConditions.rooftop.extinction },
     uLimit: { value: skyConditions.rooftop.limitingMagnitude },
@@ -212,7 +215,8 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
   }
   const align = (): void => {
     const [ra, dec] = targetCoordinates[targetId]
-    celestial.quaternion.copy(referenceSkyRotation(ra, dec, targetPosition, skyConditions[viewpoint].latitude))
+    const rotation = referenceSkyRotation(ra, dec, targetPosition, skyConditions[viewpoint].latitude)
+    celestial.quaternion.slerpQuaternions(rotationOrigin, rotation, targetProgress)
     pointsMaterial.uniforms.uTarget!.value.copy(equatorialDirection(ra, dec))
     pointsMaterial.uniforms.uHideTarget!.value = ['betelgeuse', 'sirius', 'rigel'].includes(targetId) ? 1 : 0
   }
@@ -220,7 +224,15 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
   return {
     scene, stars,
     ready: () => catalogueSettled && surveySettled && environment.ready(),
-    setTarget(id, position) { targetId = id; targetPosition.copy(position); align() },
+    setTarget(id, position, progress) {
+      if (id !== targetId) {
+        rotationOrigin.copy(celestial.quaternion)
+        targetProgress = progress ?? 1
+      } else if (progress !== undefined) targetProgress = progress
+      targetId = id
+      targetPosition.copy(position)
+      align()
+    },
     setPalette() {},
     setGlow() {},
     setHeroScreen(x, y, radius) { environment.setHeroScreen(x, y, radius) },

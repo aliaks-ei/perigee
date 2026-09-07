@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Packs the Yale Bright Star Catalog (BSC5) into public/assets/stars/bsc5.bin.
+"""Packs the Yale Bright Star Catalog (BSC5) into an external source cache.
 
 Download the catalogue first:
   curl -sSL -o /tmp/bsc5.dat.gz http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz
   gunzip /tmp/bsc5.dat.gz
 Then run from the repository root:
-  python3 scripts/star-catalogue.py /tmp/bsc5.dat
+  python3 scripts/star-catalogue.py /tmp/bsc5.dat /tmp/bsc5.bin
+
+The output defaults to bsc5.bin beside the input. Pass that cache directory to
+scripts/sky-assets.py to publish the catalogue with the versioned sky assets.
 
 Record layout (little-endian), after an 8-byte header of "BSC5", u16 version,
 u16 count: u16 right ascension in hundredths of a degree, i16 declination in
@@ -18,7 +21,9 @@ import struct
 import sys
 
 source = sys.argv[1] if len(sys.argv) > 1 else '/tmp/bsc5.dat'
-target = os.path.join(os.path.dirname(__file__), '..', 'public', 'assets', 'stars', 'bsc5.bin')
+target = os.path.abspath(
+    sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(source), 'bsc5.bin')
+)
 
 rows = []
 for line in open(source, encoding='latin-1'):

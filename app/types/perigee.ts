@@ -51,7 +51,7 @@ export interface SkyObjectDefinition {
   texture?: string
   /**
    * Tangent-space normal map derived from real elevation data. Only the rocky
-   * bodies have one; see `scripts/normal-maps.py`. Must end in `-normal` so the
+   * bodies have one; see `scripts/planet-assets.py`. Must end in `-normal` so the
    * texture cache loads it as data rather than colour.
    */
   normalMap?: string

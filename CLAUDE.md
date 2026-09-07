@@ -53,7 +53,10 @@ Rendering is a hybrid and the switch is inverted on purpose:
 - `ShotDirector.ts` distinguishes completion, interruption and disposal. `finish()` applies callbacks;
   replacement preserves the rendered state. Object opacity, distance and viewpoint movement have
   separate directors so distance input cannot strand an object fade. Object preparation is transactional
-  through texture loading and shader compilation. `compileScene.ts` preserves Three r185's asynchronous
+  through texture loading and shader compilation. Rapid object selections prepare the newest request
+  while the visible two-object fade completes; superseded preparations are cancelled, and duplicate
+  selections reuse pending work or the visible hero. Catalogue orientation follows the object fade,
+  retaining its blend during viewpoint/viewport placement updates. `compileScene.ts` preserves Three r185's asynchronous
   readiness checks with cancellation and captured program references; revisit it when upgrading Three.
 - `QualityManager.ts` is the authoritative mutable policy. Device hints choose an initial tier,
   then valid GPU queries (or explicitly labeled frame pacing) drive hysteretic adaptation with
@@ -155,14 +158,15 @@ colour. They are **not** relicensed by this repo. Any new asset needs an entry i
 `thumbnail` must point at `public/assets/objects/thumbs/` (160x160 WebP), never at a full surface
 map — the object browser renders all of them at once.
 
-The star field's brightness distribution comes from the Yale Bright Star Catalog packed into
-`public/assets/stars/bsc5.bin` by `scripts/star-catalogue.py`; a procedural field stands in until it
-loads and if it fails.
+The reference sky uses versioned Yale and Gaia catalogues plus an integrated-light map, selected
+by `src/perigee/scenes/skyManifest.json`. `scripts/star-catalogue.py` packs Yale into an external
+source cache; `scripts/sky-assets.py` consumes that cache or reuses the active versioned Yale
+catalogue. See `docs/stellar-sky.md` for acquisition, processing and fallback behavior.
 
 Data maps must be named `*-normal.*`, `*-height.*` or `*-depth.*`; the texture cache uses these
 suffixes to bypass sRGB conversion. `scripts/planet-assets.py` builds aligned physical terrain
-from LOLA/MOLA. Scientific masters stay outside the repository. The earlier
-`scripts/normal-maps.py` recipe is historical and produces exaggerated legacy normals.
+from LOLA/MOLA. Scientific masters stay outside the repository.
+
 New `/planets/` and `/andromeda/` assets intentionally bypass optional KTX2 siblings.
 
 `scripts/audio.sh` prepares the ambient music with `ffmpeg` (`brew install ffmpeg`): it cuts a
@@ -172,12 +176,13 @@ rewrites `AudioManifest.ts`. The masters go in a git-ignored `tmp/audio-sources/
 in the repository, following the normal-map DEM precedent. The crossfade order matters: the join is
 the head of the file and the body follows it, so nothing is heard twice at the loop point.
 
-`scripts/textures.sh` converts the object maps to KTX2/Basis with the `basisu` encoder
+`scripts/textures.sh` converts the top-level object maps to KTX2/Basis with the `basisu` encoder
 (`brew install basis_universal imagemagick`), and the `.ktx2` files are checked in beside their
-sources. The codec is chosen per map: ETC1S for the noisy rocky albedos (Moon, Mars), UASTC for
-the gas giants, whose smooth banding ETC1S would band, and for the normal maps. The backdrops stay
-WebP on purpose. JPEG/WebP is the default because those files are substantially smaller on the
-wire. Set `VITE_KTX2_TEXTURES=1` (see `.env.example`) only when GPU memory and upload stalls matter
+sources. Since the legacy surface maps were removed (2026-09-07) the only such file is
+`saturn-ring-2k.ktx2`; the versioned `/planets/` and `/andromeda/` trees never get siblings. The
+codec is chosen per map: ETC1S for noisy rocky albedos, UASTC for smooth banding and for normal
+maps. The backdrops stay WebP on purpose. JPEG/WebP is the default because those files are
+substantially smaller on the wire. Set `VITE_KTX2_TEXTURES=1` (see `.env.example`) only when GPU memory and upload stalls matter
 more than initial transfer size. Rerun
 the script whenever a source texture changes, or the stale `.ktx2` wins. The transcoder is served
 from `public/assets/basis/` as a byte copy of three's; `tests/basis-transcoder.test.ts` fails when
