@@ -171,6 +171,11 @@ object put` commands it prints, then commit the restamped `scripts/asset-bundles
 the superseded objects from the bucket is a separate manual step, and worth delaying until the
 new version is deployed.
 
+Cloudflare Workers Builds builds this repository itself, so the deployed bundle is only complete
+if the trees are restored on that machine too. `prebuild` and `pregenerate` therefore run
+`npm run assets`, which makes the pull part of the build rather than something the build command
+has to remember. A build that skips it deploys an app whose every planet and galaxy texture 404s.
+
 `thumbnail` must point at `public/assets/objects/thumbs/` (160x160 WebP), never at a full surface
 map — the object browser renders all of them at once.
 
