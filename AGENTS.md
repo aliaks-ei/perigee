@@ -8,7 +8,8 @@ Perigee is a Nuxt 3 client-side application. Keep Vue-facing code in `app/`: com
 
 - `npm ci` installs the exact lockfile dependency set (preferred for clean checkouts and CI).
 - `npm run assets` restores the planet/Andromeda surface trees from R2; they are not tracked
-  in git, and the tests assert every file exists. It is a no-op once they are present.
+  in git, and the tests assert every file exists. `dev`, `test`, `build` and `generate` each
+  run it first, so it is rarely needed by hand, and it is a no-op once the trees are present.
 - `npm run dev` starts the Nuxt development server.
 - `npm run typecheck` runs strict Nuxt/Vue TypeScript checks.
 - `npm test` runs the Vitest suite once; `npm run test:watch` supports local iteration.

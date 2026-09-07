@@ -12,6 +12,8 @@
     "postinstall": "nuxt prepare",
     "assets": "node scripts/assets.mjs pull",
     "assets:pack": "node scripts/assets.mjs pack",
+    "predev": "npm run assets",
+    "pretest": "npm run assets",
     "prebuild": "npm run assets",
     "pregenerate": "npm run assets",
     "dev": "nuxt dev",

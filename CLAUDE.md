@@ -3,7 +3,7 @@
 ```bash
 npm run verify       # typecheck + tests + build. Run this before calling work done; CI runs the same.
 npm run generate     # static output to .output/public (the `dist` symlink points there)
-npm run assets       # restore the planet/Andromeda trees from R2; no-op when present
+npm run assets       # restore the planet/Andromeda trees from R2 on demand; no-op when present
 npx vitest run tests/angular-size.test.ts     # single test file
 npx vitest run -t 'settles the promise'       # single test by name
 ```
@@ -160,9 +160,10 @@ The planet and Andromeda trees (`public/assets/objects/planets/<version>` and
 `.../andromeda/<version>`, ~216 MB across 2,037 files) are **not tracked in git**.
 `scripts/asset-bundles.json` records the R2 object key, byte count and SHA-256 of one tar per
 tree, and `npm run assets` downloads, verifies and extracts them. It is a no-op once each tree's
-`provenance.json` is present. CI restores them before `npm run verify`, because
-`tests/planet-assets.test.ts` and `tests/galaxy-assets.test.ts` assert that every shipped file
-exists and would otherwise pass against nothing.
+`provenance.json` is present. `predev`, `pretest`, `prebuild` and `pregenerate` all run it, so
+nothing that needs the trees can start without them: `tests/planet-assets.test.ts` and
+`tests/galaxy-assets.test.ts` assert that every shipped file exists, and they run before the
+build, so a `pregenerate` hook alone would not have saved `npm run verify` on a fresh clone.
 
 The version is a content hash over the generator plus every source file, so **adding one body
 rewrites the whole tree under a new hash** — tracking these would add ~136 MB of permanently dead
@@ -172,9 +173,11 @@ the superseded objects from the bucket is a separate manual step, and worth dela
 new version is deployed.
 
 Cloudflare Workers Builds builds this repository itself, so the deployed bundle is only complete
-if the trees are restored on that machine too. `prebuild` and `pregenerate` therefore run
-`npm run assets`, which makes the pull part of the build rather than something the build command
-has to remember. A build that skips it deploys an app whose every planet and galaxy texture 404s.
+if the trees are restored on that machine too. That is why the pull is an npm lifecycle hook
+rather than a step in the configured build command: a build that skips it deploys an app whose
+every planet and galaxy texture 404s, which is exactly what the first preview of PR #27 did.
+Note also that pulling a commit which deletes these once-tracked files removes them from a
+working tree that still had them, so an existing checkout needs a restore after that merge.
 
 `thumbnail` must point at `public/assets/objects/thumbs/` (160x160 WebP), never at a full surface
 map — the object browser renders all of them at once.
