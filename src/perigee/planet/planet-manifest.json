@@ -1,0 +1,62 @@
+{
+  "version": "1b448275b234",
+  "baseUrl": "/assets/objects/planets/1b448275b234",
+  "tileSize": 512,
+  "border": 8,
+  "bodies": {
+    "moon": {
+      "baseWidth": 2048,
+      "maximumWidth": 16384,
+      "levels": [
+        4096,
+        8192,
+        16384
+      ],
+      "terrain": {
+        "minimumMetres": -12000,
+        "maximumMetres": 12000,
+        "radiusMetres": 1737400,
+        "width": 4096,
+        "height": 2048
+      }
+    },
+    "mars": {
+      "baseWidth": 2048,
+      "maximumWidth": 16384,
+      "levels": [
+        4096,
+        8192,
+        16384
+      ],
+      "terrain": {
+        "minimumMetres": -12000,
+        "maximumMetres": 24000,
+        "radiusMetres": 3396190,
+        "width": 4096,
+        "height": 2048
+      }
+    },
+    "jupiter": {
+      "baseWidth": 3600,
+      "maximumWidth": 3600,
+      "levels": []
+    },
+    "saturn": {
+      "baseWidth": 1800,
+      "maximumWidth": 1800,
+      "levels": []
+    },
+    "neptune": {
+      "baseWidth": 720,
+      "maximumWidth": 720,
+      "levels": []
+    }
+  },
+  "ring": {
+    "width": 8192,
+    "maximumOpticalDepth": 8,
+    "radiusKm": 60268,
+    "innerRadius": 1.24,
+    "outerRadius": 2.32
+  }
+}

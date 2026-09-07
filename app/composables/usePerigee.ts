@@ -1,3 +1,4 @@
+import type { StillExportOptions } from '~/types/perigee'
 import { computed, readonly, ref, shallowRef } from 'vue'
 import { resolveObjectPresetId, skyObjects, skyObjectsById } from '~/data/objects'
 import { ARRIVAL_APPROACH_SECONDS, pickArrival } from '~/data/arrivals'
@@ -685,6 +686,10 @@ function subscribeFrame(listener: () => void): () => void {
   return controller.value?.subscribeFrame(listener) ?? (() => undefined)
 }
 
+function exportStill(options: StillExportOptions): Promise<Blob> {
+  return controller.value?.exportStill(options) ?? Promise.reject(new Error('EXPORT_UNAVAILABLE'))
+}
+
 function captureFrame(): HTMLCanvasElement | null {
   return controller.value?.captureFrame() ?? null
 }
@@ -781,6 +786,7 @@ export function usePerigee() {
     getDiagnostics: () => controller.value?.getDiagnostics() ?? null,
     subscribeFrame,
     captureFrame,
+    exportStill,
     pause,
     resume,
     resize,

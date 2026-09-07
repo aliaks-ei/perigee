@@ -1,5 +1,6 @@
 import { NoColorSpace, SRGBColorSpace, Texture, WebGLRenderer } from 'three'
 import { configureCompressedTextures, loadCompressedTexture, disposeCompressedTextures } from '#perigee-texture-compression'
+import { WorkQueue } from './streaming/WorkQueue'
 
 interface Entry {
   promise: Promise<Texture>
@@ -19,6 +20,7 @@ let budget = 160 * 1024 ** 2
 let serial = 0
 let idle: number | null = null
 let idleIsTimeout = false
+const tileWork = new WorkQueue(2)
 
 export function configureTextureCache(activeRenderer: WebGLRenderer): void {
   renderer = activeRenderer
@@ -90,7 +92,7 @@ async function decodeImage(url: string, signal: AbortSignal): Promise<Texture> {
 }
 
 function isDataTexture(url: string): boolean {
-  return /-normal\.[a-z0-9]+$/i.test(url)
+  return /-(normal|height|depth)\.[a-z0-9]+$/i.test(url)
 }
 
 /**
@@ -104,7 +106,10 @@ function anisotropyFor(url: string): number {
 }
 
 async function decode(url: string, signal: AbortSignal): Promise<Texture> {
-  const texture = await loadCompressedTexture(url) ?? await decodeImage(url, signal)
+  const compressed = (url.includes('/andromeda/') || url.includes('/planets/')) ? null : await loadCompressedTexture(url)
+  const texture = compressed ?? await (url.includes('/planets/')
+    ? tileWork.run(() => decodeImage(url, signal), signal)
+    : decodeImage(url, signal))
   texture.colorSpace = isDataTexture(url) ? NoColorSpace : SRGBColorSpace
   texture.anisotropy = anisotropyFor(url)
   return texture
@@ -162,6 +167,27 @@ export async function acquireTexture(url: string, signal?: AbortSignal): Promise
     return { texture, release }
   } catch (error) { release(); throw error }
   finally { signal?.removeEventListener('abort', onAbort) }
+}
+
+/**
+ * Streamed tiles have their own strict slot budget. Never leave retired tiles
+ * in the general LRU, where they would compete with planets and backdrops.
+ * WebP is deliberate here: alpha is data and stale KTX2 siblings cannot win.
+ */
+export async function acquireTextureTile(url: string, signal: AbortSignal): Promise<TextureLease> {
+  if (signal.aborted) throw new Error('TEXTURE_REQUEST_ABORTED')
+  const requestEpoch = epoch
+  return tileWork.run(async () => {
+    if (signal.aborted || requestEpoch !== epoch) throw new Error('TEXTURE_REQUEST_ABORTED')
+    const texture = await decodeImage(url, signal)
+    if (signal.aborted || requestEpoch !== epoch) { retire(texture); throw new Error('TEXTURE_REQUEST_ABORTED') }
+    texture.colorSpace = isDataTexture(url) ? NoColorSpace : SRGBColorSpace
+    texture.anisotropy = url.includes('/andromeda/') ? anisotropyFor(url) : Math.min(4, maxAnisotropy)
+    try { renderer?.initTexture(texture) }
+    catch (error) { retire(texture); throw error }
+    let released = false
+    return { texture, release() { if (!released) { released = true; retire(texture) } } }
+  }, signal)
 }
 
 /** Bounded speculative decode only. GPU upload belongs to the demand path. */

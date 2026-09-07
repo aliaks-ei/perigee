@@ -1,5 +1,7 @@
+import planets from './planet/planet-manifest.json'
 import { environmentAssetFor } from './scenes/environmentAssets'
 import type { QualityTier } from '../../app/types/perigee'
+import andromeda from './galaxy/andromeda-manifest.json'
 
 export interface AssetEntry {
   id: string
@@ -14,47 +16,45 @@ export interface AssetEntry {
  * place a `.ktx2` next to any of these; the loader prefers it when
  * `VITE_KTX2_TEXTURES=1` and falls back to the file named here.
  */
-export const assetManifest: AssetEntry[] = [
-  ['moon', '/assets/objects/moon.jpg', 'jpg', 'moon'],
-  ['moon-2k', '/assets/objects/moon-2k.jpg', 'jpg', 'moon'],
-  ['moon-normal', '/assets/objects/moon-normal.webp', 'webp', 'moon'],
-  ['mars', '/assets/objects/mars.jpg', 'jpg', 'mars'],
-  ['mars-2k', '/assets/objects/mars-2k.jpg', 'jpg', 'mars'],
-  ['mars-normal', '/assets/objects/mars-normal.webp', 'webp', 'mars'],
-  ['jupiter', '/assets/objects/jupiter.jpg', 'jpg', 'jupiter'],
-  ['jupiter-2k', '/assets/objects/jupiter-2k.jpg', 'jpg', 'jupiter'],
-  ['saturn', '/assets/objects/saturn-atmosphere-v2.webp', 'webp', 'saturn'],
-  ['saturn-2k', '/assets/objects/saturn-atmosphere-v2-2k.webp', 'webp', 'saturn'],
-  ['saturn-ring', '/assets/objects/saturn-ring-2k.webp', 'webp', 'saturn'],
-  ['neptune', '/assets/objects/neptune.jpg', 'jpg', 'neptune'],
-].map(([id, url, kind, requiredFor]) => ({
-  id: id!,
-  url: url!,
-  kind: kind as 'jpg' | 'png' | 'webp',
-  requiredFor: [requiredFor!],
-  attributionId: url!.includes('-normal') ? 'planetary-elevation-data' : url!.includes('saturn-atmosphere') ? 'perigee-saturn-art' : 'solar-system-scope-textures',
-}))
+export const assetManifest: AssetEntry[] = [{ id: 'saturn-ring-color',
+  url: '/assets/objects/saturn-ring-2k.webp', kind: 'webp', requiredFor: ['saturn'],
+  attributionId: 'solar-system-scope-textures' }]
+for (const [body, config] of Object.entries(planets.bodies)) {
+  const base = `${planets.baseUrl}/${body}`
+  assetManifest.push({ id: `${body}-base`, url: `${base}/base.webp`, kind: 'webp',
+    requiredFor: [body], attributionId: 'planetary-observations' })
+  if ('terrain' in config) {
+    for (const [name, kind] of [['terrain-normal', 'webp'], ['terrain-height', 'png']] as const) {
+      assetManifest.push({ id: `${body}-${name}`, url: `${base}/${name}.${kind}`, kind,
+        requiredFor: [body], attributionId: 'planetary-elevation-data' })
+    }
+  }
+  for (const width of config.levels) {
+    for (let y = 0; y < width / 1024; y += 1) for (let x = 0; x < width / 512; x += 1) {
+      assetManifest.push({ id: `${body}-${width}-${x}-${y}`, url: `${base}/${width}/${x}-${y}.webp`,
+        kind: 'webp', requiredFor: [body], attributionId: 'planetary-observations' })
+    }
+  }
+}
+assetManifest.push({ id: 'saturn-ring-depth', url: `${planets.baseUrl}/saturn/rings-depth.png`,
+  kind: 'png', requiredFor: ['saturn'], attributionId: 'ring-occultation-data' })
 
-/**
- * The 4096×2048 maps have a 2048×1024 sibling. At the Moon-swap distance the
- * disc spans about a thousand CSS pixels and the visible hemisphere covers
- * half the map, so the smaller file is a pixel-for-pixel match there; only
- * the close presets on the high tier resolve more than it holds. The lower
- * safe tier takes the sibling and keeps a quarter of the GPU memory. Balanced
- * and high retain the full map so a Retina display does not undersample a
- * large planet.
- */
-const SURFACE_MAP_VARIANTS: Record<string, string> = {
-  '/assets/objects/moon.jpg': '/assets/objects/moon-2k.jpg',
-  '/assets/objects/mars.jpg': '/assets/objects/mars-2k.jpg',
-  '/assets/objects/jupiter.jpg': '/assets/objects/jupiter-2k.jpg',
-  '/assets/objects/saturn-atmosphere-v2.webp': '/assets/objects/saturn-atmosphere-v2-2k.webp',
+// Discoverable for static validation and attribution; the runtime streams only
+// visible, budgeted tiles. These entries are never speculative prefetch lists.
+assetManifest.push({ id: 'andromeda-base', url: `${andromeda.baseUrl}/base.webp`, kind: 'webp',
+  requiredFor: ['andromeda'], attributionId: 'andromeda-observations' })
+for (const level of andromeda.levels) {
+  for (let y = 0; y < level.rows; y += 1) {
+    for (let x = 0; x < level.columns; x += 1) {
+      assetManifest.push({ id: `andromeda-${level.width}-${x}-${y}`,
+        url: `${andromeda.baseUrl}/${level.width}/${x}-${y}.webp`, kind: 'webp',
+        requiredFor: ['andromeda'], attributionId: 'andromeda-observations' })
+    }
+  }
 }
 
-export function surfaceMapFor(url: string, tier: QualityTier): string {
-  if (tier !== 'safe') return url
-  return SURFACE_MAP_VARIANTS[url] ?? url
-}
+/** Full observational bases stay complete; PlanetTiles selects demand detail. */
+export function surfaceMapFor(url: string, _tier: QualityTier): string { return url }
 
 /** Environment derivatives share the same runtime selector as demand loading. */
 export const environmentAssetManifest: AssetEntry[] = [...new Map(

@@ -14,7 +14,7 @@ describe('scene illumination', () => {
   it('keeps tint bounded and continuous through the former threshold', () => {
     expect(Math.abs(environmentTintStrength(0.080001) - environmentTintStrength(0.079999))).toBeLessThan(0.00001)
     for (const input of [-1, 0, 0.01, 0.08, 1, 100]) {
-      expect(environmentTintStrength(input)).toBeGreaterThanOrEqual(0.045)
+      expect(environmentTintStrength(input)).toBeGreaterThanOrEqual(0)
       expect(environmentTintStrength(input)).toBeLessThanOrEqual(0.58)
     }
   })

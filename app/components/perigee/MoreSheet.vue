@@ -174,6 +174,10 @@ function selectFeature(feature: FeaturedEncounterDefinition, placement: 'current
             </ul>
           </div>
 
+          <div class="more-section">
+            <a class="more-item flex w-full items-center" href="/method#andromeda-imagery" target="_blank" rel="noopener noreferrer">Method and image credits</a>
+          </div>
+
           <PerigeeCreatorLinks placement="more" />
 
         </section>

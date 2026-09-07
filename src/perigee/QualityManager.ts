@@ -2,7 +2,7 @@ import type { QualityTier } from '../../app/types/perigee'
 
 const TIERS: QualityTier[] = ['safe', 'balanced', 'high']
 export const QUALITY_BUDGETS = {
-  high: { dpr: 2, pixels: 8_294_400, multisampling: 4, textureBytes: 256 * 1024 ** 2 },
+  high: { dpr: Infinity, pixels: 16_588_800, multisampling: 0, textureBytes: 256 * 1024 ** 2 },
   balanced: { dpr: 1.5, pixels: 3_686_400, multisampling: 0, textureBytes: 160 * 1024 ** 2 },
   safe: { dpr: 1, pixels: 2_073_600, multisampling: 0, textureBytes: 96 * 1024 ** 2 },
 } as const
@@ -19,12 +19,13 @@ export class QualityManager {
   private samples: number[] = []
   private changedAt = 0
   private ignoreUntil = 0
+  private severeFrames = 0
 
   constructor(hints: { deviceMemory?: number, hardwareConcurrency?: number } = typeof navigator === 'undefined' ? {} : navigator) {
     const memory = hints.deviceMemory
     const cores = hints.hardwareConcurrency
     this.tier = memory !== undefined && memory < 4 ? 'safe'
-      : memory !== undefined && memory >= 8 && cores !== undefined && cores >= 8 ? 'high' : 'balanced'
+      : memory !== undefined && memory < 8 || cores !== undefined && cores <= 4 ? 'balanced' : 'high'
   }
 
   get current(): QualityTier { return this.tier }
@@ -35,17 +36,29 @@ export class QualityManager {
     this.reset(now)
   }
 
+  degrade(now: number): QualityTier {
+    const lower = TIERS[Math.max(0, TIERS.indexOf(this.tier) - 1)]!
+    this.set(lower, now)
+    return lower
+  }
+
   reset(now: number): void {
     this.samples = []
+    this.severeFrames = 0
     this.ignoreUntil = now + 3000
   }
 
   observe(milliseconds: number, now: number, eligible: boolean): QualityTier | null {
-    if (!eligible || !Number.isFinite(milliseconds) || milliseconds <= 0 || milliseconds > 250) {
+    if (!eligible || !Number.isFinite(milliseconds) || milliseconds <= 0) {
       this.reset(now)
       return null
     }
     if (now < this.ignoreUntil) return null
+    this.severeFrames = milliseconds > 50 ? this.severeFrames + 1 : 0
+    if (this.severeFrames >= 8) {
+      const lower = TIERS[Math.max(0, TIERS.indexOf(this.tier) - 1)]!
+      if (lower !== this.tier) { this.set(lower, now); return lower }
+    }
     this.samples.push(milliseconds)
     if (this.samples.length < 180) return null
     const samples = this.samples.splice(0)

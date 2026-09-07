@@ -3,6 +3,11 @@ import { nextTick, onBeforeUnmount, watch } from 'vue'
 import { PhDownloadSimple, PhLink, PhX } from '@phosphor-icons/vue'
 
 const {
+  capture,
+  capturing,
+  exportProgress,
+  captureError,
+  cancelExport,
   captureOpen,
   previewUrl,
   caption,
@@ -54,7 +59,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown, true)
       aria-labelledby="capture-title"
     >
       <div class="capture-heading flex shrink-0 items-center justify-between gap-4">
-        <h2 id="capture-title">Captured sky</h2>
+        <h2 id="capture-title">{{ capturing ? 'Rendering sky…' : 'Captured sky' }}</h2>
         <button
           class="capture-close grid shrink-0 place-items-center rounded-full"
           data-capture-close
@@ -67,6 +72,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown, true)
       </div>
 
       <div class="capture-body overflow-y-auto">
+        <div v-if="capturing" class="flex flex-col gap-3" role="status">
+          <label for="export-progress">Rendering {{ Math.round(exportProgress * 100) }}%</label>
+          <progress id="export-progress" class="w-full" :value="exportProgress" max="1" />
+          <button type="button" @click="cancelExport">Cancel export</button>
+        </div>
+        <div v-if="captureError && !capturing" class="flex flex-col gap-3">
+          <p role="alert">{{ captureError }}</p>
+          <button type="button" @click="capture">Try again</button>
+        </div>
         <img
           v-if="previewUrl"
           class="capture-preview block w-full"
@@ -76,7 +90,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown, true)
 
         <p v-if="caption" class="capture-caption">{{ caption[0] }} · {{ caption[1] }}</p>
 
-        <div class="capture-actions flex flex-col">
+        <div v-if="previewUrl && !capturing" class="capture-actions flex flex-col">
           <button type="button" class="flex w-full items-center gap-3 text-left" @click="download">
             <PhDownloadSimple :size="16" aria-hidden="true" />
             <span class="flex-1">Save image</span>

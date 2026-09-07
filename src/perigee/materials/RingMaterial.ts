@@ -1,3 +1,4 @@
+import { OBSERVER_ATMOSPHERE_GLSL } from '../math/skyPhotometry'
 import { SATURN_SOLAR_ANGULAR_RADIUS } from '../math/ringShadow'
 import {
   DoubleSide,
@@ -18,7 +19,7 @@ export interface RingMaterialSet {
   setSunDirection: (localDirection: Vector3, viewDirection: Vector3) => void
 }
 
-export function createRingMaterial(texture: Texture, polarRatio = 1): RingMaterialSet {
+export function createRingMaterial(texture: Texture, polarRatio = 1, opticalDepth?: Texture): RingMaterialSet {
   texture.colorSpace = SRGBColorSpace
 
   const sunDirection = new Vector3(0.45, 0.72, 0.86).normalize()
@@ -26,7 +27,10 @@ export function createRingMaterial(texture: Texture, polarRatio = 1): RingMateri
 
   const material = new ShaderMaterial({
     uniforms: {
+      uObserverExtinction: { value: 0 },
       uMap: { value: texture },
+      uOpticalDepth: { value: opticalDepth ?? texture },
+      uMeasuredDepth: { value: opticalDepth ? 1 : 0 },
       uSunDirection: { value: sunDirection },
       uSunView: { value: sunView },
       /** Planet radius in ring-local units, for the cast shadow. */
@@ -35,11 +39,13 @@ export function createRingMaterial(texture: Texture, polarRatio = 1): RingMateri
       uOpacity: { value: 1 },
     },
     vertexShader: `
+      varying vec3 vObserverPosition;
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vLocal;
       varying vec3 vViewDirection;
       void main() {
+        vObserverPosition = (modelMatrix * vec4(position, 1.0)).xyz;
         vUv = uv;
         vNormal = normalize(normalMatrix * normal);
         vLocal = position;
@@ -49,7 +55,10 @@ export function createRingMaterial(texture: Texture, polarRatio = 1): RingMateri
       }
     `,
     fragmentShader: `
+      ${OBSERVER_ATMOSPHERE_GLSL}
       uniform sampler2D uMap;
+      uniform sampler2D uOpticalDepth;
+      uniform float uMeasuredDepth;
       uniform vec3 uSunDirection;
       uniform vec3 uSunView;
       uniform float uPlanetRadius;
@@ -70,7 +79,8 @@ export function createRingMaterial(texture: Texture, polarRatio = 1): RingMateri
         float edgeWidth = max(fwidth(band), 0.001);
         float inside = smoothstep(0.0, edgeWidth, band) * (1.0 - smoothstep(1.0 - edgeWidth, 1.0, band));
         vec4 ring = texture2D(uMap, vec2(clamp(band, 0.0, 1.0), 0.5));
-        float alpha = ring.a * inside;
+        vec2 packedTau = texture2D(uOpticalDepth, vec2(clamp(band, 0.0, 1.0), .5)).rg;
+        float tau = uMeasuredDepth * dot(packedTau, vec2(65280.0, 255.0)) / 65535.0 * 8.0;
 
         vec3 normal = normalize(vNormal);
         vec3 view = normalize(vViewDirection);
@@ -79,16 +89,17 @@ export function createRingMaterial(texture: Texture, polarRatio = 1): RingMateri
         // sun's height above the plane is simply sun.z.
         float sunHeight = sun.z;
         float viewHeight = dot(normal, view);
-        float facing = abs(sunHeight);
-
-        // Lit face: the particles reflect. Unlit face: what reaches the eye is
-        // the light that gets through, so the thin bands and the divisions
-        // glow and the dense B ring goes dark. The blend is on which side of
-        // the plane the sun and the viewer are.
-        float sameSide = smoothstep(-0.12, 0.12, sunHeight * viewHeight);
-        float reflected = 0.34 + facing * 0.86;
-        float transmitted = (0.08 + (1.0 - ring.a) * 1.15) * (0.3 + facing * 0.7);
-        float light = mix(transmitted, reflected, sameSide);
+        float mu0 = max(abs(sunHeight), .001);
+        float mu = max(abs(viewHeight), .001);
+        float alpha = (1.0 - exp(-tau / mu)) * inside;
+        float reflected = mu0 / (mu0 + mu) * (1.0 - exp(-tau * (1.0 / mu0 + 1.0 / mu)));
+        float transmitted;
+        if (abs(mu0 - mu) < .001) transmitted = tau / mu * exp(-tau / mu);
+        else transmitted = mu0 / (mu0 - mu) * (exp(-tau / mu0) - exp(-tau / mu));
+        float sameSide = step(0.0, sunHeight * viewHeight);
+        // Single-scattering slab, divided by viewing opacity because ordinary
+        // alpha compositing applies it once more. No light at zero optical depth.
+        float light = mix(transmitted, reflected, sameSide) / max(1.0 - exp(-tau / mu), .0001) * 2.0;
 
         // Opposition surge: ring particles backscatter, so the rings brighten
         // when the sun stands behind the viewer.
@@ -106,12 +117,9 @@ export function createRingMaterial(texture: Texture, polarRatio = 1): RingMateri
         float offset = length(origin - ray * along);
         float penumbra = max(fwidth(offset), max(-along, 0.0) * ${SATURN_SOLAR_ANGULAR_RADIUS.toFixed(5)});
         float shadow = step(along, 0.0) * (1.0 - smoothstep(uPlanetRadius - penumbra, uPlanetRadius + max(penumbra, 0.00001), offset));
-        light *= 1.0 - shadow * 0.92;
+        light *= 1.0 - shadow;
 
-        vec3 ringColor = clamp((ring.rgb - 0.5) * 1.12 + 0.5, 0.0, 1.0);
-        // The outer A ring runs cooler than the inner bands.
-        ringColor = mix(ringColor, ringColor * vec3(0.94, 0.97, 1.06), band);
-        gl_FragColor = vec4(ringColor * light * 1.3, alpha * uOpacity);
+        gl_FragColor = vec4(ring.rgb * light * observerTransmission(), alpha * uOpacity);
       }
     `,
     transparent: true,
