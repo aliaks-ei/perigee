@@ -5,8 +5,9 @@ Thanks for helping improve Perigee. Start with an issue for substantial changes 
 ## Development workflow
 
 1. Fork the repository and create a focused branch from `main`.
-2. Install the locked dependency set with `npm ci`, then restore the
-   observational asset trees with `npm run assets`.
+2. Install the locked dependency set with `npm ci`. The observational asset trees
+   are restored from Cloudflare R2 the first time you run the development server,
+   the tests or a build; `npm run assets` does it on demand.
 3. Make the smallest coherent change and add deterministic regression tests where relevant.
 4. Run `npm run verify`.
 5. Open a pull request using the repository template.

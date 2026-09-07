@@ -66,9 +66,11 @@ async function pack(manifest) {
     console.log(`packed ${bundle.key} (${(bundle.bytes / 1024 ** 2).toFixed(1)} MB)`)
   }
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+  // Without --remote, `wrangler r2 object put` writes to a local simulation under
+  // .wrangler/state and the bucket stays empty, with no error to say so.
   console.log('\nUpload, then commit scripts/asset-bundles.json:\n')
   for (const bundle of manifest.bundles) {
-    console.log(`  npx --yes wrangler@${wrangler} r2 object put ${manifest.bucket}/${bundle.key} --file=tmp/asset-bundles/${bundle.key} --content-type=application/x-tar`)
+    console.log(`  npx --yes wrangler@${wrangler} r2 object put ${manifest.bucket}/${bundle.key} --file=tmp/asset-bundles/${bundle.key} --content-type=application/x-tar --remote`)
   }
 }
 

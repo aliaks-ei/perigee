@@ -45,15 +45,15 @@ Requirements:
 git clone git@github.com:aliaks-ei/perigee.git
 cd perigee
 npm ci
-npm run assets
 cp .env.example .env
 npm run dev
 ```
 
-`npm run assets` downloads the planet and Andromeda surface trees, about 216 MB,
-which are stored in Cloudflare R2 rather than in the repository. It verifies each
-archive against the SHA-256 in `scripts/asset-bundles.json` and does nothing when
-the trees are already present.
+The planet and Andromeda surface trees, about 216 MB, are stored in Cloudflare R2
+rather than in the repository. `npm run dev`, `npm test`, `npm run build` and
+`npm run generate` restore them first, verifying each archive against the SHA-256
+in `scripts/asset-bundles.json`, so the first of those commands downloads them and
+the rest do nothing. `npm run assets` runs the same step on demand.
 
 Open the local URL printed by Nuxt. No environment variable is required for
 ordinary local development. Analytics remains disabled unless an Umami website
@@ -63,7 +63,7 @@ ID is explicitly configured.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run assets` | Restore the observational asset trees from R2 |
+| `npm run assets` | Restore the observational asset trees from R2 on demand |
 | `npm run dev` | Start the Nuxt development server |
 | `npm run typecheck` | Run strict Nuxt and Vue TypeScript checks |
 | `npm test` | Run the Vitest suite once |
