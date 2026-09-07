@@ -1,3 +1,5 @@
+import { exposedFlux, PSF_SIGMA_CSS, PSF_RADIUS_SIGMAS } from './skyPhotometry'
+
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = Math.min(Math.max((value - edge0) / (edge1 - edge0), 0), 1)
   return t * t * (3 - 2 * t)
@@ -8,6 +10,8 @@ export interface StellarAppearance {
   pointDiameterPixels: number
   pointStrength: number
   illumination: number
+  totalFlux: number
+  surfaceRadiance: number
 }
 
 /** Prevents an unresolved body from painting a detached halo onto the plate. */
@@ -16,16 +20,17 @@ export function backgroundGlowVisibility(diameterPixels: number): number {
 }
 
 /** Maps physical projected size to a perceptual point/disc transition. */
-export function stellarAppearanceForDiameter(diameterPixels: number): StellarAppearance {
+export function stellarAppearanceForDiameter(diameterPixels: number, relativeFlux = 1): StellarAppearance {
   const pixels = Math.max(diameterPixels, 0)
   const resolved = smoothstep(2.2, 7, pixels)
-  const perceptualScale = smoothstep(-8, 0, Math.log2(Math.max(pixels, 0.000001)))
+  const area = Math.PI * pixels * pixels / 4
+  const totalFlux = exposedFlux(relativeFlux, 8 + area * 1.8)
   return {
     resolved,
-    pointDiameterPixels: 3.2 + perceptualScale * 1.8,
-    // Kept below the post-processing bloom threshold. An unresolved star may
-    // remain locatable as a crisp point, but it must not grow a false halo.
-    pointStrength: 0.72 + perceptualScale * 0.14,
+    pointDiameterPixels: 2 * PSF_SIGMA_CSS * PSF_RADIUS_SIGMAS,
+    pointStrength: totalFlux,
     illumination: smoothstep(10, 80, pixels),
+    totalFlux,
+    surfaceRadiance: totalFlux / Math.max(area, 0.000001),
   }
 }

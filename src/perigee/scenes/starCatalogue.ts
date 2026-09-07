@@ -7,7 +7,7 @@
  * A generated star field has a flat brightness distribution, which is what
  * makes it read as generated. The catalogue has the real few-bright,
  * many-faint law and real colour variety, and that distribution is what the
- * eye trusts; the positions matter far less for a viewpoint on the ground.
+ * eye trusts. Positions also register the points with the integrated sky map.
  */
 export interface CatalogueStar {
   /** Degrees, 0 to 360. */
@@ -19,7 +19,10 @@ export interface CatalogueStar {
   colorIndex: number
 }
 
-export const STAR_CATALOGUE_URL = '/assets/stars/bsc5.bin'
+import skyManifest from './skyManifest.json'
+import { exposedFlux } from '../math/skyPhotometry'
+
+export const STAR_CATALOGUE_URL = `${skyManifest.baseUrl}/bsc5.bin`
 
 const HEADER_BYTES = 8
 const RECORD_BYTES = 8
@@ -45,10 +48,26 @@ export function parseStarCatalogue(buffer: ArrayBuffer): CatalogueStar[] {
   return stars
 }
 
-export async function loadStarCatalogue(url = STAR_CATALOGUE_URL): Promise<CatalogueStar[]> {
-  const response = await fetch(url)
+export async function loadStarCatalogue(url = STAR_CATALOGUE_URL, signal?: AbortSignal): Promise<CatalogueStar[]> {
+  const response = await fetch(url, { signal })
   if (!response.ok) throw new Error(`STAR_CATALOGUE_HTTP_${response.status}`)
   return parseStarCatalogue(await response.arrayBuffer())
+}
+
+export function parseGaiaCatalogue(buffer: ArrayBuffer): CatalogueStar[] {
+  if (buffer.byteLength < 12) throw new Error('GAIA_TRUNCATED')
+  const view = new DataView(buffer)
+  if (view.getUint32(0, true) !== 0x33524447 || view.getUint32(4, true) !== 1) throw new Error('GAIA_FORMAT')
+  const count = view.getUint32(8, true)
+  if (count > 200000 || buffer.byteLength !== 12 + count * 12) throw new Error('GAIA_TRUNCATED')
+  return Array.from({ length: count }, (_, index) => {
+    const offset = 12 + index * 12
+    const star = { rightAscension: view.getFloat32(offset, true), declination: view.getFloat32(offset + 4, true),
+      magnitude: view.getInt16(offset + 8, true) / 100, colorIndex: view.getInt16(offset + 10, true) / 100 }
+    if (!Number.isFinite(star.rightAscension) || !Number.isFinite(star.declination)
+      || star.rightAscension < 0 || star.rightAscension >= 360 || Math.abs(star.declination) > 90) throw new Error('GAIA_COORDINATES')
+    return star
+  })
 }
 
 /**
@@ -76,3 +95,5 @@ export function colorForIndex(colorIndex: number): [number, number, number] {
 export function fluxForMagnitude(magnitude: number): number {
   return 10 ** (-0.4 * (magnitude - 2))
 }
+
+export function exposedCatalogueFlux(magnitude: number): number { return exposedFlux(fluxForMagnitude(magnitude)) }

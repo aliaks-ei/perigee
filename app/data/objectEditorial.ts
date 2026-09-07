@@ -157,7 +157,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     },
     whatYouSee: {
       'impossible': 'Perigee renders the apparent size and the light. It does not simulate what this would do to Earth.',
-      'near-250-au': 'The surface now has the scale of a small Moon, with convective cells across it.',
+      'near-250-au': 'The surface now has the scale of a small Moon, with broad, stylized convection regions across it.',
       'near-1000-au': 'The point opens into a measurable red-orange disc.',
       'near-10000-au': 'Still unresolved to an unaided eye, but vastly brighter than the real star.',
       'real': 'At its true distance Betelgeuse is one of the brightest stars in Orion, and still a point.',
@@ -181,7 +181,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     },
     whatYouSee: {
       'impossible': 'Well inside the orbit of Mercury. Apparent size is calculated; the consequences are not simulated.',
-      'near-1-au': 'The white-hot disc is plainly resolved without a broad artificial halo.',
+      'near-1-au': 'A blue-white photosphere with enhanced pale granulation; it is not a photographic surface map.',
       'near-5-au': 'The star is crossing from resolved surface to compact point source.',
       'near-25-au': 'Sirius reads as an intense point with a tight optical fringe.',
       'real': 'The brightest star in the sky, at the distance that makes it so. Still a point.',
@@ -205,7 +205,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     },
     whatYouSee: {
       'impossible': 'The scene renders the light and the size. Nothing about the physical consequences is modelled.',
-      'near-25-au': 'Rigel spans a bright blue-white disc with a compact fringe at the limb.',
+      'near-25-au': 'Rigel spans a blue-white disc with soft limb darkening and enhanced blue-white mottling.',
       'near-100-au': 'The disc remains measurable rather than implied.',
       'near-1000-au': 'Rigel is crossing into an unresolved point source.',
       'real': 'At its true distance Rigel is among the most luminous stars an unaided eye can see.',
@@ -228,7 +228,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
       'touching': 'How big would Andromeda look with the two discs nearly touching?',
     },
     whatYouSee: {
-      'real': 'The real sky, at the real distance. The disc is already several full Moons wide, and almost nobody has seen it that way.',
+      'real': 'At the real distance, with a photographic exposure revealing more of the disc than unaided eyes normally see.',
       'one-million': 'The spiral structure separates from the bulge.',
       'half-million': 'A Local Group approach.',
       'quarter-million': 'Crossing the outer halo.',

@@ -6,6 +6,7 @@ import {
   ShaderMaterial,
   Texture,
   Vector2,
+  Vector4,
 } from 'three'
 import type { QualityTier, ViewpointId } from '../../../app/types/perigee'
 import { acquireTexture, prefetchTextures, type TextureLease } from '../TextureCache'
@@ -19,6 +20,7 @@ import {
 const TRANSITION_SECONDS = 0.9
 
 export interface EnvironmentLayer {
+  ready: () => boolean
   mesh: Mesh<PlaneGeometry, ShaderMaterial>
   setViewpoint: (viewpointId: ViewpointId, immediate?: boolean, onReady?: () => void) => Promise<void>
   finish: () => void
@@ -46,6 +48,7 @@ export function createEnvironmentLayer(initialQuality: QualityTier, invalidate: 
   const heroScreen = new Vector2(0.5, 0.5)
   const material = new ShaderMaterial({
     uniforms: {
+      uCaptureRect: { value: new Vector4(0, 0, 1, 1) },
       uCurrent: { value: null as Texture | null },
       uNext: { value: null as Texture | null },
       uMix: { value: 0 },
@@ -62,10 +65,11 @@ export function createEnvironmentLayer(initialQuality: QualityTier, invalidate: 
       uHeroRadius: { value: 0.1 },
     },
     vertexShader: `
+      uniform vec4 uCaptureRect;
       varying vec2 vUv;
 
       void main() {
-        vUv = uv;
+        vUv = uCaptureRect.xy + uv * uCaptureRect.zw;
         gl_Position = vec4(position.xy, 0.999, 1.0);
       }
     `,
@@ -100,25 +104,6 @@ export function createEnvironmentLayer(initialQuality: QualityTier, invalidate: 
         return mapUv(centered + 0.5);
       }
 
-      vec3 gradeEnvironment(vec3 color, vec2 uv) {
-        float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
-        float atmosphere = smoothstep(0.28, 1.0, 1.0 - uv.y);
-        vec3 tinted = color * mix(vec3(1.0), uTint * 1.65 + 0.42, atmosphere);
-        color = mix(color, tinted, uTintStrength);
-        color += uTint * atmosphere * uTintStrength * 0.055;
-
-        // The hero's light: a halo in the sky around it, and a lift on the
-        // ground that lands first on whatever the plate already shows as lit,
-        // which is how upward-facing edges and windows catch a bright object.
-        vec2 offset = (uv - uHeroScreen) * vec2(uViewportAspect, 1.0);
-        float reach = uHeroRadius * 2.6 + 0.03;
-        float halo = uGlowStrength / (1.0 + pow(length(offset) / reach, 2.0));
-        color += uGlowColor * halo * (0.28 + 1.4 * luminance);
-
-        float edge = 1.0 - smoothstep(0.18, 0.82, distance(uv, vec2(0.5)));
-        return color * mix(0.83, 1.0, edge);
-      }
-
       void main() {
         vec2 currentUv = environmentUv(vUv, uCurrentImageAspect);
         vec3 color = texture2D(uCurrent, currentUv).rgb;
@@ -128,7 +113,7 @@ export function createEnvironmentLayer(initialQuality: QualityTier, invalidate: 
           vec3 next = texture2D(uNext, nextUv).rgb;
           color = mix(color, next, smoothstep(0.0, 1.0, uMix));
         }
-        gl_FragColor = vec4(gradeEnvironment(color, vUv), 1.0);
+        gl_FragColor = vec4(color, 1.0);
       }
     `,
     depthTest: false,
@@ -197,12 +182,16 @@ export function createEnvironmentLayer(initialQuality: QualityTier, invalidate: 
     invalidate()
   }
 
-  const syncActiveAsset = (immediate = false, onReady?: () => void): Promise<void> => setTexture(
-    environmentAssetFor(currentViewpointId, quality, viewportAspect), immediate, onReady ?? selectionReady,
-  )
+  let preparing = 0
+  const syncActiveAsset = async (immediate = false, onReady?: () => void): Promise<void> => {
+    preparing += 1
+    try { await setTexture(environmentAssetFor(currentViewpointId, quality, viewportAspect), immediate, onReady ?? selectionReady) }
+    finally { preparing -= 1 }
+  }
 
   return {
     mesh,
+    ready: () => preparing === 0 && !director.running,
     async setViewpoint(viewpointId, immediate = false, onReady) {
       currentViewpointId = viewpointId
       selectionReady = onReady

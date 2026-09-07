@@ -7,6 +7,20 @@ import type {
 
 export const scienceSources: ScienceSource[] = [
   {
+    id: 'hubble-andromeda-mosaic',
+    title: 'Hubble’s panoramic view of the Andromeda Galaxy',
+    publisher: 'NASA, ESA, B. Williams (University of Washington)',
+    url: 'https://esahubble.org/images/heic2501a/',
+    reviewedOn: '2026-09-07',
+  },
+  {
+    id: 'dss-andromeda',
+    title: 'The area around the Andromeda Galaxy',
+    publisher: 'NASA, ESA, Digitized Sky Survey 2 (Acknowledgement: Davide De Martin)',
+    url: 'https://esahubble.org/images/heic1502b/',
+    reviewedOn: '2026-09-07',
+  },
+  {
     id: 'bipm-speed-of-light',
     title: 'SI base unit: metre',
     publisher: 'Bureau International des Poids et Mesures',
@@ -163,9 +177,9 @@ export const discoveries: DiscoveryDefinition[] = [
     scope: { objectId: 'andromeda', presetId: 'touching' },
     prompt: 'What is rendered here?',
     glance: 'The visible silhouette is rendered in projection. The approach and any collision are not simulated.',
-    detail: 'Perigee paints the bulge, fragmented ring and outer arcs, arms, dust filaments, and bright satellites procedurally at the calculated angular size. It uses the catalogued optical axis ratio for the visible silhouette. Three-dimensional thickness, physical rotation, and any interaction with the Milky Way are outside this model.',
+    detail: 'The disc combines Digitized Sky Survey imagery with registered Hubble PHAT/PHAST detail. This is an enhanced photographic exposure, with observed dust lanes and companions. Close views use a shallow reconstruction of disc, bulge and companion depths; those depths and dust transmission are inferred from a single viewing direction. The stated size follows the optical major axis, rather than the faint outer halo. It does not simulate a collision with the Milky Way.',
     boundary: 'described-not-simulated',
-    sourceIds: ['nasa-andromeda'],
+    sourceIds: ['nasa-andromeda', 'hubble-andromeda-mosaic', 'dss-andromeda'],
     reviewState: 'approved',
   },
 ]

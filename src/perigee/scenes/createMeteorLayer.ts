@@ -90,10 +90,9 @@ export function createMeteorLayer(reducedMotion: boolean): MeteorLayer {
   })
   const mesh = new Mesh(new PlaneGeometry(2, 2), material)
   mesh.frustumCulled = false
-  // The environment is -100; every sky point and hero layer is 0 or above.
-  // Drawing here, with depth testing, keeps the streak behind opaque bodies,
-  // rings, galaxies, stellar points, and their compact glare.
-  mesh.renderOrder = -50
+  // Behind every transparent hero layer. Depth testing also rejects streaks
+  // behind opaque bodies, which Three.js submits before transparent materials.
+  mesh.renderOrder = -70
   mesh.visible = false
 
   const placeNextMeteor = (): void => {

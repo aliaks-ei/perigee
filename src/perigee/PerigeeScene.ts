@@ -1,3 +1,7 @@
+import { renderStill } from './capture/StillRenderer'
+import { automaticCaptureSizes, captureWithFallbacks, throwIfAborted, waitForExportDetail } from './capture/exportPlan'
+import planetManifest from './planet/planet-manifest.json'
+import { PlanetTiles, type PlanetId } from './planet/PlanetTiles'
 import { compileScene } from './compileScene'
 import { RING_INNER_RADIUS, RING_OUTER_RADIUS } from './math/ringShadow'
 import { GpuTimer } from './GpuTimer'
@@ -32,6 +36,7 @@ import {
 } from 'postprocessing'
 import type {
   PerigeeController,
+  StillExportOptions,
   PerigeeInitOptions,
   QualityTier,
   SkyObjectDefinition,
@@ -44,11 +49,14 @@ import {
   renderRadiusForAngularDiameter,
 } from './math/angularSize'
 import { backgroundGlowVisibility, stellarAppearanceForDiameter } from './math/stellarAppearance'
+import { atmosphericTransmission, skyConditions } from './math/skyPhotometry'
+import { fluxForMagnitude } from './scenes/starCatalogue'
 import { createPlanetMaterial, disposePlanetResources, type PlanetMaterialSet } from './materials/PlanetMaterial'
 import { createRingMaterial, type RingMaterialSet } from './materials/RingMaterial'
 import { createGalaxyMaterial, type GalaxyMaterialSet } from './materials/GalaxyMaterial'
-import { createStellarMaterial, type StellarMaterialSet } from './materials/StellarMaterial'
-import { createGlareMaterial, type GlareMaterialSet } from './materials/GlareMaterial'
+import { createObservedGalaxy, type ObservedGalaxy } from './galaxy/ObservedGalaxy'
+import { createStellarMaterial, stellarLooks, type StellarMaterialSet } from './materials/StellarMaterial'
+import type { GlareMaterialSet } from './materials/GlareMaterial'
 import { createStarPointMaterial, type StarPointMaterialSet } from './materials/StarPointMaterial'
 import { FilmEffect } from './effects/FilmEffect'
 import { CameraRig } from './CameraRig'
@@ -179,6 +187,10 @@ function setObjectOpacity(object: Object3D, opacity: number): void {
 function disposeObject(object: Object3D): void {
   if (object.userData.disposed) return
   object.userData.disposed = true
+  const galaxy = object.userData.observedGalaxy as ObservedGalaxy | undefined
+  if (galaxy) { galaxy.dispose(); return }
+  const tiles = object.userData.planetTiles as PlanetTiles | undefined
+  tiles?.dispose()
   const leases = object.userData.textureLeases as TextureLease[] | undefined
   leases?.forEach((lease) => lease.release())
   object.traverse((child) => {
@@ -238,6 +250,8 @@ export class PerigeeScene implements PerigeeController {
   private paused = false
   private disposed = false
   private reducedMotion = false
+  private exportAbort: AbortController | null = null
+  private exportTask: Promise<Blob> | null = null
   private quality = new QualityManager()
   private gpuTimer: GpuTimer | null = null
   private gpuMilliseconds: number | null = null
@@ -398,6 +412,10 @@ export class PerigeeScene implements PerigeeController {
   }
 
   setObject(objectId: SkyObjectId, presetId: string, immediate = false): Promise<void> {
+    if (this.exportTask) {
+      this.exportAbort?.abort()
+      return this.exportTask.catch(() => undefined).then(() => this.setObject(objectId, presetId, immediate))
+    }
     if (this.disposed || !this.renderer || !this.sky) return Promise.resolve()
     const definition = skyObjectsById[objectId]
     if (!definition.presets.some((candidate) => candidate.id === presetId)) return Promise.resolve()
@@ -432,6 +450,17 @@ export class PerigeeScene implements PerigeeController {
     nextHero.position.copy(placement)
     nextHero.scale.setScalar(radius)
     nextHero.userData.radius = radius
+    // Keep each body's existing uniform object: streamed layers share it.
+    const observerUniforms: { value: number }[] = []
+    nextHero.traverse((child) => {
+      if (!(child instanceof Mesh)) return
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      for (const material of materials) {
+        const uniform = (material as ShaderMaterial).uniforms?.uObserverExtinction
+        if (uniform && !observerUniforms.includes(uniform)) observerUniforms.push(uniform)
+      }
+    })
+    nextHero.userData.observerUniforms = observerUniforms
     setObjectOpacity(nextHero, immediate ? 1 : 0)
     built.stellar?.setQuality(this.quality.current)
     built.galaxy?.setQuality(this.quality.current)
@@ -495,6 +524,7 @@ export class PerigeeScene implements PerigeeController {
   }
 
   async setDistance(presetId: string, options?: { duration?: number }): Promise<void> {
+    if (this.exportTask) { this.exportAbort?.abort(); await this.exportTask.catch(() => undefined) }
     if (this.disposed) return
     const pending = this.pendingSelection
     const definition = skyObjectsById[pending?.objectId ?? this.currentObjectId]
@@ -551,6 +581,7 @@ export class PerigeeScene implements PerigeeController {
   }
 
   async setViewpoint(viewpointId: ViewpointId): Promise<void> {
+    if (this.exportTask) { this.exportAbort?.abort(); await this.exportTask.catch(() => undefined) }
     if (this.disposed) return
     const request = ++this.viewportGeneration
     let movement: Promise<unknown> = Promise.resolve()
@@ -572,6 +603,7 @@ export class PerigeeScene implements PerigeeController {
             this.camera.updateProjectionMatrix()
             if (this.hero) {
               this.hero.position.set(state.x, state.y, state.z)
+              this.sky.setTarget(this.currentObjectId, this.hero.position)
               const distance = this.hero.position.length()
               this.hero.scale.multiplyScalar(distance / Math.max(state.distance, 0.0001))
               this.hero.userData.radius = this.hero.scale.x
@@ -591,13 +623,15 @@ export class PerigeeScene implements PerigeeController {
 
   getDiagnostics() {
     const size = this.renderer?.domElement
-    return { tier: this.quality.current, effectiveDpr: this.renderer?.getPixelRatio(),
+    return { exporting: Boolean(this.exportTask), tier: this.quality.current, effectiveDpr: this.renderer?.getPixelRatio(),
       width: size?.width, height: size?.height,
-      estimatedTargetBytes: (size?.width ?? 0) * (size?.height ?? 0) * (20 + QUALITY_BUDGETS[this.quality.current].multisampling * 12),
+      estimatedTargetBytes: (size?.width ?? 0) * (size?.height ?? 0) * (20 + (this.composer?.multisampling ?? 0) * 12),
       timingSource: this.gpuTimer?.supported ? 'gpu-query' : 'frame-pacing', gpuMilliseconds: this.gpuMilliseconds,
       bloomEnabled: this.bloomPass?.enabled, smaaEnabled: this.smaaPass?.enabled,
       objectGeneration: this.generation, distanceGeneration: this.distanceGeneration,
-      textures: textureDiagnostics() }
+      textures: textureDiagnostics(),
+      planet: (this.hero?.userData.planetTiles as PlanetTiles | undefined)?.diagnostics(),
+      galaxy: (this.hero?.userData.observedGalaxy as ObservedGalaxy | undefined)?.diagnostics() }
   }
 
   getObjectScreenPosition(): { x: number, y: number, onScreen: boolean, diameterPixels: number } | null {
@@ -630,6 +664,10 @@ export class PerigeeScene implements PerigeeController {
    * carries the rendered aspect ratio and resolution rather than the CSS box.
    */
   captureFrame(): HTMLCanvasElement | null {
+    return this.exportTask ? null : this.copyFrame()
+  }
+
+  private copyFrame(): HTMLCanvasElement | null {
     if (this.disposed || this.contextLost || !this.renderer || !this.composer) return null
     const source = this.renderer.domElement
     if (source.width === 0 || source.height === 0) return null
@@ -649,18 +687,123 @@ export class PerigeeScene implements PerigeeController {
     return target
   }
 
+  exportStill(options: StillExportOptions): Promise<Blob> {
+    if (this.exportTask) return Promise.reject(new Error('EXPORT_BUSY'))
+    if (!this.renderer || !this.sky || this.paused || this.disposed || this.contextLost
+      || this.pendingSelection || this.director.running || this.objectDirector.running || this.viewpointDirector.running) {
+      return Promise.reject(new Error('EXPORT_WAIT_FOR_SKY'))
+    }
+    const abort = new AbortController()
+    this.exportAbort = abort
+    const cancel = (): void => abort.abort()
+    options.signal?.addEventListener('abort', cancel, { once: true })
+    if (options.signal?.aborted) cancel()
+    if (this.frameId !== null) cancelAnimationFrame(this.frameId)
+    this.frameId = null
+    this.gpuTimer?.clear()
+    const renderer = this.renderer
+    const tier = this.quality.current
+    const physicalPixels = this.projectedDiameterPixels(this.hero?.scale.x ?? 0)
+    const cssHeight = renderer.domElement.clientHeight || window.innerHeight
+    const planet = this.hero?.userData.planetTiles as PlanetTiles | undefined
+    const galaxy = this.hero?.userData.observedGalaxy as ObservedGalaxy | undefined
+    const sizes = options.longEdge ? [options.longEdge] : automaticCaptureSizes(tier, navigator)
+    if (sizes[0] !== null) {
+      this.sky.setQuality('high')
+      this.heroStellar?.setQuality('high')
+      planet?.setQuality('high')
+      galaxy?.setQuality('high')
+    }
+    this.camera.updateMatrixWorld()
+    this.hero?.updateMatrixWorld()
+    this.updateHeroLighting()
+    this.exportTask = captureWithFallbacks(sizes, abort.signal, async (longEdge) => {
+      options.onProgress?.(0)
+      this.sky.setPixelRatio(renderer.getPixelRatio())
+      this.heroStellar?.setProjectedSize(physicalPixels * renderer.getPixelRatio())
+      if (longEdge === null) {
+        // Retain the same scene/time even after an unsuccessful larger render.
+        this.heroStellar?.setQuality(tier)
+        planet?.setQuality(tier)
+        planet?.replan()
+        galaxy?.setQuality(tier)
+        const now = performance.now()
+        planet?.update(this.camera, physicalPixels * renderer.getPixelRatio(), now, true, Number(this.hero?.userData.opacity ?? 1))
+        if (this.hero) galaxy?.update(this.camera, physicalPixels * renderer.getPixelRatio(),
+          this.hero.scale.x / this.hero.position.length(), now, true, Number(this.hero.userData.opacity ?? 1))
+        const frame = this.copyFrame()
+        if (!frame) throw new Error('CAPTURE_UNAVAILABLE')
+        try {
+          const blob = await new Promise<Blob>((resolve, reject) => frame.toBlob(
+            (value) => value ? resolve(value) : reject(new Error('CAPTURE_UNAVAILABLE')), 'image/png'))
+          throwIfAborted(abort.signal)
+          options.onProgress?.(1)
+          return blob
+        } finally { frame.width = frame.height = 1 }
+      }
+      return renderStill({ renderer, scene: this.sky.scene, camera: this.camera,
+        longEdge, signal: abort.signal, onProgress: options.onProgress,
+        bloom: this.bloomPass?.enabled ? this.bloom?.intensity ?? 0 : 0,
+        bloomTexture: this.bloom?.texture,
+        before: async () => {
+          await waitForExportDetail(() => this.sky.ready(), abort.signal)
+          // Freeze the existing full-frame, low-frequency optical response once.
+          // Only bloom is reused; all object/background pixels render at export size.
+          this.composer?.render(0)
+        },
+        prepare: async (camera, fullHeight) => {
+          planet?.replan()
+          galaxy?.setQuality('high')
+          const pixels = physicalPixels * fullHeight / cssHeight
+          this.sky.setPixelRatio(fullHeight / cssHeight)
+          this.heroStellar?.setProjectedSize(pixels)
+          await waitForExportDetail(() => {
+            const now = performance.now()
+            planet?.update(camera, pixels, now, true, Number(this.hero?.userData.opacity ?? 1))
+            if (this.hero) galaxy?.update(camera, pixels, this.hero.scale.x / this.hero.position.length(), now, true,
+              Number(this.hero.userData.opacity ?? 1))
+            return this.sky.ready() && (!planet || planet.ready()) && (!galaxy || galaxy.ready())
+          }, abort.signal)
+          throwIfAborted(abort.signal)
+          await compileScene(renderer, this.sky.scene, camera, this.sky.scene, abort.signal)
+        },
+      })
+    }).finally(() => {
+      options.signal?.removeEventListener('abort', cancel)
+      this.exportTask = null
+      this.exportAbort = null
+      this.sky.setQuality(tier)
+      this.sky.setPixelRatio(renderer.getPixelRatio())
+      this.heroStellar?.setQuality(tier)
+      this.heroStellar?.setProjectedSize(physicalPixels * renderer.getPixelRatio())
+      planet?.setQuality(tier)
+      planet?.replan()
+      galaxy?.setQuality(tier)
+      const now = performance.now()
+      planet?.update(this.camera, physicalPixels * renderer.getPixelRatio(), now, true, Number(this.hero?.userData.opacity ?? 1))
+      if (this.hero) galaxy?.update(this.camera, physicalPixels * renderer.getPixelRatio(),
+        this.hero.scale.x / this.hero.position.length(), now, true, Number(this.hero.userData.opacity ?? 1))
+      this.quality.reset(now)
+      this.lastFrame = now
+      this.invalidate()
+    })
+    return this.exportTask
+  }
+
   resetView(): void {
+    this.exportAbort?.abort()
     this.cameraRig?.reset()
     this.invalidate()
   }
 
   setQuality(tier: QualityTier): void {
+    if (this.exportTask) return
     this.quality.set(tier, performance.now())
     setTextureBudget(QUALITY_BUDGETS[tier].textureBytes)
     const width = this.renderer?.domElement.clientWidth || window.innerWidth
     const height = this.renderer?.domElement.clientHeight || window.innerHeight
-    this.resize(width, height, window.devicePixelRatio)
     if (this.composer) this.composer.multisampling = Math.min(QUALITY_BUDGETS[tier].multisampling, this.renderer?.capabilities.maxSamples ?? 0)
+    this.resize(width, height, window.devicePixelRatio)
     const kind = skyObjectsById[this.currentObjectId].kind
     const radius = this.hero?.userData.radius as number | undefined
     const bloomVisibility = kind === 'star'
@@ -686,7 +829,15 @@ export class PerigeeScene implements PerigeeController {
    */
   resize(width: number, height: number, dpr: number): void {
     if (!this.renderer || !this.composer || ![width, height, dpr].every(Number.isFinite) || width <= 0 || height <= 0 || dpr <= 0) return
-    const pixelRatio = effectivePixelRatio(width, height, dpr, this.quality.current, this.renderer.capabilities.maxTextureSize)
+    if (this.exportTask) {
+      this.exportAbort?.abort()
+      void this.exportTask.catch(() => undefined).then(() => this.resize(width, height, dpr))
+      return
+    }
+    const gl = this.renderer.getContext()
+    const maxSize = Math.min(this.renderer.capabilities.maxTextureSize, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE),
+      ...Array.from(gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array))
+    const pixelRatio = effectivePixelRatio(width, height, dpr, this.quality.current, maxSize)
     const key = `${width}:${height}:${pixelRatio}`
     if (key === this.bufferKey) return
     this.viewpointDirector.finish()
@@ -705,6 +856,7 @@ export class PerigeeScene implements PerigeeController {
   }
 
   pause(): void {
+    this.exportAbort?.abort()
     this.paused = true
     this.gpuTimer?.clear()
     if (this.frameId !== null) cancelAnimationFrame(this.frameId)
@@ -727,6 +879,11 @@ export class PerigeeScene implements PerigeeController {
   }
 
   dispose(): void {
+    if (this.exportTask) {
+      this.exportAbort?.abort()
+      void this.exportTask.catch(() => undefined).then(() => this.dispose())
+      return
+    }
     if (this.disposed) return
     this.disposed = true
     this.initialized = false
@@ -837,7 +994,7 @@ export class PerigeeScene implements PerigeeController {
     // pays for all three.
     const warm = (): void => {
       if (this.disposed || !this.renderer || this.stellarWarmup) return
-      if (this.paused || this.pendingSelection || this.objectDirector.running || this.director.running || this.viewpointDirector.running || !this.cameraRig?.settled) {
+      if (this.exportTask || this.paused || this.pendingSelection || this.objectDirector.running || this.director.running || this.viewpointDirector.running || !this.cameraRig?.settled) {
         this.warmupTimeout = true
         this.warmupId = window.setTimeout(warm, 1000)
         return
@@ -878,16 +1035,11 @@ export class PerigeeScene implements PerigeeController {
     if (definition.kind === 'galaxy') {
       const disc = definition.disc
       if (!disc) throw new Error(`Missing disc definition for ${definition.id}`)
-      const galaxy = createGalaxyMaterial({
-        palette: disc.palette,
-        armPitchDegrees: disc.armPitchDegrees,
-        inclinationDegrees: disc.inclinationDegrees,
-      })
+      const galaxy = await createObservedGalaxy(this.invalidate, signal)
+      if (this.disposed || signal?.aborted) { galaxy.dispose(); throw new Error('HERO_PREPARATION_CANCELLED') }
       galaxy.setQuality(this.quality.current)
-      // The inclination lives in the shader; the carrier only has to face the
-      // camera and carry the position angle, which is a roll about the view
-      // axis and nothing more. `render` refreshes the orientation each frame.
-      const surface = new Mesh(galaxyPlaneGeometry(), galaxy.material)
+      const surface = galaxy.surface
+      group.userData.observedGalaxy = galaxy
       group.add(surface)
       return {
         group,
@@ -910,15 +1062,12 @@ export class PerigeeScene implements PerigeeController {
       stellar.setQuality(this.quality.current)
       const surface = new Mesh(sphereGeometry(), stellar.material)
       surface.renderOrder = 2
-      // The halo is a billboard behind the disc. It draws after the star field
-      // and before the surface, so the disc covers its centre.
-      const glareSet = createGlareMaterial(definition.shot.environmentTint ?? definition.shot.accent, 1)
-      const glare = new Mesh(glarePlaneGeometry(), glareSet.material)
-      glare.renderOrder = 1
-      const pointSet = createStarPointMaterial(definition.shot.environmentTint ?? definition.shot.accent)
+      // Optical scatter comes from the same HDR source through bloom. An
+      // independently authored glare quad adds unbudgeted flux and a bright rim.
+      const continuum = stellarLooks[definition.id as keyof typeof stellarLooks].color
+      const pointSet = createStarPointMaterial(new Color().setRGB(continuum[0], continuum[1], continuum[2]))
       const point = new Mesh(starPointPlaneGeometry(), pointSet.material)
       point.renderOrder = 3
-      group.add(glare)
       group.add(surface)
       group.add(point)
       group.rotation.set(definition.shot.objectPitch ?? 0.08, definition.shot.objectYaw, -0.05)
@@ -929,14 +1078,13 @@ export class PerigeeScene implements PerigeeController {
         ring: null,
         stellar,
         galaxy: null,
-        glare,
-        glareSet,
+        glare: null,
+        glareSet: null,
         point,
         pointSet,
         spinRate: 0,
         animated: [
           stellar.material.uniforms.uTime!,
-          glareSet.material.uniforms.uTime!,
           pointSet.material.uniforms.uTime!,
         ],
       }
@@ -944,12 +1092,18 @@ export class PerigeeScene implements PerigeeController {
 
     if (!definition.texture) throw new Error(`Missing texture for ${definition.id}`)
     const needsRing = definition.id === 'saturn'
+    const planetId = definition.id as PlanetId
+    const config = planetManifest.bodies[planetId]
+    const terrain = 'terrain' in config ? config.terrain : undefined
+    const planetUrl = `${planetManifest.baseUrl}/${planetId}`
     // Every map at once. Loading them in series added a whole round trip to
     // each swap that needs more than one.
     const results = await Promise.allSettled([
       acquireTexture(surfaceMapFor(definition.texture, this.quality.current), signal),
       needsRing ? acquireTexture(RING_TEXTURE, signal) : Promise.resolve(null),
       definition.normalMap ? acquireTexture(definition.normalMap, signal) : Promise.resolve(null),
+      terrain ? acquireTexture(`${planetUrl}/terrain-height.png`, signal) : Promise.resolve(null),
+      needsRing ? acquireTexture(`${planetUrl}/rings-depth.png`, signal) : Promise.resolve(null),
     ])
     const leases = results.flatMap((result) => result.status === 'fulfilled' && result.value ? [result.value] : [])
     const failure = results.find((result) => result.status === 'rejected')
@@ -960,14 +1114,20 @@ export class PerigeeScene implements PerigeeController {
     const ringTexture = needsRing ? leases.find((lease) => lease !== leases[0])?.texture ?? null : null
     const normalResult = results[2] as PromiseFulfilledResult<TextureLease | null>
     const normalMap = normalResult.value?.texture ?? null
-    const planet = createPlanetMaterial(definition, texture, normalMap, ringTexture)
+    const height = (results[3] as PromiseFulfilledResult<TextureLease | null>).value?.texture
+    const ringDepth = (results[4] as PromiseFulfilledResult<TextureLease | null>).value?.texture
+    const planet = createPlanetMaterial(definition, texture, normalMap, ringTexture,
+      terrain && height ? { ...terrain, height } : undefined, ringDepth)
 
     const surface = new Mesh(sphereGeometry(), planet.surface)
     surface.scale.y = flattening
+    const tiles = new PlanetTiles(planetId, surface, this.invalidate)
+    tiles.setQuality(this.quality.current)
+    group.userData.planetTiles = tiles
     group.add(surface)
     let ring: { set: RingMaterialSet, mesh: Mesh } | null = null
     if (ringTexture) {
-      const ringSet = createRingMaterial(ringTexture, flattening)
+      const ringSet = createRingMaterial(ringTexture, flattening, ringDepth)
       const mesh = new Mesh(ringGeometry(), ringSet.material)
       mesh.rotation.x = Math.PI / 2
       group.add(mesh)
@@ -1020,14 +1180,23 @@ export class PerigeeScene implements PerigeeController {
   ): void {
     if (!hero || !stellar || !point || !pointSet) return
     const pixels = this.projectedDiameterPixels(radius)
-    const appearance = stellarAppearanceForDiameter(pixels)
+    const definition = skyObjectsById[hero.name.replace('hero-', '') as SkyObjectId]
+    const realDistance = definition.presets.at(-1)!.distanceKm
+    const realPixels = this.projectedDiameterPixels(this.radiusFor(definition, realDistance))
+    const magnitude = definition.id === 'sirius' ? -1.46 : definition.id === 'rigel' ? .13 : .42
+    const flux = fluxForMagnitude(magnitude) * (pixels / Math.max(realPixels, 1e-12)) ** 2
+    const appearance = stellarAppearanceForDiameter(pixels, flux)
+    const altitude = Math.asin(hero.position.y / Math.max(hero.position.length(), .000001))
+    const transmission = atmosphericTransmission(altitude, skyConditions[this.currentViewpointId].extinction)
     const pointDiameter = this.worldDiameterForPixels(appearance.pointDiameterPixels)
     point.scale.setScalar(pointDiameter / Math.max(radius, 0.000001))
     pointSet.setVisibility(1 - appearance.resolved)
     pointSet.setStrength(appearance.pointStrength)
+    pointSet.setAtmosphere(altitude, transmission)
+    stellar.setAppearance(appearance.resolved, appearance.surfaceRadiance, transmission)
     // A disc smaller than the locator threshold must leave no surrounding
     // light at all. The point above is its only visible representation.
-    glare?.setVisibility(appearance.resolved * backgroundGlowVisibility(pixels))
+    glare?.setVisibility(0)
     stellar.setProximity(proximityFor(radius))
   }
 
@@ -1053,6 +1222,7 @@ export class PerigeeScene implements PerigeeController {
       this.heroPoint,
       this.heroPointSet,
     )
+    this.sky.setTarget(definition.id, this.hero.position)
     this.applyGlow(definition, 1)
   }
 
@@ -1068,6 +1238,7 @@ export class PerigeeScene implements PerigeeController {
     const kind = definition.kind
     const emissive = kind === 'star' || kind === 'galaxy'
     this.sky.setPalette(shot.skyPalette)
+    this.sky.setTarget(definition.id, this.heroPositionFor(this.currentViewpointId))
 
     this.sunWorld.set(...shot.sunDirection).normalize()
     const tier = this.quality.current
@@ -1100,8 +1271,7 @@ export class PerigeeScene implements PerigeeController {
    * A star is a small hot disc that should bleed. A galaxy is the opposite
    * case: its dust lanes and arms are the whole point, and anything past a
    * light lift on the nucleus blurs them back into the soft field they were
-   * drawn to escape. The star's halo is now drawn as geometry, so bloom only
-   * adds the fine bleed at the limb.
+   * drawn to escape. Stellar optical scatter comes only from source bloom.
    */
   private bloomIntensity(tier: QualityTier, kind: SkyObjectDefinition['kind']): number {
     const base = tier === 'safe' ? 0.32 : tier === 'balanced' ? 0.42 : 0.52
@@ -1112,11 +1282,24 @@ export class PerigeeScene implements PerigeeController {
 
   /** Hero shaders light themselves, so they need the sun in their own space. */
   private updateHeroLighting(): void {
+    for (const hero of [this.hero, ...this.outgoing]) {
+      if (!hero) continue
+      const uniforms = hero.userData.observerUniforms as { value: number }[] | undefined
+      uniforms?.forEach((uniform) => { uniform.value = skyConditions[this.currentViewpointId].extinction })
+    }
     if (this.heroPlanet) {
       this.scratchVector.copy(this.sunWorld).transformDirection(this.camera.matrixWorldInverse)
       this.heroSurface?.getWorldQuaternion(this.scratchQuaternion)
       this.scratchVector2.copy(this.sunWorld).applyQuaternion(this.scratchQuaternion.invert())
       this.heroPlanet.setSunDirection(this.scratchVector, this.scratchVector2)
+      if (this.hero) {
+        // Invert the live apparent scale so earthshine varies continuously while
+        // the distance director is moving, rather than jumping to the target.
+        const definition = skyObjectsById[this.currentObjectId]
+        const distance = definition.diameterKm * this.hero.position.length() / (2 * Math.max(this.hero.scale.x, .000001))
+        this.scratchVector2.copy(this.camera.position).sub(this.hero.position).normalize()
+        this.heroPlanet.setDistance(distance, this.sunWorld.dot(this.scratchVector2))
+      }
     }
     if (this.heroRing) {
       this.heroRing.mesh.getWorldQuaternion(this.scratchQuaternion)
@@ -1137,12 +1320,13 @@ export class PerigeeScene implements PerigeeController {
   }
 
   private readonly invalidate = (): void => {
-    if (!this.initialized || this.disposed || this.paused || this.contextLost || !this.composer || this.frameId !== null) return
+    if (this.exportTask || !this.initialized || this.disposed || this.paused || this.contextLost || !this.composer || this.frameId !== null) return
     this.lastFrame = performance.now()
     this.frameId = requestAnimationFrame(this.render)
   }
 
   private readonly onMotionChange = (event: MediaQueryListEvent): void => {
+    this.exportAbort?.abort()
     this.reducedMotion = event.matches
     this.invalidate()
     this.cameraRig?.setReducedMotion(event.matches)
@@ -1157,12 +1341,18 @@ export class PerigeeScene implements PerigeeController {
       ? { objectId: this.pendingSelection.objectId, presetId: this.pendingSelection.presetId }
       : { objectId: this.currentObjectId, presetId: this.currentPresetId }
     this.contextLost = true
+    // Recovery must not immediately repeat the same potentially excessive allocation.
+    this.quality.degrade(performance.now())
     this.compilationAbort.abort()
     this.pause()
   }
 
   private readonly onContextRestored = (): void => {
     if (this.disposed) return
+    if (this.exportTask) {
+      void this.exportTask.catch(() => undefined).then(this.onContextRestored)
+      return
+    }
     this.contextLost = false
     this.compilationAbort = new AbortController()
     this.bufferKey = ''
@@ -1178,7 +1368,7 @@ export class PerigeeScene implements PerigeeController {
 
   private readonly render = (now: number): void => {
     this.frameId = null
-    if (this.paused || this.disposed || this.contextLost || !this.composer) return
+    if (this.exportTask || this.paused || this.disposed || this.contextLost || !this.composer) return
     const delta = Math.min(Math.max((now - this.lastFrame) / 1_000, 0), 0.05)
     const eligible = !this.pendingSelection && !this.director.running && !this.objectDirector.running
       && !this.viewpointDirector.running && !this.reducedMotion && (this.cameraRig?.settled ?? true)
@@ -1203,11 +1393,10 @@ export class PerigeeScene implements PerigeeController {
       // Spin the textured body, not its placement group. Rotating the group
       // makes Saturn's ring plane precess across the frame over time.
       if (this.heroSurface && !this.reducedMotion) this.heroSurface.rotation.y += delta * this.heroSpinRate
-      // A galaxy carrier is a billboard: it faces the camera and then rolls by
-      // the position angle, so the disc keeps its measured tilt on the sky
-      // however far the viewer turns.
+      // Anchor the observational reference to the observer-to-galaxy direction,
+      // not the camera's current aim. Panning must not rotate its volume.
       if (this.heroGalaxy && this.heroSurface) {
-        this.heroSurface.quaternion.copy(this.camera.quaternion)
+        this.heroSurface.lookAt(this.camera.position)
         this.heroSurface.rotateZ(this.heroGalaxyRoll)
       }
       // A star's glare is a billboard inside a rotated group, so it takes the
@@ -1223,8 +1412,18 @@ export class PerigeeScene implements PerigeeController {
     this.updateHeroLighting()
     this.updateHeroScreen()
     const physicalPixels = this.projectedDiameterPixels(this.hero?.scale.x ?? 0) * (this.renderer?.getPixelRatio() ?? 1)
+    const planetTiles = this.hero?.userData.planetTiles as PlanetTiles | undefined
+    if (planetTiles && this.hero) {
+      planetTiles.setQuality(this.quality.current)
+      planetTiles.update(this.camera, physicalPixels, now, this.reducedMotion, Number(this.hero.userData.opacity ?? 1))
+    }
     this.heroStellar?.setProjectedSize(physicalPixels)
     this.heroGalaxy?.setProjectedSize(physicalPixels)
+    const observed = this.hero?.userData.observedGalaxy as ObservedGalaxy | undefined
+    if (observed && this.hero) {
+      observed.update(this.camera, physicalPixels, this.hero.scale.x / this.hero.position.length(), now,
+        this.reducedMotion, Number(this.hero.userData.opacity ?? 1))
+    }
     // Collected once per swap. Traversing the hero every frame to find the same
     // handful of uniforms was pure overhead.
     this.heroTimeUniforms.forEach((uniform) => { uniform.value = elapsed })

@@ -25,7 +25,9 @@ const fragmentShader = `
     // The frame is still linear here and is encoded to sRGB on the way out,
     // so both amounts are scaled to what one output step is worth at this
     // brightness: in the darks a linear step is tiny, in the lights it is not.
-    float outputStep = 2.2 * pow(max(luma, 0.0005), 0.545) / 255.0;
+    float outputStep = luma <= 0.0031308
+      ? 1.0 / (12.92 * 255.0)
+      : (2.4 / 1.055) * pow(luma, 1.0 - 1.0 / 2.4) / 255.0;
     float dither = noise * outputStep;
     float grain = noise * uGrain * (luma + 0.01) * (1.0 - smoothstep(0.0, 0.85, luma));
     outputColor = vec4(inputColor.rgb + dither + grain, inputColor.a);

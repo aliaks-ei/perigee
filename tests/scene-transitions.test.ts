@@ -17,7 +17,7 @@ function harness() {
   const compileAsync = vi.mocked(compileScene)
   compileAsync.mockReset().mockResolvedValue(undefined)
   Reflect.set(engine, 'renderer', { compileAsync, setClearColor: vi.fn(), domElement: { clientHeight: 800 } })
-  Reflect.set(engine, 'sky', { scene, setPalette: vi.fn(), setGlow: vi.fn() })
+  Reflect.set(engine, 'sky', { scene, setTarget: vi.fn(), setPalette: vi.fn(), setGlow: vi.fn() })
   return { engine, scene, compileAsync }
 }
 beforeEach(() => {

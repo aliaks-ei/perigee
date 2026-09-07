@@ -9,8 +9,8 @@ describe('stellar point-source transition', () => {
     const appearance = stellarAppearanceForDiameter(0.01)
     expect(appearance.resolved).toBe(0)
     expect(appearance.pointDiameterPixels).toBeGreaterThanOrEqual(3.2)
-    expect(appearance.pointDiameterPixels).toBeLessThan(5)
-    expect(appearance.pointStrength).toBeLessThan(0.9)
+    expect(appearance.pointDiameterPixels).toBeLessThan(6)
+    expect(appearance.pointStrength).toBeCloseTo(appearance.totalFlux)
     expect(appearance.illumination).toBe(0)
   })
 

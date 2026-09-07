@@ -1,3 +1,4 @@
+import planetManifest from '../../src/perigee/planet/planet-manifest.json'
 import type { SkyObjectDefinition, SkyObjectId } from '~/types/perigee'
 
 const AU_KM = 149_597_870.7
@@ -90,8 +91,8 @@ export const skyObjects: SkyObjectDefinition[] = [
     kind: 'moon',
     diameterKm: 3_474.8,
     rotationPeriodHours: 655.72,
-    texture: '/assets/objects/moon.jpg',
-    normalMap: '/assets/objects/moon-normal.webp',
+    texture: `${planetManifest.baseUrl}/moon/base.webp`,
+    normalMap: `${planetManifest.baseUrl}/moon/terrain-normal.webp`,
     material: 'rocky',
     presets: moonPresets,
     shot: {
@@ -103,8 +104,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.3,
       accent: '#c7c6c2',
     },
-    thumbnail: '/assets/objects/thumbs/moon.webp',
-    attributionIds: ['solar-system-scope-textures', 'planetary-elevation-data'],
+    thumbnail: `/assets/objects/thumbs/moon-${planetManifest.version}.webp`,
+    attributionIds: ['planetary-observations', 'planetary-elevation-data'],
   },
   {
     id: 'mars',
@@ -113,8 +114,8 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 6_779,
     flattening: 0.00589,
     rotationPeriodHours: 24.62,
-    texture: '/assets/objects/mars.jpg',
-    normalMap: '/assets/objects/mars-normal.webp',
+    texture: `${planetManifest.baseUrl}/mars/base.webp`,
+    normalMap: `${planetManifest.baseUrl}/mars/terrain-normal.webp`,
     material: 'rocky',
     presets: marsPresets,
     shot: {
@@ -126,8 +127,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.27,
       accent: '#c87950',
     },
-    thumbnail: '/assets/objects/thumbs/mars.webp',
-    attributionIds: ['solar-system-scope-textures', 'planetary-elevation-data'],
+    thumbnail: `/assets/objects/thumbs/mars-${planetManifest.version}.webp`,
+    attributionIds: ['planetary-observations', 'planetary-elevation-data'],
   },
   {
     id: 'jupiter',
@@ -136,7 +137,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 139_820,
     flattening: 0.06487,
     rotationPeriodHours: 9.93,
-    texture: '/assets/objects/jupiter.jpg',
+    texture: `${planetManifest.baseUrl}/jupiter/base.webp`,
     material: 'gas-giant',
     presets: jupiterPresets,
     shot: {
@@ -148,8 +149,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.24,
       accent: '#d4b89a',
     },
-    thumbnail: '/assets/objects/thumbs/jupiter.webp',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: `/assets/objects/thumbs/jupiter-${planetManifest.version}.webp`,
+    attributionIds: ['planetary-observations'],
   },
   {
     id: 'saturn',
@@ -158,7 +159,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 116_460,
     flattening: 0.09796,
     rotationPeriodHours: 10.7,
-    texture: '/assets/objects/saturn-atmosphere-v2.webp',
+    texture: `${planetManifest.baseUrl}/saturn/base.webp`,
     material: 'gas-giant',
     presets: saturnPresets,
     shot: {
@@ -171,8 +172,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       ringTilt: -0.31,
       accent: '#d8c7a4',
     },
-    thumbnail: '/assets/objects/thumbs/saturn.webp',
-    attributionIds: ['solar-system-scope-textures', 'perigee-saturn-art'],
+    thumbnail: `/assets/objects/thumbs/saturn-${planetManifest.version}.webp`,
+    attributionIds: ['planetary-observations', 'solar-system-scope-textures', 'ring-occultation-data'],
   },
   {
     id: 'neptune',
@@ -181,7 +182,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 49_244,
     flattening: 0.01708,
     rotationPeriodHours: 16.11,
-    texture: '/assets/objects/neptune.jpg',
+    texture: `${planetManifest.baseUrl}/neptune/base.webp`,
     material: 'ice-giant',
     presets: neptunePresets,
     shot: {
@@ -193,8 +194,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.29,
       accent: '#6187dc',
     },
-    thumbnail: '/assets/objects/thumbs/neptune.webp',
-    attributionIds: ['solar-system-scope-textures'],
+    thumbnail: `/assets/objects/thumbs/neptune-${planetManifest.version}.webp`,
+    attributionIds: ['planetary-observations'],
   },
   {
     id: 'betelgeuse',
@@ -214,7 +215,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#ff5d2f',
       accent: '#ed6a38',
     },
-    thumbnail: '/assets/objects/thumbs/betelgeuse.webp',
+    thumbnail: '/assets/objects/thumbs/betelgeuse-5d4128be14cd.webp',
     attributionIds: ['perigee-procedural-art'],
   },
   {
@@ -235,7 +236,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#b7d5ff',
       accent: '#b9d6ff',
     },
-    thumbnail: '/assets/objects/thumbs/sirius.webp',
+    thumbnail: '/assets/objects/thumbs/sirius-334f60b83553.webp',
     attributionIds: ['perigee-procedural-art'],
   },
   {
@@ -256,7 +257,7 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#a8c8ff',
       accent: '#abcaff',
     },
-    thumbnail: '/assets/objects/thumbs/rigel.webp',
+    thumbnail: '/assets/objects/thumbs/rigel-bc3abdf6c7af.webp',
     attributionIds: ['perigee-procedural-art'],
   },
   {
@@ -289,8 +290,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#9fb8f0',
       accent: '#b7c8ff',
     },
-    thumbnail: '/assets/objects/thumbs/andromeda.webp',
-    attributionIds: ['perigee-procedural-art'],
+    thumbnail: '/assets/objects/thumbs/andromeda-55825fd3438b.webp',
+    attributionIds: ['andromeda-observations', 'gaia-foreground'],
   },
 ]
 

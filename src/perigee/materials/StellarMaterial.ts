@@ -1,124 +1,66 @@
-import { Color, ShaderMaterial } from 'three'
+import { ShaderMaterial, Vector3 } from 'three'
 import type { QualityTier, SkyObjectId } from '../../../app/types/perigee'
 
-interface StellarLook {
-  palette: [string, string, string]
-  /**
-   * `cellular` draws convection as cells with bright cores and dark lanes,
-   * which is what interferometry resolves on a red supergiant. `marbled` is
-   * the layered-noise photosphere the hot stars have always had: no cell is
-   * resolvable on a main-sequence star, so a soft mottling reads truer than
-   * a pattern of cells.
-   */
-  style: 'cellular' | 'marbled'
-  /** Convection cells across the disc. Cellular style only. */
-  cellScale: number
-  /** How hard the cell cores stand out from the lanes between them. */
-  contrast: number
-  /** Low-frequency distortion of the cell field, so no cell is a clean polygon. */
-  warp: number
-  /** Coefficient of the linear limb-darkening law. Cellular style only. */
-  limbDarkening: number
-}
+/** Linear RGB continuum proxies, normalized to unit luminance. Structure is
+ * deliberately stylized, not a photographic map; see docs/stellar-sky.md for references. */
+export const stellarLooks = {
+  betelgeuse: { color: [1, 0.56, 0.29], limb: 0.58, contrast: 0.88, scale: 2.1, evolution: 1 / 900 },
+  sirius: { color: [0.87, 0.93, 1], limb: 0.38, contrast: 0.8, scale: 9, evolution: 1 / 300 },
+  rigel: { color: [0.8, 0.89, 1], limb: 0.32, contrast: 0.86, scale: 14, evolution: 1 / 600 },
+} as const
 
-const looks: Partial<Record<SkyObjectId, StellarLook>> = {
-  betelgeuse: {
-    palette: ['#6d0d02', '#ff571f', '#ffd38a'],
-    style: 'cellular',
-    cellScale: 2.3,
-    contrast: 1.15,
-    warp: 0.38,
-    limbDarkening: 0.74,
-  },
-  sirius: {
-    palette: ['#294d8f', '#a9d3ff', '#ffffff'],
-    style: 'marbled',
-    cellScale: 16,
-    contrast: 1,
-    warp: 0,
-    limbDarkening: 0.5,
-  },
-  rigel: {
-    palette: ['#214489', '#8dbdff', '#f6fbff'],
-    style: 'marbled',
-    cellScale: 12,
-    contrast: 1,
-    warp: 0,
-    limbDarkening: 0.55,
-  },
-}
+// User-directed illustrative colour variation, independent of the point colour.
+const surfaceColors = {
+  betelgeuse: { cool: [1, 0.065, 0.006], hot: [1, 0.65, 0.29] },
+  sirius: { cool: [0.55, 0.64, 0.76], hot: [0.98, 0.99, 1] },
+  rigel: { cool: [0.12, 0.26, 1], hot: [0.78, 0.9, 1] },
+} as const
 
 export interface StellarMaterialSet {
   material: ShaderMaterial
-  /**
-   * The star fills most of the frame at the closest presets, and each cell
-   * octave costs a block of hashes per pixel. Dropping the two finer octaves
-   * is the cheapest way to buy back a whole tier's worth of fill rate.
-   */
   setQuality: (tier: QualityTier) => void
   setProjectedSize: (pixels: number) => void
-  /**
-   * 0 at the real distance, 1 at the impossible close pass. A hot star this
-   * close is a blinding source with limb detail, not a readable texture, so
-   * the centre burns out toward the high tone as it comes near.
-   */
   setProximity: (value: number) => void
+  setAppearance: (visibility: number, meanRadiance: number, transmission: readonly number[]) => void
 }
 
 export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet {
-  const look = looks[objectId] ?? looks.betelgeuse!
-  const [low, middle, high] = look.palette
-
+  const look = stellarLooks[objectId as keyof typeof stellarLooks] ?? stellarLooks.betelgeuse
+  const palette = surfaceColors[objectId as keyof typeof surfaceColors] ?? surfaceColors.betelgeuse
+  const normalized = (rgb: readonly number[]): Vector3 => new Vector3(rgb[0], rgb[1], rgb[2])
+    .divideScalar(rgb[0]! * 0.2126 + rgb[1]! * 0.7152 + rgb[2]! * 0.0722)
+  const [r, g, b] = look.color
+  const color = new Vector3(r, g, b).divideScalar(r * 0.2126 + g * 0.7152 + b * 0.0722)
   const material = new ShaderMaterial({
     uniforms: {
-      uTime: { value: 0 },
-      uLow: { value: new Color(low) },
-      uMiddle: { value: new Color(middle) },
-      uHigh: { value: new Color(high) },
-      uOpacity: { value: 1 },
-      uDetail: { value: 1 },
-      uProjectedSize: { value: 2048 },
-      uCellScale: { value: look.cellScale },
-      uContrast: { value: look.contrast },
-      uWarp: { value: look.warp },
-      uLimbDarkening: { value: look.limbDarkening },
-      uMarbled: { value: look.style === 'marbled' ? 1 : 0 },
-      uProximity: { value: 0 },
+      uTime: { value: 0 }, uColor: { value: color }, uOpacity: { value: 1 },
+      uVisibility: { value: 1 }, uRadiance: { value: 1.8 },
+      uTransmission: { value: new Vector3(1, 1, 1) },
+      uCoolColor: { value: normalized(palette.cool) }, uHotColor: { value: normalized(palette.hot) },
+      uDetail: { value: 1 }, uProjectedSize: { value: 2048 },
+      uScale: { value: look.scale }, uContrast: { value: look.contrast },
+      uLimb: { value: look.limb }, uEvolution: { value: look.evolution },
     },
     vertexShader: `
       varying vec3 vNormal;
       varying vec3 vPosition;
+      varying vec3 vViewDirection;
       void main() {
         vNormal = normalize(normalMatrix * normal);
         vPosition = position;
+        vViewDirection = -(modelViewMatrix * vec4(position, 1.0)).xyz;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: `
-      uniform float uTime;
-      uniform vec3 uLow;
-      uniform vec3 uMiddle;
-      uniform vec3 uHigh;
-      uniform float uOpacity;
-      uniform float uDetail;
-      uniform float uProjectedSize;
-      uniform float uCellScale;
-      uniform float uContrast;
-      uniform float uWarp;
-      uniform float uLimbDarkening;
-      uniform float uMarbled;
-      uniform float uProximity;
-      varying vec3 vNormal;
-      varying vec3 vPosition;
-
+      uniform float uTime, uOpacity, uVisibility, uRadiance, uDetail, uProjectedSize;
+      uniform float uScale, uContrast, uLimb, uEvolution;
+      uniform vec3 uColor, uTransmission, uCoolColor, uHotColor;
+      varying vec3 vNormal, vPosition, vViewDirection;
       float hash(vec3 p) {
         p = fract(p * 0.3183099 + vec3(.1, .2, .3));
         p *= 17.0;
         return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-      }
-
-      vec3 hash3(vec3 p) {
-        return vec3(hash(p), hash(p + vec3(7.31, 3.17, 9.43)), hash(p + vec3(19.7, 11.3, 5.9)));
       }
 
       float noise(vec3 p) {
@@ -134,106 +76,53 @@ export function createStellarMaterial(objectId: SkyObjectId): StellarMaterialSet
         );
       }
 
-      // Distance to the nearest feature point: zero at a cell's core, rising
-      // toward the lanes between cells. Eight neighbours rather than
-      // twenty-seven, with the feature points held to the middle half of each
-      // cell so the nearest one is almost always inside the block searched.
-      float cells(vec3 p) {
-        vec3 i = floor(p - 0.5);
-        float best = 4.0;
-        for (int x = 0; x < 2; x++) {
-          for (int y = 0; y < 2; y++) {
-            for (int z = 0; z < 2; z++) {
-              vec3 cell = i + vec3(float(x), float(y), float(z));
-              vec3 feature = cell + 0.25 + 0.5 * hash3(cell);
-              vec3 d = feature - p;
-              best = min(best, dot(d, d));
-            }
-          }
-        }
-        return sqrt(best);
-      }
 
       void main() {
         vec3 p = normalize(vPosition);
-        float footprint = max(length(dFdx(p)), length(dFdy(p)));
-        float mediumWeight = smoothstep(80.0, 220.0, uProjectedSize) * (1.0 - smoothstep(0.02, 0.06, footprint));
-        float fineWeight = smoothstep(220.0, 520.0, uProjectedSize) * (1.0 - smoothstep(0.008, 0.025, footprint));
-        float mu = max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0);
-
-        // The hot stars: four octaves of value noise blended into a soft
-        // mottling, with the limb falling to the low tone. A uniform branch,
-        // so every pixel of a draw takes the same path.
-        if (uMarbled > 0.5) {
-          float flow = uTime * 0.016;
-          float large = noise(p * 3.8 + flow);
-          float mottle = noise(p * 10.5 - flow * 1.7);
-          float granules = mottle;
-          if (uDetail > 0.25 && mediumWeight > 0.0) granules = mix(mottle, noise(p * 34.0 + flow * 2.3), mediumWeight);
-          float filaments = granules;
-          if (uDetail > 0.75 && fineWeight > 0.0) filaments = mix(granules, noise(p * 68.0 - flow * 1.2), fineWeight);
-
-          float convection = large * 0.48 + mottle * 0.3 + granules * 0.17 + filaments * 0.05;
-          float warmth = smoothstep(0.2, 0.82, convection);
-          vec3 marbled = mix(uLow, uMiddle, warmth);
-          float hotCell = smoothstep(0.68, 0.94, mottle * 0.7 + granules * 0.42);
-          marbled = mix(marbled, uHigh, hotCell * 0.72);
-          marbled *= mix(0.35, 1.3, pow(mu, 0.34));
-          // Close in, the photosphere overexposes from the centre outward
-          // and only the limb keeps its mottling.
-          float burn = uProximity * smoothstep(0.12, 0.9, mu);
-          marbled = mix(marbled, uHigh * 1.2, burn * 0.72);
-          gl_FragColor = vec4(marbled * (2.18 + uProximity * 0.5), uOpacity);
-          return;
+        float mu = max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0);
+        float drift = uTime * uEvolution;
+        vec3 warp = vec3(noise(p*1.7+drift), noise(p*1.9+7.3-drift),
+          noise(p*1.5+13.1+drift*.7)) - .5;
+        // Large warm regions for Betelgeuse; increasingly fine granulation
+        // for Sirius and Rigel. Warping breaks up repeated grid-like mottling.
+        vec3 q = p*uScale + warp*1.15;
+        float footprint = max(length(dFdx(q)), length(dFdy(q)));
+        float detailVisibility = smoothstep(10.0, 45.0, uProjectedSize)
+          * (1.0-smoothstep(.22, .55, footprint));
+        float broad = noise(q + vec3(drift, 0.0, -drift*.6));
+        float structure = (smoothstep(.2, .8, broad)-.5)*2.0;
+        float fineWeight = (1.0-smoothstep(.05, .18, footprint))
+          * smoothstep(60.0, 180.0, uProjectedSize);
+        if (uDetail > .25 && fineWeight > 0.0) {
+          float fine = (noise(q*2.7-drift*.4)-.5)*2.0;
+          structure = mix(structure, structure*.72+fine*.55, fineWeight);
         }
-
-        float drift = uTime * 0.014;
-
-        // Domain warp, so the cells are convective blobs rather than polygons.
-        vec3 warp = vec3(
-          noise(p * 2.1 + drift),
-          noise(p * 2.1 + vec3(5.2, 1.7, 8.3) - drift),
-          noise(p * 2.1 + vec3(9.7, 4.1, 2.6) + drift * 0.7)
-        ) - 0.5;
-        vec3 q = p + warp * uWarp;
-
-        // Bright core, dark lane. The finer octaves modulate the cores rather
-        // than add lanes of their own: a second honeycomb laid over the first
-        // reads as a net, not as convection. Each octave falls back to a flat
-        // value on the lower tiers, so contrast survives at every tier.
-        float coarse = 1.0 - smoothstep(0.0, 0.95, cells(q * uCellScale + drift * 0.6));
-        float medium = 0.5;
-        if (uDetail > 0.25 && mediumWeight > 0.0) medium = mix(medium, 1.0 - smoothstep(0.0, 1.15, cells(q * uCellScale * 2.4 - drift * 1.3 + 4.0)), mediumWeight);
-        float fine = 0.5;
-        if (uDetail > 0.75 && fineWeight > 0.0) fine = mix(fine, noise(q * uCellScale * 7.0 + drift * 2.2), fineWeight);
-
-        float heat = coarse * (0.72 + 0.28 * medium) + (fine - 0.5) * 0.12;
-        heat = pow(clamp(heat, 0.0, 1.0), uContrast);
-
-        vec3 color = mix(uLow, uMiddle, smoothstep(0.06, 0.66, heat));
-        color = mix(color, uHigh, smoothstep(0.52, 0.94, heat) * 0.82);
-
-        // Limb darkening: the edge of the disc is seen through more of the
-        // photosphere's cooler upper layers, so it is dimmer and redder.
-        float limb = 1.0 - uLimbDarkening * (1.0 - mu);
-        color = mix(color, uLow, (1.0 - mu) * 0.45) * limb;
-        // A red supergiant stays a readable surface even up close; it only
-        // brightens toward its hottest cells.
-        color = mix(color, uHigh, uProximity * 0.22 * smoothstep(0.3, 1.0, mu) * smoothstep(0.5, 0.94, heat));
-
-        gl_FragColor = vec4(color * (1.45 + uProximity * 0.2), uOpacity);
+        structure = clamp(structure, -1.0, 1.0);
+        // Both endpoints have unit luminance: colour variation does not add
+        // an independent exposure boost. Fade detail before the optical point.
+        vec3 surfaceColor = mix(uCoolColor, uHotColor, smoothstep(-.25, .8, structure));
+        surfaceColor = mix(uColor, surfaceColor, detailVisibility);
+        // Linear limb law integrates to (1-u/3) over projected disc area.
+        // Divide by it so limb coefficients do not change total source flux.
+        float limb = (1.0-uLimb*(1.0-mu))/(1.0-uLimb/3.0);
+        float variation = 1.0 + uContrast * structure * detailVisibility;
+        gl_FragColor = vec4(surfaceColor*uTransmission*uRadiance*limb*variation, uOpacity*uVisibility);
       }
     `,
+    transparent: true,
+    depthWrite: false,
   })
-
   return {
     material,
     setProjectedSize(pixels) { material.uniforms.uProjectedSize!.value = Math.max(0, pixels) },
-    setQuality(tier) {
-      material.uniforms.uDetail!.value = tier === 'high' ? 1 : tier === 'balanced' ? 0.5 : 0
-    },
-    setProximity(value) {
-      material.uniforms.uProximity!.value = Math.min(Math.max(value, 0), 1)
+    setQuality(tier) { material.uniforms.uDetail!.value = tier === 'high' ? 1 : tier === 'balanced' ? .5 : 0 },
+    // Retained controller contract. Exposure now follows integrated flux;
+    // proximity no longer adds an independent brightness or colour grade.
+    setProximity() {},
+    setAppearance(visibility, meanRadiance, transmission) {
+      material.uniforms.uVisibility!.value = visibility
+      material.uniforms.uRadiance!.value = meanRadiance
+      ;(material.uniforms.uTransmission!.value as Vector3).set(transmission[0]!, transmission[1]!, transmission[2]!)
     },
   }
 }

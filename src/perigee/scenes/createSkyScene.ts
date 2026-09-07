@@ -1,27 +1,20 @@
-import { environmentTintStrength } from '../math/sceneAppearance'
 import {
-  BufferAttribute,
-  BufferGeometry,
-  Color,
-  Points,
-  Scene,
-  ShaderMaterial,
-  Vector3,
+  AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, DataTexture,
+  DataUtils, Group, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, Mesh,
+  Points, RedFormat, RepeatWrapping, Scene, ShaderMaterial, SphereGeometry, Vector3,
 } from 'three'
-import type { QualityTier } from '../../../app/types/perigee'
-import type { ViewpointId } from '../../../app/types/perigee'
+import type { QualityTier, SkyObjectId, ViewpointId } from '../../../app/types/perigee'
 import { createEnvironmentLayer } from './createEnvironmentLayer'
 import { createMeteorLayer } from './createMeteorLayer'
-import {
-  colorForIndex,
-  fluxForMagnitude,
-  loadStarCatalogue,
-  type CatalogueStar,
-} from './starCatalogue'
+import { colorForIndex, exposedCatalogueFlux, loadStarCatalogue, parseGaiaCatalogue, type CatalogueStar } from './starCatalogue'
+import { equatorialDirection, referenceSkyRotation, targetCoordinates } from '../math/skyCoordinates'
+import { PSF_SIGMA_CSS, PSF_ENCLOSED, SKY_PHOTOMETRY_GLSL, skyConditions } from '../math/skyPhotometry'
+import manifest from './skyManifest.json'
 
 export interface SkySceneBundle {
   scene: Scene
   stars: Points
+  setTarget: (id: SkyObjectId, position: Vector3) => void
   setPalette: (palette: [string, string, string]) => void
   /**
    * Warm sky-glow thrown up from the ground, matched to the viewpoint, and the
@@ -32,6 +25,7 @@ export interface SkySceneBundle {
   setHeroScreen: (x: number, y: number, radius: number) => void
   /** Warms the other viewpoints' backdrops while the main thread is idle. */
   prefetch: () => void
+  ready: () => boolean
   setPixelRatio: (pixelRatio: number) => void
   finish: () => void
   setPaused: (paused: boolean) => void
@@ -43,279 +37,228 @@ export interface SkySceneBundle {
   dispose: () => void
 }
 
-function seededRandom(seed: number): () => number {
-  let value = seed >>> 0
-  return () => {
-    value = (value * 1664525 + 1013904223) >>> 0
-    return value / 4294967296
-  }
-}
 
-interface StarRecord {
-  direction: Vector3
-  color: [number, number, number]
-  flux: number
-  /** Point size in CSS pixels before the pixel ratio and perspective terms. */
-  size: number
-}
-
-/**
- * Magnitude drawn so that counts grow by about a factor of three per
- * magnitude, which is the law a real sky follows. Used for the faint
- * background stars the catalogue does not carry, and for the whole field
- * when the catalogue cannot be loaded.
- */
-function sampleMagnitude(random: () => number, faintest: number, brightest: number): number {
-  const magnitude = faintest + 2 * Math.log10(Math.max(random(), 1e-6))
-  return Math.max(brightest, magnitude)
-}
-
-function starRecordFromMagnitude(direction: Vector3, magnitude: number, colorIndex: number): StarRecord {
-  const flux = fluxForMagnitude(magnitude)
-  const bright = magnitude < 1.5
-  return {
-    direction,
-    color: colorForIndex(colorIndex),
-    flux,
-    size: bright
-      ? 2.6 + (1.5 - magnitude) * 0.9
-      : 0.7 + 1.7 * Math.min(1, Math.max(0, (5.5 - magnitude) / 7)),
-  }
-}
-
-function directionFromEquatorial(rightAscensionDegrees: number, declinationDegrees: number): Vector3 {
-  const ra = (rightAscensionDegrees * Math.PI) / 180
-  const dec = (declinationDegrees * Math.PI) / 180
-  return new Vector3(Math.cos(dec) * Math.cos(ra), Math.sin(dec), Math.cos(dec) * Math.sin(ra))
-}
-
-/** The Milky Way band: faint stars packed along a tilted great circle. */
-function backgroundStars(random: () => number, count: number): StarRecord[] {
-  const bandAxis = new Vector3(0.7, 0.15, 0.32).normalize()
-  const records: StarRecord[] = []
-  for (let index = 0; index < count; index += 1) {
-    const inBand = random() < 0.55
-    const theta = random() * Math.PI * 2
-    const latitude = inBand
-      ? (random() + random() + random() - 1.5) * 0.16
-      : Math.asin(random() * 2 - 1)
-    const direction = new Vector3(
-      Math.cos(latitude) * Math.cos(theta),
-      Math.sin(latitude),
-      Math.cos(latitude) * Math.sin(theta),
-    )
-    if (inBand) direction.applyAxisAngle(bandAxis, 0.7)
-    // Fainter than the catalogue's limit, so the two sets do not overlap.
-    const magnitude = sampleMagnitude(random, 7.6, 6.2)
-    records.push(starRecordFromMagnitude(direction, magnitude, random() * 1.4 - 0.2))
-  }
-  return records
-}
-
-function fallbackStars(random: () => number, count: number): StarRecord[] {
-  const records: StarRecord[] = []
-  for (let index = 0; index < count; index += 1) {
-    const theta = random() * Math.PI * 2
-    const latitude = Math.asin(random() * 2 - 1)
-    const direction = new Vector3(
-      Math.cos(latitude) * Math.cos(theta),
-      Math.sin(latitude),
-      Math.cos(latitude) * Math.sin(theta),
-    )
-    records.push(starRecordFromMagnitude(direction, sampleMagnitude(random, 6.5, -1.5), random() * 1.6 - 0.3))
-  }
-  return records
-}
-
-function catalogueStars(entries: CatalogueStar[]): StarRecord[] {
-  return entries.map((star) => starRecordFromMagnitude(
-    directionFromEquatorial(star.rightAscension, star.declination),
-    star.magnitude,
-    star.colorIndex,
-  ))
-}
-
-function buildGeometry(records: StarRecord[], random: () => number): BufferGeometry {
-  const count = records.length
-  const positions = new Float32Array(count * 3)
-  const colors = new Float32Array(count * 3)
-  const sizes = new Float32Array(count)
-  const phases = new Float32Array(count)
-
+function buildGeometry(records: CatalogueStar[]): BufferGeometry {
+  const positions = new Float32Array(records.length * 3)
+  const colors = new Float32Array(records.length * 3)
+  const magnitudes = new Float32Array(records.length)
+  const phases = new Float32Array(records.length)
   records.forEach((record, index) => {
-    const radius = 900 + random() * 180
-    const offset = index * 3
-    positions[offset] = record.direction.x * radius
-    positions[offset + 1] = record.direction.y * radius
-    positions[offset + 2] = record.direction.z * radius
-    // Brightness compresses the flux range: a real Sirius is a thousand times
-    // a faint star, which a point sprite cannot show, so the curve keeps the
-    // order without the ratio.
-    const brightness = Math.min(4.2, 0.3 + 3.2 * record.flux ** 0.42)
-    colors[offset] = record.color[0] * brightness
-    colors[offset + 1] = record.color[1] * brightness
-    colors[offset + 2] = record.color[2] * brightness
-    sizes[index] = record.size
-    phases[index] = random() * Math.PI * 2
+    equatorialDirection(record.rightAscension, record.declination).multiplyScalar(1000).toArray(positions, index * 3)
+    const color = colorForIndex(record.colorIndex)
+    const luma = color[0]*.2126 + color[1]*.7152 + color[2]*.0722
+    const flux = exposedCatalogueFlux(record.magnitude)
+    color.forEach((channel, component) => { colors[index*3+component] = channel/luma*flux })
+    magnitudes[index] = record.magnitude
+    phases[index] = (record.rightAscension*7.31 + record.declination*13.7) % 1000
   })
-
   const geometry = new BufferGeometry()
   geometry.setAttribute('position', new BufferAttribute(positions, 3))
   geometry.setAttribute('color', new BufferAttribute(colors, 3))
-  geometry.setAttribute('aSize', new BufferAttribute(sizes, 1))
+  geometry.setAttribute('aMagnitude', new BufferAttribute(magnitudes, 1))
   geometry.setAttribute('aPhase', new BufferAttribute(phases, 1))
   return geometry
 }
 
 export function createSkyScene(initialQuality: QualityTier, reducedMotion = false, invalidate: () => void = () => undefined): SkySceneBundle {
   const scene = new Scene()
-
-  // No sky dome: the environment layer is an opaque full-screen backdrop that
-  // covers every pixel behind the hero, so a dome would only ever be overdrawn.
-  // The palette still drives star density and the backdrop's tint.
   const environment = createEnvironmentLayer(initialQuality, invalidate)
   environment.setReducedMotion(reducedMotion)
   scene.add(environment.mesh)
   const meteors = createMeteorLayer(reducedMotion)
   scene.add(meteors.mesh)
-
-  const random = seededRandom(731_992)
-  const background = backgroundStars(random, 3_600)
-  let geometry = buildGeometry([...fallbackStars(random, 1_600), ...background], random)
+  const celestial = new Group()
+  scene.add(celestial)
+  const abort = new AbortController()
   let disposed = false
-
+  let viewpoint: ViewpointId = 'rooftop'
+  let targetId: SkyObjectId = 'saturn'
+  const targetPosition = new Vector3(86, 118, -500)
+  const atmosphere = {
+    uExtinction: { value: skyConditions.rooftop.extinction },
+    uLimit: { value: skyConditions.rooftop.limitingMagnitude },
+  }
   const pointsMaterial = new ShaderMaterial({
     uniforms: {
-      uTime: { value: 0 },
-      uPixelRatio: { value: 1 },
-      uOpacity: { value: 0.5 },
+      ...atmosphere, uTime: { value: 0 }, uPixelRatio: { value: 1 },
+      uTarget: { value: new Vector3() }, uHideTarget: { value: 0 },
     },
     vertexShader: `
-      uniform float uTime;
-      uniform float uPixelRatio;
-      attribute float aSize;
-      attribute float aPhase;
+      uniform float uTime, uPixelRatio, uHideTarget;
+      uniform vec3 uTarget;
+      attribute float aMagnitude, aPhase;
       varying vec3 vColor;
-      varying float vTwinkle;
-      varying float vAltitude;
-
+      varying float vTwinkle, vAltitude, vMagnitude, vHidden;
+      ${SKY_PHOTOMETRY_GLSL}
       void main() {
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vec4 world = modelMatrix * vec4(position, 1.0);
         vColor = color;
-        vTwinkle = 0.92 + sin(uTime * (0.55 + fract(aPhase) * 0.5) + aPhase) * 0.08;
-        // Height above the world horizon, which the plates put in the lower
-        // third of the frame. Stars are drawn over the opaque backdrop, so
-        // without this they shone through the ground and the skyline.
-        vAltitude = normalize(position).y;
-        float perspective = clamp(720.0 / max(-mvPosition.z, 1.0), 0.62, 2.4);
-        gl_PointSize = aSize * uPixelRatio * perspective;
-        gl_Position = projectionMatrix * mvPosition;
+        vAltitude = normalize(world.xyz).y;
+        vMagnitude = aMagnitude;
+        vTwinkle = scintillation(uTime, aPhase, vAltitude);
+        // Selected stellar catalogue entry is replaced by the hero, never doubled.
+        vHidden = uHideTarget * step(0.99999994, dot(normalize(position), uTarget));
+        gl_PointSize = ${(8 * PSF_SIGMA_CSS).toFixed(8)} * uPixelRatio;
+        gl_Position = projectionMatrix * viewMatrix * world;
       }
     `,
     fragmentShader: `
-      uniform float uOpacity;
+      uniform float uExtinction, uLimit, uPixelRatio;
       varying vec3 vColor;
-      varying float vTwinkle;
-      varying float vAltitude;
-
+      varying float vTwinkle, vAltitude, vMagnitude, vHidden;
+      ${SKY_PHOTOMETRY_GLSL}
+      float pixelProfile(vec2 p) {
+        return exp(-8.0 * dot(p, p));
+      }
       void main() {
-        vec2 point = gl_PointCoord - vec2(0.5);
-        float distanceToCenter = length(point);
-        if (distanceToCenter > 0.5) discard;
-        // Extinction toward the horizon, then nothing below it.
-        float aboveHorizon = smoothstep(0.0, 0.12, vAltitude);
-        if (aboveHorizon <= 0.0) discard;
-        float core = 1.0 - smoothstep(0.04, 0.5, distanceToCenter);
-        float halo = 1.0 - smoothstep(0.12, 0.5, distanceToCenter);
-        float alpha = (core * 0.82 + halo * 0.26) * uOpacity * vTwinkle * aboveHorizon;
-        gl_FragColor = vec4(vColor, alpha);
+        vec2 point = (gl_PointCoord-.5)*2.0;
+        float r2 = dot(point, point);
+        if (r2 > 1.0 || vAltitude <= 0.0 || vHidden > .5) discard;
+        float air = opticalAirmass(vAltitude);
+        float visible = 1.0-smoothstep(uLimit-1.0, uLimit+1.0, vMagnitude+uExtinction*air);
+        // Integrate the subpixel footprint so faint points do not jump between
+        // harsh single pixels when the camera or adaptive resolution moves.
+        float tap = .25 / (${(4 * PSF_SIGMA_CSS).toFixed(8)} * uPixelRatio);
+        float profile = (pixelProfile(point + vec2(tap,tap)) + pixelProfile(point + vec2(-tap,tap))
+          + pixelProfile(point + vec2(tap,-tap)) + pixelProfile(point - vec2(tap,tap)))
+          / ${(4*2*Math.PI*PSF_SIGMA_CSS**2*PSF_ENCLOSED).toFixed(9)};
+        gl_FragColor = vec4(vColor*skyTransmission(vAltitude,uExtinction)*vTwinkle*profile, visible);
       }
     `,
-    transparent: true,
-    depthWrite: false,
-    vertexColors: true,
+    transparent: true, blending: AdditiveBlending, depthWrite: false, depthTest: true, vertexColors: true,
   })
+  let geometry = buildGeometry([])
   const stars = new Points(geometry, pointsMaterial)
-  scene.add(stars)
-
-  // The catalogue replaces the placeholder bright stars once it arrives. The
-  // faint background keeps its place under it either way.
+  // Opaque planets draw first in Three.js; depth rejects stars behind them.
+  // Transparent heroes draw later and cover the remaining background normally.
+  stars.renderOrder = -80
+  celestial.add(stars)
+  let diffuseTexture: DataTexture | null = null
+  const diffuseMaterial = new ShaderMaterial({
+    uniforms: { ...atmosphere, uMap: { value: null as DataTexture | null }, uReady: { value: 0 } },
+    vertexShader: `
+      varying vec3 vDirection;
+      varying float vAltitude;
+      void main() {
+        vDirection = position;
+        vAltitude = normalize((modelMatrix*vec4(position,1.0)).xyz).y;
+        gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform float uExtinction, uLimit, uReady;
+      varying vec3 vDirection;
+      varying float vAltitude;
+      ${SKY_PHOTOMETRY_GLSL}
+      void main() {
+        if (uReady < .5 || vAltitude <= 0.0) discard;
+        vec3 d = normalize(vDirection);
+        vec2 uv = vec2(fract(atan(-d.z,d.x)/6.283185307), .5-asin(d.y)/3.141592654);
+        // G-band integrated stellar radiance, neutral continuum proxy. The
+        // photographic gain is fixed; city sky reduces contrast, not density.
+        float density = texture2D(uMap,uv).r*4096.0;
+        float visibility = smoothstep(4.0,6.5,uLimit);
+        gl_FragColor = vec4(vec3(density*0.000025)*skyTransmission(vAltitude,uExtinction), visibility);
+      }
+    `,
+    side: BackSide, transparent: true, blending: AdditiveBlending, depthWrite: false,
+  })
+  const diffuse = new Mesh(new SphereGeometry(1100, 64, 32), diffuseMaterial)
+  diffuse.renderOrder = -90
+  celestial.add(diffuse)
+  let yale: CatalogueStar[] = []
+  let gaia: CatalogueStar[] = []
+  const rebuild = (): void => {
+    if (disposed) return
+    const next = buildGeometry([...yale, ...gaia])
+    stars.geometry = next
+    geometry.dispose()
+    geometry = next
+    invalidate()
+  }
+  const fetchBuffer = async (name: string): Promise<ArrayBuffer> => {
+    const response = await fetch(`${manifest.baseUrl}/${name}`, { signal: abort.signal })
+    if (!response.ok) throw new Error(`SKY_HTTP_${response.status}`)
+    return response.arrayBuffer()
+  }
+  let catalogueSettled = false
+  let surveySettled = false
   if (typeof fetch === 'function') {
-    loadStarCatalogue()
-      .then((entries) => {
-        if (disposed) return
-        const rebuilt = buildGeometry([...catalogueStars(entries), ...background], seededRandom(19_771))
-        stars.geometry = rebuilt
-        geometry.dispose()
-        geometry = rebuilt
-        invalidate()
-      })
-      .catch(() => undefined)
+    void loadStarCatalogue(undefined, abort.signal).then((entries) => { if (!disposed) { yale = entries; rebuild() } }).catch(() => undefined).finally(() => { catalogueSettled = true })
+    // Two bounded demand requests. Commit point/diffuse complements together.
+    void Promise.all([fetchBuffer('gaia.bin'), fetchBuffer('integrated-light.bin')]).then(([catalogue, light]) => {
+      if (disposed) return
+      const entries = parseGaiaCatalogue(catalogue)
+      if (light.byteLength !== manifest.width*manifest.height*4) throw new Error('SKY_MAP_SIZE')
+      const view = new DataView(light)
+      const data = new Uint16Array(manifest.width*manifest.height)
+      for (let i=0; i<data.length; i++) {
+        const value = view.getFloat32(i*4, true)/4096
+        if (!Number.isFinite(value) || value < 0 || value > 65504) throw new Error('SKY_MAP_VALUE')
+        data[i] = DataUtils.toHalfFloat(value)
+      }
+      diffuseTexture = new DataTexture(data, manifest.width, manifest.height, RedFormat, HalfFloatType)
+      diffuseTexture.wrapS = RepeatWrapping
+      diffuseTexture.magFilter = LinearFilter
+      diffuseTexture.minFilter = LinearMipmapLinearFilter
+      diffuseTexture.generateMipmaps = true
+      diffuseTexture.needsUpdate = true
+      diffuseMaterial.uniforms.uMap!.value = diffuseTexture
+      diffuseMaterial.uniforms.uReady!.value = 1
+      gaia = entries
+      rebuild()
+    }).catch(() => undefined).finally(() => { surveySettled = true })
   }
-
-  // Star opacity has two independent inputs. Keeping them apart stops the
-  // quality factor from compounding on repeated calls, or from being wiped by
-  // the next palette change.
-  let paletteOpacity = 0.5
-  let qualityOpacity = 1
-  const applyStarOpacity = (): void => {
-    pointsMaterial.uniforms.uOpacity!.value = paletteOpacity * qualityOpacity
+  const align = (): void => {
+    const [ra, dec] = targetCoordinates[targetId]
+    celestial.quaternion.copy(referenceSkyRotation(ra, dec, targetPosition, skyConditions[viewpoint].latitude))
+    pointsMaterial.uniforms.uTarget!.value.copy(equatorialDirection(ra, dec))
+    pointsMaterial.uniforms.uHideTarget!.value = ['betelgeuse', 'sirius', 'rigel'].includes(targetId) ? 1 : 0
   }
-
+  align()
   return {
-    scene,
-    stars,
-    setPalette(nextPalette) {
-      const luminance = new Color(nextPalette[2]).getHSL({ h: 0, s: 0, l: 0 }).l
-      paletteOpacity = Math.max(0.14, 0.58 - luminance * 0.8)
-      applyStarOpacity()
-      environment.setTint(nextPalette[2], 0.09)
-    },
-    setGlow(color, strength, glow) {
-      const environmentStrength = environmentTintStrength(strength)
-      environment.setTint(color, environmentStrength)
-      environment.setGlow(glow.color, glow.strength)
-    },
-    setHeroScreen(x, y, radius) {
-      environment.setHeroScreen(x, y, radius)
-    },
-    setPixelRatio(pixelRatio) {
-      pointsMaterial.uniforms.uPixelRatio!.value = pixelRatio
-    },
-    prefetch() {
-      environment.prefetch()
-    },
+    scene, stars,
+    ready: () => catalogueSettled && surveySettled && environment.ready(),
+    setTarget(id, position) { targetId = id; targetPosition.copy(position); align() },
+    setPalette() {},
+    setGlow() {},
+    setHeroScreen(x, y, radius) { environment.setHeroScreen(x, y, radius) },
+    setPixelRatio(value) { pointsMaterial.uniforms.uPixelRatio!.value = value },
+    prefetch() { environment.prefetch() },
     finish() { environment.finish() },
     setPaused(value) { environment.setPaused(value) },
-    setReducedMotion(reduced) {
-      reducedMotion = reduced
-      environment.setReducedMotion(reduced)
-      meteors.setReducedMotion(reduced)
+    setReducedMotion(value) {
+      reducedMotion = value
+      environment.setReducedMotion(value)
+      meteors.setReducedMotion(value)
     },
-    setQuality(tier) {
-      qualityOpacity = tier === 'safe' ? 0.82 : 1
-      applyStarOpacity()
-      environment.setQuality(tier)
+    setQuality(tier) { environment.setQuality(tier) },
+    setViewpoint(id, immediate, onReady) {
+      return environment.setViewpoint(id, immediate, () => {
+        viewpoint = id
+        atmosphere.uExtinction.value = skyConditions[id].extinction
+        atmosphere.uLimit.value = skyConditions[id].limitingMagnitude
+        align()
+        onReady?.()
+      })
     },
-    setViewpoint(viewpointId, immediate, onReady) {
-      return environment.setViewpoint(viewpointId, immediate, onReady)
-    },
-    setView(yaw, pitch, verticalFovDegrees, viewportAspect) {
-      environment.setView(yaw, pitch, verticalFovDegrees, viewportAspect)
-      meteors.setAspect(viewportAspect)
-    },
+    setView(yaw, pitch, fov, aspect) { environment.setView(yaw, pitch, fov, aspect); meteors.setAspect(aspect) },
     update(time) {
       pointsMaterial.uniforms.uTime!.value = reducedMotion ? 0 : time
-      stars.rotation.y = reducedMotion ? 0 : time * 0.0007
       environment.update(time)
       meteors.update(time)
     },
     dispose() {
       disposed = true
+      abort.abort()
       environment.dispose()
       meteors.dispose()
       geometry.dispose()
       pointsMaterial.dispose()
+      diffuse.geometry.dispose()
+      diffuseMaterial.dispose()
+      diffuseTexture?.dispose()
     },
   }
 }

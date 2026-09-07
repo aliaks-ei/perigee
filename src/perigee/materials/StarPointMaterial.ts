@@ -1,9 +1,11 @@
-import { AdditiveBlending, Color, ShaderMaterial } from 'three'
+import { AdditiveBlending, Color, ShaderMaterial, Vector3 } from 'three'
+import { PSF_SIGMA_CSS, PSF_ENCLOSED, SKY_PHOTOMETRY_GLSL } from '../math/skyPhotometry'
 
 export interface StarPointMaterialSet {
   material: ShaderMaterial
   setVisibility: (value: number) => void
   setStrength: (value: number) => void
+  setAtmosphere: (altitude: number, transmission: readonly number[]) => void
 }
 
 /**
@@ -11,7 +13,7 @@ export interface StarPointMaterialSet {
  * compact billboard keeps a definite white core in every quality tier while
  * leaving only a narrow trace of the star's colour around it.
  */
-export function createStarPointMaterial(color: string): StarPointMaterialSet {
+export function createStarPointMaterial(color: string | Color): StarPointMaterialSet {
   const material = new ShaderMaterial({
     uniforms: {
       uColor: { value: new Color(color) },
@@ -19,6 +21,8 @@ export function createStarPointMaterial(color: string): StarPointMaterialSet {
       uVisibility: { value: 1 },
       uStrength: { value: 1 },
       uTime: { value: 0 },
+      uAltitude: { value: 1 },
+      uTransmission: { value: new Vector3(1, 1, 1) },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -33,22 +37,22 @@ export function createStarPointMaterial(color: string): StarPointMaterialSet {
       uniform float uVisibility;
       uniform float uStrength;
       uniform float uTime;
+      uniform float uAltitude;
+      uniform vec3 uTransmission;
       varying vec2 vUv;
+      ${SKY_PHOTOMETRY_GLSL}
 
       void main() {
         vec2 centered = (vUv - 0.5) * 2.0;
         float r = length(centered);
         if (r > 1.0) discard;
 
-        float core = 1.0 - smoothstep(0.04, 0.22, r);
-        float fringe = (1.0 - smoothstep(0.12, 0.72, r)) * 0.42;
-        float trace = (1.0 - smoothstep(0.35, 1.0, r)) * 0.09;
-        float twinkle = 0.94 + 0.06 * sin(uTime * 2.1) * sin(uTime * 0.73 + 1.4);
-        float alpha = (core + fringe + trace) * uOpacity * uVisibility;
-        // Deliberately sub-bloom: this is the visible point, never its glare.
-        vec3 whiteCore = vec3(1.0, 0.985, 0.96) * core * 0.58;
-        vec3 tintedEdge = mix(vec3(1.0), uColor, 0.58) * (fringe + trace) * twinkle;
-        gl_FragColor = vec4((whiteCore + tintedEdge) * uStrength, alpha);
+        float profile = exp(-8.0*r*r) / ${(2 * Math.PI * PSF_SIGMA_CSS ** 2 * PSF_ENCLOSED).toFixed(9)};
+        float twinkle = scintillation(uTime, 23.7, uAltitude);
+        vec3 color = uColor / max(dot(uColor, vec3(.2126,.7152,.0722)), .001);
+        // Profile appears exactly once: additive alpha is only the lifecycle
+        // fade. Previously both RGB and alpha carried the profile, squaring it.
+        gl_FragColor = vec4(color*uTransmission*profile*uStrength*twinkle, uOpacity*uVisibility);
       }
     `,
     transparent: true,
@@ -63,7 +67,12 @@ export function createStarPointMaterial(color: string): StarPointMaterialSet {
       material.uniforms.uVisibility!.value = Math.min(Math.max(value, 0), 1)
     },
     setStrength(value) {
-      material.uniforms.uStrength!.value = Math.min(Math.max(value, 0.72), 1.35)
+      material.uniforms.uStrength!.value = Math.max(value, 0)
+    },
+    setAtmosphere(altitude, transmission) {
+      material.uniforms.uAltitude!.value = Math.sin(altitude)
+      const color = material.uniforms.uTransmission!.value as Vector3
+      color.set(transmission[0]!, transmission[1]!, transmission[2]!)
     },
   }
 }

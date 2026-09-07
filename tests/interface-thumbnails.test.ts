@@ -11,7 +11,7 @@ const publicFiles = new Set(
 describe('interface thumbnails', () => {
   it('gives every object its own thumbnail in the thumbs folder', () => {
     for (const object of skyObjects) {
-      expect(object.thumbnail, object.id).toMatch(/^\/assets\/objects\/thumbs\/[a-z-]+\.webp$/)
+      expect(object.thumbnail, object.id).toMatch(/^\/assets\/objects\/thumbs\/[a-z0-9-]+\.webp$/)
       expect(publicFiles.has(object.thumbnail), `missing ${object.thumbnail}`).toBe(true)
     }
     // The three stars used to share one orange texture, which showed Betelgeuse
@@ -21,7 +21,7 @@ describe('interface thumbnails', () => {
 
   it('gives every viewpoint a landscape thumbnail', () => {
     for (const viewpoint of viewpoints) {
-      expect(viewpoint.thumbnail, viewpoint.id).toMatch(/^\/assets\/environments\/thumbs\/[a-z-]+\.webp$/)
+      expect(viewpoint.thumbnail, viewpoint.id).toMatch(/^\/assets\/environments\/thumbs\/[a-z0-9-]+\.webp$/)
       expect(publicFiles.has(viewpoint.thumbnail), `missing ${viewpoint.thumbnail}`).toBe(true)
     }
   })

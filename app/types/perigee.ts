@@ -10,6 +10,13 @@ export type SkyObjectId =
   | 'andromeda'
 
 export type ViewpointId = 'rooftop' | 'hilltop' | 'lakeside' | 'cabo-da-roca'
+export interface StillExportOptions {
+  /** Omit for automatic device-appropriate resolution and fallback. */
+  longEdge?: 3840 | 7680
+  signal?: AbortSignal
+  onProgress?: (progress: number) => void
+}
+
 export type QualityTier = 'high' | 'balanced' | 'safe'
 
 export interface DistancePreset {
@@ -110,6 +117,7 @@ export interface PerigeeController {
    * preserved, so the copy has to happen in the same task as the render.
    */
   captureFrame(): HTMLCanvasElement | null
+  exportStill(options: StillExportOptions): Promise<Blob>
   resetView(): void
   /**
    * Runs `listener` once per rendered frame, after the camera has moved and

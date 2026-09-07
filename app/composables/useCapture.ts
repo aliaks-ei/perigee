@@ -6,7 +6,6 @@ import {
   captureCaption,
   captureFileName,
   captureShareUrl,
-  composeCapture,
   type CaptureSubject,
 } from '~/utils/sceneCapture'
 
@@ -21,14 +20,15 @@ export interface CaptureActionFeedback {
  * Module-level, like `usePerigee`: one capture belongs to the session, not to
  * whichever component happened to ask for it.
  */
+const exportProgress = ref(0)
+const exportBlob = shallowRef<Blob | null>(null)
+let exportAbort: AbortController | null = null
 const capturing = ref(false)
 const captureOpen = ref(false)
 const captureError = ref<string | null>(null)
 const actionFeedback = ref<CaptureActionFeedback | null>(null)
 const previewUrl = ref<string | null>(null)
 const subject = shallowRef<CaptureSubject | null>(null)
-/** The untouched frame, retained until the viewer saves or dismisses it. */
-const frame = shallowRef<HTMLCanvasElement | null>(null)
 let messageTimer: ReturnType<typeof setTimeout> | null = null
 
 function announce(action: CaptureAction, message: string): void {
@@ -42,34 +42,14 @@ function releasePreview(): void {
   previewUrl.value = null
 }
 
-function composed(): HTMLCanvasElement | null {
-  const source = frame.value
-  if (!source) return null
-  const current = subject.value
-  return composeCapture(
-    source,
-    current ? captureCaption(current) : null,
-  )
-}
-
-async function refreshPreview(): Promise<void> {
-  const canvas = composed()
-  if (!canvas) return
-  const blob = await canvasToBlob(canvas)
-  releasePreview()
-  previewUrl.value = URL.createObjectURL(blob)
-}
-
 async function exportFile(): Promise<File | null> {
-  const canvas = composed()
   const current = subject.value
-  if (!canvas || !current) return null
-  const blob = await canvasToBlob(canvas)
-  return new File([blob], captureFileName(current), { type: blob.type })
+  const blob = exportBlob.value
+  return blob && current ? new File([blob], captureFileName(current), { type: 'image/png' }) : null
 }
 
 export function useCapture() {
-  const { captureFrame, currentObject, currentPreset, currentViewpointId, viewpoints, angularDiameter, currentEncounter, encounterStatus } = usePerigee()
+  const { exportStill, currentObject, currentPreset, currentViewpointId, viewpoints, angularDiameter, currentEncounter, encounterStatus } = usePerigee()
 
   const caption = computed(() => subject.value ? captureCaption(subject.value) : null)
 
@@ -93,20 +73,39 @@ export function useCapture() {
     capturing.value = true
     captureError.value = null
     actionFeedback.value = null
+    exportBlob.value = null
+    exportProgress.value = 0
     analytics.track('capture', { outcome: 'attempt' })
     try {
-      const source = captureFrame()
-      if (!source) throw new Error('CAPTURE_UNAVAILABLE')
-      frame.value = source
+      releasePreview()
       subject.value = describeCurrentView()
-      await refreshPreview()
       captureOpen.value = true
+      exportAbort = new AbortController()
+      const blob = await exportStill({ signal: exportAbort.signal,
+        onProgress: (value) => { exportProgress.value = value } })
+      exportBlob.value = blob
+      // Keep the dialog's decoded preview small; download retains the native PNG.
+      const bitmap = await createImageBitmap(blob, { resizeWidth: Math.max(1, Math.round(1200 * Math.min(1, window.innerWidth / window.innerHeight))), resizeQuality: 'high' })
+      const preview = document.createElement('canvas')
+      try {
+        preview.width = bitmap.width
+        preview.height = bitmap.height
+        const context = preview.getContext('2d')
+        if (!context) throw new Error('CAPTURE_PREVIEW_UNAVAILABLE')
+        context.drawImage(bitmap, 0, 0)
+        const previewBlob = await canvasToBlob(preview)
+        if (exportAbort.signal.aborted) throw new DOMException('Capture cancelled', 'AbortError')
+        previewUrl.value = URL.createObjectURL(previewBlob)
+      } finally { bitmap.close(); preview.width = preview.height = 1 }
       analytics.track('capture', { outcome: 'complete' })
-    } catch {
+      return
+    } catch (error) {
+      if (exportAbort?.signal.aborted || error instanceof DOMException && error.name === 'AbortError') { captureError.value = 'Capture cancelled.'; return }
       captureError.value = 'This sky could not be captured. Try again in a moment.'
       analytics.track('capture', { outcome: 'failed' })
     } finally {
       capturing.value = false
+      exportAbort = null
     }
   }
 
@@ -132,15 +131,18 @@ export function useCapture() {
   }
 
   function close(): void {
+    exportAbort?.abort()
+    exportBlob.value = null
     captureOpen.value = false
     releasePreview()
-    frame.value = null
     subject.value = null
     if (messageTimer) clearTimeout(messageTimer)
     actionFeedback.value = null
   }
 
   return {
+    exportProgress: readonly(exportProgress),
+    cancelExport: () => exportAbort?.abort(),
     capturing: readonly(capturing),
     captureOpen: readonly(captureOpen),
     captureError: readonly(captureError),

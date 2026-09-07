@@ -1,0 +1,137 @@
+{
+  "provenance": {
+    "catalogue": {
+      "url": "https://gea.esac.esa.int/tap-server/tap/async",
+      "author": "ESA/Gaia/DPAC",
+      "query": "SELECT source_id,ra,dec,phot_g_mean_mag,phot_g_mean_flux,bp_rp FROM gaiadr3.gaia_source WHERE phot_g_mean_mag < 10 ORDER BY source_id",
+      "band": "Gaia G 329.402-1030.196 nm; BP-RP display colour proxy",
+      "credit": "Gaia Collaboration et al. (2023), A&A 674, A1; doi:10.1051/0004-6361/202243940"
+    },
+    "survey": {
+      "url": "https://alasky.cds.unistra.fr/ancillary/GaiaDR3/G-flux-map",
+      "author": "T. Boch (CDS), CNRS/Universite de Strasbourg; ESA/Gaia/DPAC",
+      "license": "ODbL-1.0",
+      "propertiesUrl": "https://alasky.cds.unistra.fr/ancillary/GaiaDR3/G-flux-map/properties",
+      "files": "Norder0/Dir0/Npix{0..11}.fits",
+      "nativeDimensions": "12 x 512 x 512 order-0 HEALPix NESTED faces",
+      "coverage": "full sky, equatorial ICRS",
+      "release": "2022-06-16T14:31Z"
+    },
+    "derivatives": {
+      "license": "ODbL-1.0 (Gaia derivative database and integrated-light map)",
+      "projection": "1024x512 equirectangular; first row north, columns increasing RA, pixel centres; no sRGB transform",
+      "units": "linear G flux/sr relative to a G=2 source",
+      "colorTreatment": "diffuse neutral continuum; catalogue BP-RP to B-V proxy; runtime transmission reddens near horizon",
+      "processing": "scripts/sky-assets.py /private/tmp; dependencies numpy scipy astropy astropy-healpix",
+      "sourceCache": "/private/tmp/perigee-gaia-* (external, ephemeral; reacquire if absent)"
+    }
+  },
+  "version": "1abba926ac03",
+  "baseUrl": "/assets/stars/1abba926ac03",
+  "width": 1024,
+  "height": 512,
+  "epoch": "ICRS J2016.0 (Gaia); Yale J2000.0",
+  "gaiaPointCount": 96968,
+  "yalePointCount": 9096,
+  "queryCount": 482106,
+  "matchedGaiaCount": 9713,
+  "pointLimitG": 8.5,
+  "diffuseNativeNside": 64,
+  "fluxTileToCatalogueFactor": 0.954929658551372,
+  "brightPixelRatioPercentiles": [
+    0.9556768953615022,
+    0.9609623561110934,
+    0.9876678009206241
+  ],
+  "oversubtractedFluxFraction": 0.0,
+  "residualFluxFraction": 0.6625815449603455,
+  "sources": [
+    {
+      "file": "perigee-gaia-bright.csv",
+      "sha256": "2c7d9e1628538a6de5b1d2765240b78f66f1f7766a833015b74892def5cff12b",
+      "bytes": 45833262
+    },
+    {
+      "file": "bsc5.bin",
+      "sha256": "ad669f8885b3987104e0f5b2841da4e20e416db4f418806cdbc7f05f351b7aa4",
+      "bytes": 72776
+    },
+    {
+      "file": "perigee-gaia-flux-0.fits",
+      "sha256": "772e88138efb076f1620c7ffc0dcfff560eab7d6997fcc0849aadf36e1ccd6a3",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-1.fits",
+      "sha256": "a47dca893addd302639c412c1284d0ce4d7ce2ffaa0126365e0456d02b2911e1",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-2.fits",
+      "sha256": "717e970a5f2bc6b7c77081a234f710689f9d24805a07c5132862998513b05e21",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-3.fits",
+      "sha256": "a1d4964da55db66f97878b188fa359a9d8a8693e4cff8fd7aa6017f051d7be8a",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-4.fits",
+      "sha256": "003006aff78758ef73277035c3f8361d4c62749e44bd69dadb2da64a352cf481",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-5.fits",
+      "sha256": "5af3d28a24d5a7f33a968787ce5128ce8d1e87e6fa4bdc2b8f3f7e9e9f670da1",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-6.fits",
+      "sha256": "f9b8136cf416118c1e536d28eeaf9d4856c72c206aed36ce4a91f28797282af3",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-7.fits",
+      "sha256": "d6c1f9cfe78f5280ed90ea4341ca4ffde0bb1072a6cb0a60942132cda0801a04",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-8.fits",
+      "sha256": "c8df1b7a29cb7c7106b2ed9785e8db7c9fc4e034ea1c32f4d1854ec60ca71968",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-9.fits",
+      "sha256": "4ed2ad0a49643c12b47cc35b69932553ab548e9836c5ea9b2d2c68fede0bd41a",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-10.fits",
+      "sha256": "b51e0fefeaa9227932786efb04db7657f89e0ca99d60f998ae126f20195c1f82",
+      "bytes": 1054080
+    },
+    {
+      "file": "perigee-gaia-flux-11.fits",
+      "sha256": "fc87433009ef6ec0070ca55b258812823e30c2b76c578545591cb20da9a11ade",
+      "bytes": 1054080
+    }
+  ],
+  "outputs": [
+    {
+      "file": "bsc5.bin",
+      "sha256": "ad669f8885b3987104e0f5b2841da4e20e416db4f418806cdbc7f05f351b7aa4",
+      "bytes": 72776
+    },
+    {
+      "file": "gaia.bin",
+      "sha256": "272a54fa7b1eb52e729aa1aa1942722d5169524011f0b680d44aff7f284d5c4d",
+      "bytes": 1163628
+    },
+    {
+      "file": "integrated-light.bin",
+      "sha256": "d2ddc68fb596db51ece98bf8b8e4694388754ed2af6317afd947e959f0bae8b5",
+      "bytes": 2097152
+    }
+  ]
+}

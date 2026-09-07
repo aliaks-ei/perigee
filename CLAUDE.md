@@ -41,8 +41,10 @@ Rendering is a hybrid and the switch is inverted on purpose:
   (`createEnvironmentLayer`, a photographic plate per viewpoint), the star field, and the hero
   object. Effects run last, in three passes: bloom (its own pass, enabled only for stars and the
   galaxy), then vignette, AgX tone mapping and the film dither/grain, then SMAA — SMAA is last on
-  purpose, because its edge detection is tuned for tone-mapped luma, not raw HDR. High quality also
-  uses 4x composer multisampling to preserve crisp hero silhouettes; balanced and safe do not.
+  purpose, because its edge detection is tuned for tone-mapped luma, not raw HDR.
+  Automatic high quality requests native DPR within device/pixel limits and uses
+  SMAA alone; balanced/safe preserve lower budgets. A separate tiled still renderer
+  accumulates four HDR samples and reuses frozen full-frame bloom.
 - `TextureCache.ts` owns URL-deduplicated textures through explicit leases. Active and transitioning
   heroes/plates pin their maps. Unpinned entries are evicted by recency against 256/160/96 MiB
   estimated high/balanced/safe budgets. Speculation decodes at most two candidates without uploading;
@@ -63,10 +65,11 @@ Rendering is a hybrid and the switch is inverted on purpose:
 - The backdrop takes the hero's projected position and radius each frame and paints its glow into
   the sky and onto the lit parts of the plate. A star's halo is a billboard (`GlareMaterial`), not
   bloom.
-- Rocky relief uses aligned elevation-derived normal maps (`scripts/normal-maps.py`) with the
-  existing tangent/V-flip convention. Cloud decks no longer infer slopes from albedo brightness.
-  Saturn's equatorial rings cast and receive shadows using the same local Sun direction; the
-  ring-alpha-to-optical-depth approximation is authored, as documented on `/method`.
+- Planetary maps and terrain are prepared by `scripts/planet-assets.py`; `planet/PlanetTiles.ts`
+  streams budgeted colour detail over complete bases. Rocky normals use physical elevation slopes;
+  sufficiently large views also displace the surface and sample terrain shadows. Saturn uses a
+  measured UV optical-depth profile independently of ring colour/alpha. Inferred coverage and
+  photometric limits are documented in `docs/planet-assets.md` and `/method`.
 - Reduced motion freezes hero spin, shader time, film time, star drift/twinkle and meteors. Settled
   scenes render on invalidation; pointer input, resources, selection, resize and recovery wake the
   same frame loop. Normal motion remains full cadence. Planets use recorded periods at 60x time;
@@ -91,11 +94,12 @@ Rendering is a hybrid and the switch is inverted on purpose:
 
 ## Contracts to preserve
 
-- **The device pixel ratio is capped inside `PerigeeScene.resize`, never at the call site.** The
-  resize observer reports the raw ratio. DPR ceilings are 2x/1.5x/1x and pixel budgets are
-  8,294,400/3,686,400/2,073,600 for high/balanced/safe, also bounded by texture dimensions.
-  Repeated identical resizes do not reallocate buffers; responsive placement preserves the
-  current angular scale instead of snapping an interrupted distance animation to its target.
+- **The device pixel ratio is capped inside `PerigeeScene.resize`, never at the call site.**
+  The observer reports raw DPR. Automatic high requests native DPR within 16,588,800
+  pixels; balanced/safe use 1.5×/1× and 3,686,400/2,073,600 pixels. Hardware texture,
+  renderbuffer and viewport dimensions also bound allocation. There is no quality
+  menu. Sustained overload lowers quality; known weak devices start lower. Identical
+  resizes do not reallocate buffers, and interrupted angular scale stays intact.
 - **Textures and geometry are shared; `disposeObject` releases materials and texture leases.** Anything that
   disposes a cached texture or the shared sphere/ring geometry breaks every later swap.
 - **Every shot must be interruptible, and its promise must settle on every exit path** — completion,
@@ -143,8 +147,9 @@ Rendering is a hybrid and the switch is inverted on purpose:
 
 ## Assets
 
-Runtime textures in `public/assets/objects/` are CC BY 4.0 from Solar System Scope and are **not**
-relicensed by this repo. Any new asset needs an entry in `public/assets/ATTRIBUTIONS.md`,
+Runtime textures in `public/assets/objects/` have source-specific terms: NASA/USGS/Hubble
+observational products, CC BY 4.0 Andromeda imagery, and the legacy Solar System Scope ring
+colour. They are **not** relicensed by this repo. Any new asset needs an entry in `public/assets/ATTRIBUTIONS.md`,
 `src/perigee/AssetManifest.ts`, and the object's `attributionIds`.
 
 `thumbnail` must point at `public/assets/objects/thumbs/` (160x160 WebP), never at a full surface
@@ -154,10 +159,11 @@ The star field's brightness distribution comes from the Yale Bright Star Catalog
 `public/assets/stars/bsc5.bin` by `scripts/star-catalogue.py`; a procedural field stands in until it
 loads and if it fails.
 
-Normal maps must be named `*-normal.*`. The texture cache keys colour space off that suffix, so a
-map named anything else is decoded through sRGB and its slopes come out bent.
-`scripts/normal-maps.py` builds them from LOLA/MOLA elevation grids; the source DEMs are ~32 MB each
-and are deliberately not kept in the repository.
+Data maps must be named `*-normal.*`, `*-height.*` or `*-depth.*`; the texture cache uses these
+suffixes to bypass sRGB conversion. `scripts/planet-assets.py` builds aligned physical terrain
+from LOLA/MOLA. Scientific masters stay outside the repository. The earlier
+`scripts/normal-maps.py` recipe is historical and produces exaggerated legacy normals.
+New `/planets/` and `/andromeda/` assets intentionally bypass optional KTX2 siblings.
 
 `scripts/audio.sh` prepares the ambient music with `ffmpeg` (`brew install ffmpeg`): it cuts a
 loopable section out of each master, normalises it to −20 LUFS, bakes a four-second crossfade so the

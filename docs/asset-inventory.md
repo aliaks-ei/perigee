@@ -1,5 +1,9 @@
 # Runtime asset inventory
 
+Historical snapshot. Detail/delivery decisions below describe the earlier implementation.
+Current rendering and delivery behavior is documented in
+[Rendering quality and still export](./rendering-quality.md) and the source records below.
+
 Recorded 2026-09-06 from the working tree, against baseline `a9fc1946d6fb21edf750feed52835ad96e26d06f`.
 
 Dimensions and transfer bytes below are file measurements. Decoded CPU and GPU figures
@@ -67,3 +71,63 @@ noise. A baked RGBA8 4096-square alternative would add approximately 85.3 MiB wi
 mipmaps; observational imagery also needs foreground-star removal, a documented crop,
 and license/color review. No comparative GPU measurement exists, so neither alternative
 is presented as faster or adopted on that assumption.
+
+
+## Chunk 1 observational Andromeda — 2026-09-07
+
+This section supersedes the historical R7 procedural-galaxy decision above.
+Source version: `55825fd3438b`. Detailed provenance, processing and resource
+boundaries are in [andromeda-assets.md](./andromeda-assets.md).
+
+| Derivative | Tiles | Transfer bytes |
+| --- | ---: | ---: |
+| 1024×512 complete lossless fallback | 1 | 578,150 |
+| 2048×1024 | 8 | 1,378,966 |
+| 4096×2048 | 32 | 5,286,984 |
+| 8192×4096 | 128 | 19,209,108 |
+| 16384×8192 | 512 | 56,007,754 |
+| Total committed observational derivatives | 681 | 82,460,962 |
+
+Each detail tile is 512×512 plus an 8-pixel border on every side. The full pyramid
+is not fetched on entry: only the base is required; selected visible detail is
+streamed within its slot budget. A tile costs an estimated 1.42 MiB GPU memory
+with mips; CPU bitmaps and render targets are additional. WebP delivery is explicit
+for the galaxy, including builds with optional planetary KTX2 enabled.
+
+DSS2's source is 21299×13775; Hubble's source is 42208×9870. The sources have different
+footprints, filters and photographic stretches. The 16K target is not a claim of
+uniform Hubble detail across the whole field. Gaia selection contains 41,013 entries;
+15,206 masks fall inside the shipped field. Fainter/unclassified foreground sources
+may remain. Visual acceptance and replacement thumbnails/cards await manual review.
+
+## Chunk 2 observational planets — 2026-09-07
+
+The active planetary manifest supersedes the earlier surface tables. Version
+`1b448275b234` contains **1354 derivatives, 139975140 bytes**, demand-loaded.
+
+| Runtime asset | Resolution | Source/detail limit |
+| --- | --- | --- |
+| Moon/Mars bases | 2048×1024 each | Complete fallback |
+| Moon/Mars colour pyramids | 4096/8192/16384, 672 bordered tiles per body | Native observational detail; device-budgeted selection |
+| Moon/Mars height and normals | 4096×2048 | Physical elevation, RG16 height/lossless normal |
+| Jupiter | 3600×1800 | November 2024 OPAL map |
+| Saturn | 1800×900 | August 2024 OPAL map with reconstructed gaps |
+| Neptune | 720×360 | June 2025 OPAL grid already oversamples observations |
+| Saturn optical depth | 8192×1 | 5 km Voyager UVS radial profile; linear RG16 |
+
+Menu thumbnails have new versioned URLs, including the observational Andromeda
+preview. Social/encounter cards remain historical. Full source URLs, source and
+derivative hashes, colour treatment, masks, resource estimates and limitations
+are in [planet-assets.md](./planet-assets.md) and runtime provenance.
+
+
+## Chunk 3 reference sky and stellar previews — 2026-09-07
+
+Active sky: `stars/1abba926ac03/`, 3,333,556 bytes: versioned Yale catalogue,
+96,968 additional Gaia points and a 1024x512 linear G-band integrated-light map.
+Sources, flux subtraction, ODbL license, epoch, projection, limitations and
+analytical memory estimates are recorded in [stellar-sky.md](./stellar-sky.md).
+Exact hashes and provenance: `src/perigee/scenes/skyManifest.json`.
+The synthetic Milky Way population is replaced. No KTX2 conversion applies.
+Stellar thumbnails now use content-hashed CPU photosphere illustrations from
+`scripts/star-thumbs.py`; they are neither observations nor browser captures.
