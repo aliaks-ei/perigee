@@ -98,6 +98,18 @@ The authored blue halo and ground illumination are zero for every galaxy size.
 
 ## Loading and resource limits
 
+Committed image derivatives for version `55825fd3438b` (file bytes, excluding
+provenance; not an initial download or GPU-memory measurement):
+
+| Derivative | Tiles | Transfer bytes |
+| --- | ---: | ---: |
+| 1024×512 complete lossless fallback | 1 | 578,150 |
+| 2048×1024 | 8 | 1,378,966 |
+| 4096×2048 | 32 | 5,286,984 |
+| 8192×4096 | 128 | 19,209,108 |
+| 16384×8192 | 512 | 56,007,754 |
+| Total committed observational derivatives | 681 | 82,460,962 |
+
 `TileStream` owns transient leases, admits two fetch/decode/upload requests per
 hero, cancels superseded requests, releases stale results, and backs off failed
 URLs for 30 seconds. There are at most two live heroes during an object transition;

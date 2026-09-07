@@ -56,7 +56,9 @@ thumbnails `objects/thumbs/<body>-<version>.webp`.
 
 ## Legacy asset records
 
-The following records describe retained older assets and existing social cards.
+The following records describe older assets and existing social cards. Entries
+marked as removed name files deleted from the repository on 2026-09-07 once nothing
+loaded them; the records stay so the licence history of earlier releases is traceable.
 They do not override the active versioned observational sources above.
 
 ## Planetary surface textures
@@ -64,13 +66,13 @@ They do not override the active versioned observational sources above.
 - Source: [Solar System Scope textures](https://edu.solarsystemscope.com/textures/)
 - Author: INOVE / Solar System Scope
 - License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
-- Files: `moon.jpg`, `mars.jpg`, `jupiter.jpg`, `neptune.jpg`, `saturn-ring-2k.webp`, the 2048×1024 siblings `moon-2k.jpg`, `mars-2k.jpg`, `jupiter-2k.jpg`, and the derived thumbnails in `thumbs/`
+- Files: `saturn-ring-2k.webp` (still shipped, with its optional `saturn-ring-2k.ktx2` sibling). Removed 2026-09-07: `moon.jpg`, `mars.jpg`, `jupiter.jpg`, `neptune.jpg`, the 2048×1024 siblings `moon-2k.jpg`, `mars-2k.jpg`, `jupiter-2k.jpg`, their `.ktx2` siblings, and the derived thumbnails in `thumbs/`; the versioned observational maps above replaced them.
 - Modifications: Moon and Mars resampled to 4096×2048; Jupiter retained at 4096×2048. The `-2k` siblings are the same maps resampled to 2048×1024 for the safe quality tier; balanced and high retain the larger source maps. Saturn's ring downsampled from the source 8192×500 to 2048×64 as `saturn-ring-2k.webp`: the shader samples a single row of the strip, so the original's height was never read and its width cost 16 MB of GPU memory. The unmodified `saturn.jpg`, `saturn-ring.png` and `star-surface.jpg` were removed once nothing loaded them — Saturn renders from the enhanced map below, and stars are procedural. Runtime treatment adds color-managed lighting, fine-detail recovery, restrained surface response, and slow rotation.
 - Downloaded: 2026-08-28
 
 ### Interface thumbnails
 
-- Files: `thumbs/moon.webp`, `thumbs/mars.webp`, `thumbs/jupiter.webp`, `thumbs/saturn.webp`, `thumbs/neptune.webp`
+- Files: `thumbs/moon.webp`, `thumbs/mars.webp`, `thumbs/jupiter.webp`, `thumbs/saturn.webp`, `thumbs/neptune.webp` — removed 2026-09-07, replaced by the versioned `thumbs/<body>-<version>.webp` derivatives above.
 - Modifications: Centre square of each source map, resampled to 160×160 and exported as WebP. The object browser previously rendered the full 4096×2048 maps as thumbnails, which cost 8.3 MB to draw seven 64 px circles. `thumbs/saturn.webp` derives from `saturn-atmosphere-v2.webp` so the thumbnail matches what the renderer shows. The former shared `thumbs/star.webp`, cropped from the retired `star-surface.jpg`, was replaced by the procedural star thumbnails below.
 - License and attribution follow their sources above.
 - Created: 2026-08-30
@@ -84,18 +86,18 @@ visualization rather than scientific analysis.
 Attribution ID: `perigee-saturn-art`.
 
 - Source: Original AI-assisted texture generated for Perigee with OpenAI image generation, art-directed from the supplied Cassini-style reference
-- Files: `saturn-atmosphere-v2.webp`, and `saturn-atmosphere-v2-2k.webp` (the same map at 2048×1024 for the lower quality tiers)
+- Files: `saturn-atmosphere-v2.webp`, `saturn-atmosphere-v2-2k.webp` (the same map at 2048×1024 for the lower quality tiers) and their `.ktx2` siblings — removed 2026-09-07; Saturn renders from the OPAL map above.
 - Modifications: Generated as a lighting-neutral 1774×887 equirectangular diffuse map, resampled to 4096×2048, and exported as high-quality WebP. Directional lighting, limb falloff, and highlights remain runtime shader effects rather than baked into the asset.
 - Created: 2026-08-29
 
 ## Surface normal maps
 
-- Files: `moon-normal.webp`, `mars-normal.webp`
+- Files: `moon-normal.webp`, `mars-normal.webp` and their `.ktx2` siblings — removed 2026-09-07; the physical `terrain-normal.webp`/`terrain-height.png` pairs above replaced them.
 - Sources:
   - Moon: [LRO LOLA LDEM, 16 pixels/degree](https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/) — NASA / Goddard Space Flight Center / LOLA science team
   - Mars: [MGS MOLA MEGDR, 16 pixels/degree](https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/) — NASA / JPL / MOLA science team
 - License: Public domain (NASA data, distributed through the PDS Geosciences Node)
-- Modifications: The 5760×2880 elevation grids were rolled from their 0–360°E layout into the −180–180° layout the albedo maps use, resampled to 2048×1024, and converted to tangent-space normal maps by `scripts/normal-maps.py`. Ground spacing is computed per latitude from each body's radius, so slopes are correct relative to one another; the whole field is then exaggerated by a single factor (Moon 1.8×, Mars 5.2×) because true planetary relief is far too shallow to survive 8-bit encoding. The source elevation files are not kept in this repository.
+- Modifications: The 5760×2880 elevation grids were rolled from their 0–360°E layout into the −180–180° layout the albedo maps use, resampled to 2048×1024, and converted to tangent-space normal maps by the retired legacy generation script (preserved in Git history). Ground spacing is computed per latitude from each body's radius, so slopes are correct relative to one another; the whole field is then exaggerated by a single factor (Moon 1.8×, Mars 5.2×) because true planetary relief is far too shallow to survive 8-bit encoding. The source elevation files are not kept in this repository.
 - Purpose: Perceived surface detail comes from relief that answers to the sun. Deriving it from the albedo instead invents craters in the dark lunar maria and flattens the ones that are really there.
 - Downloaded: 2026-08-30
 
@@ -124,7 +126,7 @@ Attribution ID: `cabo-da-roca-reference`.
 ## Procedural project artwork
 
 - Source: Original work created for Perigee. No third-party asset is used.
-- Files: `thumbs/betelgeuse.webp`, `thumbs/sirius.webp`, `thumbs/rigel.webp`, `encounters/the-galaxy-hiding-in-our-sky.jpg`
+- Files: `thumbs/betelgeuse-5d4128be14cd.webp`, `thumbs/sirius-334f60b83553.webp`, `thumbs/rigel-bc3abdf6c7af.webp`, `encounters/the-galaxy-hiding-in-our-sky.jpg`. The unhashed `thumbs/betelgeuse.webp`, `thumbs/sirius.webp` and `thumbs/rigel.webp` were removed 2026-09-07.
 - Legacy galaxy encounter/social cards still depict the procedural
   renderer, pending manual acceptance and replacement captures for Chunk 1.
   The control-menu thumbnail was replaced with an observational derivative on 2026-09-07.
@@ -144,7 +146,7 @@ Attribution ID: `cabo-da-roca-reference`.
 
 - Source: [Yale Bright Star Catalog, 5th revised edition (BSC5)](http://tdc-www.harvard.edu/catalogs/bsc5.html) — Hoffleit, D. and Warren, W. H. Jr., 1991
 - License: Public domain (catalogue data distributed by the Harvard-Smithsonian Center for Astrophysics)
-- File: `stars/bsc5.bin`
+- File: `stars/1abba926ac03/bsc5.bin` (selected by `src/perigee/scenes/skyManifest.json`). The identical unversioned copy was removed on 2026-09-07; regeneration uses an external source cache or this active versioned copy.
 - Modifications: `scripts/star-catalogue.py` reads the fixed-column catalogue and packs right ascension, declination, visual magnitude and B−V colour index into an 8-byte record per star, sorted by magnitude. Stars without a magnitude are dropped. 9,096 stars in 73 kB.
 - Purpose: The star field's brightness distribution and colours. A generated field has a flat brightness distribution, which is what makes it read as generated; the catalogue carries the real few-bright, many-faint law. Positions retain the J2000 catalogue epoch; the runtime reference sky is registered to the staged target and viewpoint latitude. See `docs/stellar-sky.md`.
 - Downloaded: 2026-09-02

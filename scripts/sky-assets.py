@@ -43,7 +43,11 @@ assert np.isfinite(values[:, :4]).all() and (mag < 10).all()
 
 # Cross-match Yale to Gaia before drawing: one physical source, one point.
 # Yale's epoch/rounding and close multiples make 40 arcsec a conservative match.
-bsc_path = ROOT / 'public/assets/stars/bsc5.bin'
+bsc_path = CACHE / 'bsc5.bin'
+if not bsc_path.exists():
+    # Reuse the immutable catalogue already shipped with the active sky.
+    active_manifest = json.loads((ROOT / 'src/perigee/scenes/skyManifest.json').read_text())
+    bsc_path = ROOT / 'public' / active_manifest['baseUrl'].lstrip('/') / 'bsc5.bin'
 bsc_data = bsc_path.read_bytes()
 bsc = np.array(list(struct.iter_unpack('<Hhhh', bsc_data[8:]))) / 100
 dist, match = cKDTree(vectors(bsc[:, 0], bsc[:, 1])).query(vectors(ra, dec))
@@ -111,7 +115,7 @@ out = ROOT / 'public/assets/stars' / version
 out.mkdir(parents=True, exist_ok=True)
 (out / 'gaia.bin').write_bytes(packed)
 (out / 'integrated-light.bin').write_bytes(diffuse_bytes)
-# Immutable copy: retain the legacy URL only for historical compatibility.
+# Publish the catalogue with this sky version; no unversioned runtime copy.
 (out / 'bsc5.bin').write_bytes(bsc_data)
 manifest = {
     'provenance': {'catalogue': {'url': 'https://gea.esac.esa.int/tap-server/tap/async', 'author': 'ESA/Gaia/DPAC', 'query': 'SELECT source_id,ra,dec,phot_g_mean_mag,phot_g_mean_flux,bp_rp FROM gaiadr3.gaia_source WHERE phot_g_mean_mag < 10 ORDER BY source_id', 'band': 'Gaia G 329.402-1030.196 nm; BP-RP display colour proxy', 'credit': 'Gaia Collaboration et al. (2023), A&A 674, A1; doi:10.1051/0004-6361/202243940'}, 'survey': {'url': 'https://alasky.cds.unistra.fr/ancillary/GaiaDR3/G-flux-map', 'author': 'T. Boch (CDS), CNRS/Universite de Strasbourg; ESA/Gaia/DPAC', 'license': 'ODbL-1.0', 'propertiesUrl': 'https://alasky.cds.unistra.fr/ancillary/GaiaDR3/G-flux-map/properties', 'files': 'Norder0/Dir0/Npix{0..11}.fits', 'nativeDimensions': '12 x 512 x 512 order-0 HEALPix NESTED faces', 'coverage': 'full sky, equatorial ICRS', 'release': '2022-06-16T14:31Z'}, 'derivatives': {'license': 'ODbL-1.0 (Gaia derivative database and integrated-light map)', 'projection': '1024x512 equirectangular; first row north, columns increasing RA, pixel centres; no sRGB transform', 'units': 'linear G flux/sr relative to a G=2 source', 'colorTreatment': 'diffuse neutral continuum; catalogue BP-RP to B-V proxy; runtime transmission reddens near horizon', 'processing': 'scripts/sky-assets.py /private/tmp; dependencies numpy scipy astropy astropy-healpix', 'sourceCache': '/private/tmp/perigee-gaia-* (external, ephemeral; reacquire if absent)'}},

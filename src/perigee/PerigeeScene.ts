@@ -272,6 +272,8 @@ export class PerigeeScene implements PerigeeController {
   private distanceGeneration = 0
   private readonly outgoing = new Set<Group>()
   private readonly objectDirector = new ShotDirector()
+  /** Includes retirement of the outgoing hero, so queued swaps never cut a visible fade. */
+  private objectTransition: Promise<void> | null = null
   private readonly viewpointDirector = new ShotDirector()
   private bloom: BloomEffect | null = null
   private bloomPass: EffectPass | null = null
@@ -287,7 +289,7 @@ export class PerigeeScene implements PerigeeController {
   private galaxyWarmup: GalaxyMaterialSet | null = null
   /** Bumped by every object swap, so a superseded load can drop its work. */
   private generation = 0
-  /** Non-null only while an object swap is still loading its textures. */
+  /** Latest selection while loading, compiling, or waiting for the visible fade. */
   private pendingSelection: { objectId: SkyObjectId, presetId: string, generation: number, promise: Promise<void>, abort: AbortController } | null = null
   private readonly director = new ShotDirector()
   private readonly frameListeners = new Set<() => void>()
@@ -419,8 +421,19 @@ export class PerigeeScene implements PerigeeController {
     if (this.disposed || !this.renderer || !this.sky) return Promise.resolve()
     const definition = skyObjectsById[objectId]
     if (!definition.presets.some((candidate) => candidate.id === presetId)) return Promise.resolve()
+    if (!immediate && this.pendingSelection?.objectId === objectId) {
+      this.pendingSelection.presetId = presetId
+      return this.pendingSelection.promise
+    }
     const generation = ++this.generation
     this.pendingSelection?.abort.abort()
+    this.pendingSelection = null
+    // Returning to the visible object cancels speculation without rebuilding
+    // its materials, resetting its rotation, or fading it against a duplicate.
+    if (!immediate && this.hero && this.currentObjectId === objectId) {
+      const distance = this.currentPresetId === presetId ? Promise.resolve() : this.setDistance(presetId)
+      return Promise.all([distance, this.objectTransition]).then(() => undefined)
+    }
     const pending = { objectId, presetId, generation, promise: Promise.resolve(), abort: new AbortController() }
     this.pendingSelection = pending
     pending.promise = this.prepareObject(definition, pending, immediate).finally(() => {
@@ -441,8 +454,13 @@ export class PerigeeScene implements PerigeeController {
     const stale = (): boolean => this.disposed || this.contextLost || pending.generation !== this.generation
     if (stale()) { disposeObject(nextHero); return }
     try {
-      if (!immediate) await this.compile(nextHero)
+      if (!immediate) await this.compile(nextHero, pending.abort.signal)
     } catch (error) { disposeObject(nextHero); if (!stale()) throw error; return }
+    if (stale()) { disposeObject(nextHero); return }
+    // Prepare concurrently, but show only the latest request once the current
+    // two-hero blend lands. Cancellation releases a waiting hero immediately.
+    if (immediate) this.objectDirector.finish()
+    await this.waitForObjectTransition(pending.abort.signal)
     if (stale()) { disposeObject(nextHero); return }
     const preset = definition.presets.find((candidate) => candidate.id === pending.presetId) ?? definition.presets[0]!
     const placement = this.viewpointDirector.running && this.hero ? this.hero.position : this.heroPositionFor(this.currentViewpointId)
@@ -496,17 +514,22 @@ export class PerigeeScene implements PerigeeController {
     this.currentObjectId = definition.id
     this.currentPresetId = preset.id
     this.pendingSelection = null
-    this.applyShot(definition)
+    this.applyShot(definition, immediate ? 1 : 0)
     this.invalidate()
     this.applyGlow(definition, immediate ? 1 : 0)
+    const retirePrevious = (): void => {
+      if (previous && this.outgoing.delete(previous)) { this.sky.scene.remove(previous); disposeObject(previous) }
+      if (!this.disposed && this.hero === nextHero) this.applyGlow(definition, 1)
+    }
     if (!immediate) {
       const duration = this.reducedMotion || this.paused ? 0 : 1.1
-      await this.objectDirector.replace((timeline) => {
+      const transition = this.objectDirector.replace((timeline) => {
         const opacity = { value: 0 }
         timeline.to(opacity, { value: 1, duration, onUpdate: () => {
           this.invalidate()
           setObjectOpacity(nextHero, opacity.value)
           setGlareOpacity(built.glare, opacity.value)
+          this.sky.setTarget(definition.id, nextHero.position, opacity.value)
           this.applyGlow(definition, opacity.value ** 3)
         } }, 0)
         if (previous) {
@@ -517,10 +540,22 @@ export class PerigeeScene implements PerigeeController {
             setGlareOpacity(previousGlare, opacity.value)
           } }, 0)
         }
+      }).then(retirePrevious).finally(() => {
+        if (this.objectTransition === transition) this.objectTransition = null
       })
-    }
-    if (previous && this.outgoing.delete(previous)) { this.sky.scene.remove(previous); disposeObject(previous) }
-    if (!stale() && this.hero === nextHero) this.applyGlow(definition, 1)
+      this.objectTransition = transition
+      await transition
+    } else retirePrevious()
+  }
+
+  private waitForObjectTransition(signal: AbortSignal): Promise<void> {
+    const transition = this.objectTransition
+    if (!transition || signal.aborted) return Promise.resolve()
+    return new Promise((resolve) => {
+      const finish = (): void => { signal.removeEventListener('abort', finish); resolve() }
+      signal.addEventListener('abort', finish, { once: true })
+      void transition.then(finish, finish)
+    })
   }
 
   async setDistance(presetId: string, options?: { duration?: number }): Promise<void> {
@@ -1017,11 +1052,20 @@ export class PerigeeScene implements PerigeeController {
     this.warmupId = this.warmupTimeout ? window.setTimeout(warm, 1200) : window.requestIdleCallback(warm)
   }
 
-  private compile(object: Object3D): Promise<void> {
+  private compile(object: Object3D, requestSignal?: AbortSignal): Promise<void> {
     const renderer = this.renderer
     if (!renderer || this.disposed) return Promise.resolve()
-    const signal = this.compilationAbort.signal
-    const pending = Promise.resolve().then(() => compileScene(renderer, object, this.camera, this.sky.scene, signal))
+    const abort = new AbortController()
+    const cancel = (): void => abort.abort()
+    const lifecycleSignal = this.compilationAbort.signal
+    lifecycleSignal.addEventListener('abort', cancel, { once: true })
+    requestSignal?.addEventListener('abort', cancel, { once: true })
+    if (lifecycleSignal.aborted || requestSignal?.aborted) cancel()
+    const signal = abort.signal
+    const pending = Promise.resolve().then(() => compileScene(renderer, object, this.camera, this.sky.scene, signal)).finally(() => {
+      lifecycleSignal.removeEventListener('abort', cancel)
+      requestSignal?.removeEventListener('abort', cancel)
+    })
     this.compilations.add(pending)
     void pending.then(() => this.compilations.delete(pending), () => this.compilations.delete(pending))
     return pending
@@ -1129,6 +1173,10 @@ export class PerigeeScene implements PerigeeController {
     if (ringTexture) {
       const ringSet = createRingMaterial(ringTexture, flattening, ringDepth)
       const mesh = new Mesh(ringGeometry(), ringSet.material)
+      // The base/detail draw at 10/11. During a fade the base joins the
+      // transparent queue, so rings must still follow both. The body's depth
+      // hides the rear arc while the front arc composites over its surface.
+      mesh.renderOrder = 12
       mesh.rotation.x = Math.PI / 2
       group.add(mesh)
       ring = { set: ringSet, mesh }
@@ -1233,12 +1281,12 @@ export class PerigeeScene implements PerigeeController {
     this.camera.updateProjectionMatrix()
   }
 
-  private applyShot(definition: SkyObjectDefinition): void {
+  private applyShot(definition: SkyObjectDefinition, skyProgress = 1): void {
     const shot = definition.shot
     const kind = definition.kind
     const emissive = kind === 'star' || kind === 'galaxy'
     this.sky.setPalette(shot.skyPalette)
-    this.sky.setTarget(definition.id, this.heroPositionFor(this.currentViewpointId))
+    this.sky.setTarget(definition.id, this.hero?.position ?? this.heroPositionFor(this.currentViewpointId), skyProgress)
 
     this.sunWorld.set(...shot.sunDirection).normalize()
     const tier = this.quality.current

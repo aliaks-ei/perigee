@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Group, Mesh, ShaderMaterial } from 'three'
+import { Group, Mesh, ShaderMaterial, Vector3 } from 'three'
+import { referenceSkyRotation, targetCoordinates } from '../src/perigee/math/skyCoordinates'
+import { skyConditions } from '../src/perigee/math/skyPhotometry'
 import { skyAssetBuffer as data } from './sky-fixture'
 import manifest from '../src/perigee/scenes/skyManifest.json'
 import { createSkyScene } from '../src/perigee/scenes/createSkyScene'
@@ -14,6 +16,39 @@ const drain = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
 afterEach(() => vi.unstubAllGlobals())
 
 describe('sky asset lifecycle', () => {
+  it('blends catalogue orientation with the object fade and preserves progress during placement changes', () => {
+    vi.stubGlobal('fetch', undefined)
+    const sky = createSkyScene('safe')
+    const celestial = sky.stars.parent!
+    const origin = celestial.quaternion.clone()
+    const position = new Vector3(86, 118, -500)
+    sky.setTarget('sirius', position, 0)
+    expect(celestial.quaternion.angleTo(origin)).toBeCloseTo(0)
+    sky.setTarget('sirius', position, .5)
+    position.x = -115
+    sky.setTarget('sirius', position)
+    const [ra, dec] = targetCoordinates.sirius
+    const target = referenceSkyRotation(ra, dec, position, skyConditions.rooftop.latitude)
+    expect(celestial.quaternion.angleTo(origin.clone().slerp(target, .5))).toBeCloseTo(0)
+    sky.setTarget('sirius', position, 1)
+    expect(celestial.quaternion.angleTo(target)).toBeCloseTo(0)
+    sky.dispose()
+  })
+
+  it('begins a replacement sky orientation from the rendered state', () => {
+    vi.stubGlobal('fetch', undefined)
+    const sky = createSkyScene('safe')
+    const position = new Vector3(86, 118, -500)
+    sky.setTarget('sirius', position, .4)
+    const rendered = sky.stars.parent!.quaternion.clone()
+    sky.setTarget('andromeda', position, 0)
+    expect(sky.stars.parent!.quaternion.angleTo(rendered)).toBeCloseTo(0)
+    sky.setTarget('andromeda', position, 1)
+    const [ra, dec] = targetCoordinates.andromeda
+    expect(sky.stars.parent!.quaternion.angleTo(referenceSkyRotation(ra, dec, position, skyConditions.rooftop.latitude))).toBeCloseTo(0)
+    sky.dispose()
+  })
+
   it('retains the bright catalogue when the complementary survey pair fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
       ok: !url.endsWith('integrated-light.bin'), status: 404,

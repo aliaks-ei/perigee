@@ -64,6 +64,14 @@ convolution overlap. Native GPU rows are cropped, flipped and assembled without 
 
 ## Analytical resource envelope
 
+Environment variants come from `scripts/environment-variants.sh` and share the
+master crop within integer-pixel rounding. `environmentAssets.ts` selects the
+4K, 2K or safe landscape variant by quality tier, plus Cabo portrait variants
+by viewport aspect. Source dimensions, authored detail limits and credits are
+recorded in [ATTRIBUTIONS.md](../public/assets/ATTRIBUTIONS.md). Current scientific
+asset inventories and delivery contracts are in [planet-assets.md](./planet-assets.md),
+[andromeda-assets.md](./andromeda-assets.md) and [stellar-sky.md](./stellar-sky.md).
+
 | Resource | Bound / estimate |
 | --- | --- |
 | One tile edge, including padding | ≤1024 pixels and device limits |
