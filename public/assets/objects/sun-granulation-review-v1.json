@@ -1,0 +1,18 @@
+{
+  "kind": "original synthetic review-only art",
+  "width": 4096,
+  "height": 2048,
+  "projection": "equirectangular; row 0 south, row H-1 north; Three SphereGeometry UV; no ephemeris",
+  "created": "2026-10-01",
+  "rights": "Project-authored MIT; no third-party pixels",
+  "processing": "3D domain-warped jittered cells with multiscale body-space mottling, variable lanes, periodic 0.4px smoothing, bounded RGB grade, lossless WebP",
+  "limits": "Artistic granule scale/contrast; not calibrated photometry, observed global map, or current activity",
+  "sha256": "de2bc1270122e7f7906c4e8e1c569a0d74cc8f1b43bf495d04668eb525f03065",
+  "polarAtlas": {
+    "file": "sun-poles-review-v1.webp",
+    "width": 2048,
+    "height": 1024,
+    "projection": "orthographic x/z [-0.6,0.6]; left north, right south; row 0 z=-0.6; same original 3D field",
+    "sha256": "c2c4eed3231a671f2d060cc053c42b8f36c28dbcba488067cc9c63e6b893e8e5"
+  }
+}

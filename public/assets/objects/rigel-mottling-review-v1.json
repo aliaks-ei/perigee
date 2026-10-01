@@ -1,0 +1,18 @@
+{
+  "kind": "original synthetic Rigel review reconstruction",
+  "created": "2026-10-01",
+  "rights": "Project-authored MIT; no third-party pixels",
+  "width": 4096,
+  "height": 2048,
+  "projection": "equirectangular; row 0 south, last row north; atan(z,-x); no ephemeris",
+  "processing": "quintic 3D value noise, vector domain warp, four spatial bands, bounded display sRGB grade, lossless WebP",
+  "limits": "Invented mottling sizes, positions and contrast; no measured resolution, cell sizes, current pattern, convection model or calibrated photometry",
+  "sha256": "19a02a5cfea08018ae4eb7ae0d72b430410b5e0b31ed11ac4c07a7e9441b4f2c",
+  "polarAtlas": {
+    "file": "rigel-poles-review-v1.webp",
+    "width": 2048,
+    "height": 1024,
+    "projection": "same field; x/z [-0.6,0.6]; left north, right south; row 0 z=-0.6",
+    "sha256": "38d5ca2ffa4d37294b96c09bfd672f4f19015145ddbecc84ec5be6c4f5411e50"
+  }
+}

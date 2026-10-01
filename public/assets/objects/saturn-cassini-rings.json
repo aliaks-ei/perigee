@@ -1,0 +1,36 @@
+{
+  "source": "PIA11142, Cassini ISS RGB 2008-11-26, NASA/JPL/SSI",
+  "sourceSha256": "b606f18d7a9a65320f6bc9fa023c0f506b45802141d9526e09c9fff823fc0d56",
+  "outputSha256": "10f55a6589e777f1e08b62e6c103f748aab469058ec2a0b3564467743f15d0e1",
+  "rows": [
+    796,
+    805
+  ],
+  "radiusKm": [
+    74500,
+    92000,
+    117580,
+    122200,
+    133590,
+    136530,
+    136780,
+    140220
+  ],
+  "sourcePixels": [
+    1161,
+    4160,
+    8103,
+    8570,
+    10576,
+    11022,
+    11060,
+    11634
+  ],
+  "nativeSize": [
+    12126,
+    1439
+  ],
+  "limits": "Approximate display-mosaic registration and .08 floor; not calibrated ring albedo. Separate Voyager UVS tau.",
+  "sourceUrl": "https://science.nasa.gov/photojournal/a-full-sweep-of-saturns-rings/",
+  "assetUrl": "https://d2pn8kiwq2w21t.cloudfront.net/original_images/jpegPIA11142.jpg"
+}

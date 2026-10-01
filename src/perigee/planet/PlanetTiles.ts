@@ -46,7 +46,7 @@ export class PlanetTiles {
   private readonly point = new Vector3()
   private readonly sphere = new Sphere()
 
-  constructor(private readonly body: PlanetId, private readonly surface: Mesh<SphereGeometry, ShaderMaterial>, private readonly invalidate: () => void) {
+  constructor(private readonly body: PlanetId, private readonly surface: Mesh<SphereGeometry, ShaderMaterial>, private readonly invalidate: () => void, private readonly source?: { version: string, width: number, baseUrl?: string }) {
     this.config = manifest.bodies[body]
     this.stream = new TileStream(async (url, signal) => {
       const lease = await acquireTextureTile(url, signal)
@@ -115,7 +115,7 @@ export class PlanetTiles {
         this.selected = candidates.slice(0, capacity / 2).map((item) => item.tile)
       }
     }
-    const keyFor = (tile: Address): string => `${manifest.baseUrl}/${this.body}/${tile.width}/${tile.x}-${tile.y}.webp`
+    const keyFor = (tile: Address): string => `${this.source?.baseUrl ?? manifest.baseUrl}/${this.body}/${tile.width}/${tile.x}-${tile.y}.webp`
     const wanted = new Set(this.selected.map(keyFor))
     for (const [key, patch] of this.patches) {
       const target = wanted.has(key) ? 1 : 0
@@ -146,6 +146,7 @@ export class PlanetTiles {
       material.polygonOffsetFactor = -1
       material.polygonOffsetUnits = -1
       const mesh = new Mesh(planetPatchGeometry(this.segments, tile), material)
+      mesh.layers.mask = this.surface.layers.mask
       mesh.renderOrder = 11
       mesh.frustumCulled = false
       this.surface.add(mesh)
@@ -163,7 +164,8 @@ export class PlanetTiles {
 
   diagnostics(): object {
     const state = this.stream.diagnostics()
-    return { ...state, level: this.previous, segments: this.segments, sourceVersion: manifest.version,
+    return { ...state, level: this.previous, segments: this.segments, sourceVersion: this.source?.version ?? manifest.version,
+      sourceWidth: this.source?.width ?? this.config.baseWidth,
       estimatedTileBytes: (state.resident + state.requested) * 528 * 528 * 4 * 4 / 3 }
   }
 

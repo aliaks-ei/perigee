@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sirius A · H6 review</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.5 system-ui, sans-serif; background: #070d1c; color: #eef4ff }
+    * { box-sizing: border-box }
+    body { margin: 0; padding: clamp(20px, 4vw, 48px) }
+    main { max-width: 1500px; margin: auto }
+    header { max-width: 720px; margin-bottom: 28px }
+    h1 { font-size: clamp(28px, 4vw, 48px); line-height: 1.08; letter-spacing: -.04em; margin: 0 0 14px }
+    h2 { font-size: 20px; margin: 38px 0 12px; letter-spacing: -.02em }
+    p { color: #b8c6e0; margin: 0 0 14px }
+    .eyebrow { color: #94baff; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase }
+    .switch { display: flex; gap: 8px; margin: 20px 0 26px }
+    button { color: #d2def5; background: #15213b; border: 1px solid #354766; border-radius: 999px; padding: 9px 16px; font: inherit; cursor: pointer }
+    button[aria-pressed="true"] { color: #091329; background: #cde0ff; border-color: #cde0ff }
+    button:focus-visible, a:focus-visible { outline: 2px solid #91baff; outline-offset: 3px }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+    figure { margin: 0; min-width: 0 }
+    figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 8px; color: #c9d7ee }
+    figcaption strong { font-size: 13px; letter-spacing: .04em; text-transform: uppercase }
+    figcaption span { color: #8597b7; font-size: 12px }
+    img { display: block; width: 100%; height: auto; background: #030814; border: 1px solid #23314d; border-radius: 3px }
+    .detail img { max-width: 700px }
+    .note { margin-top: 12px; font-size: 13px }
+    a { color: #a7caff }
+    footer { border-top: 1px solid #23314d; margin-top: 42px; padding-top: 18px; color: #8597b7; font-size: 13px }
+    @media (max-width: 700px) { .pair { gap: 8px } figcaption { display: block } figcaption span { display: block } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">H6 · review only</p>
+      <h1>Sirius A, portrait and globe</h1>
+      <p>Matched rooftop viewpoint, apparent size, quality, distance preset, and production post-processing. Left is the fixed approved portrait. Right is the unpromoted hybrid globe.</p>
+      <p>No numerical visual score is assigned here. Please judge desktop and mobile layout separately against the portrait.</p>
+    </header>
+    <nav class="switch" aria-label="Comparison layout">
+      <button type="button" data-layout="desktop" aria-pressed="true">Desktop · 1440 × 900</button>
+      <button type="button" data-layout="mobile" aria-pressed="false">Mobile layout · 390 × 844</button>
+    </nav>
+    <h2>Complete saved 4K frames</h2>
+    <div class="pair">
+      <figure><figcaption><strong>Approved portrait</strong><span>fixed baseline</span></figcaption><img id="portrait-full" alt="Full rooftop scene with the approved Sirius portrait" loading="eager"></figure>
+      <figure><figcaption><strong>H6 globe</strong><span>review candidate</span></figcaption><img id="globe-full" alt="Matched rooftop scene with the synthetic Sirius A globe" loading="eager"></figure>
+    </div>
+    <h2>Native-resolution 4K detail</h2>
+    <div class="pair detail">
+      <figure><figcaption><strong>Approved portrait</strong><span>unscaled pixels</span></figcaption><img id="portrait-detail" alt="Native export crop of the portrait photosphere and optical halo"></figure>
+      <figure><figcaption><strong>H6 globe</strong><span>unscaled pixels</span></figcaption><img id="globe-detail" alt="Native export crop of the globe photosphere and separate optical halo"></figure>
+    </div>
+    <p class="note">The globe map is an artistic reconstruction. Surface patterns are not observed features of Sirius A.</p>
+    <h2>Saved 8K globe detail</h2>
+    <div class="pair detail"><figure><figcaption><strong>H6 globe</strong><span>native 8K crop</span></figcaption><img id="globe-8k" alt="Native 8K globe crop for texture, limb, and tile-seam inspection"></figure></div>
+    <footer>Desktop Chromium mobile layout is not a physical-phone test. Production continues to use the portrait until explicit approval. <a href="../../docs/sirius-hybrid-review.md">Read provenance and review notes</a>.</footer>
+  </main>
+  <script>
+    const base = '/tmp/hybrid-h6-sirius/'
+    const pairs = ['portrait-full', 'globe-full', 'portrait-detail', 'globe-detail', 'globe-8k']
+    function select(layout) {
+      const prefix = layout === 'mobile' ? 'mobile' : 'desktop'
+      const files = [
+        `${prefix}-portrait-4k.png`, `${prefix}-globe-4k.png`,
+        `${prefix}-portrait-4k-detail.png`, `${prefix}-globe-4k-detail.png`,
+        `${prefix}-globe-8k-detail.png`,
+      ]
+      pairs.forEach((id, index) => { document.getElementById(id).src = base + files[index] })
+      document.querySelectorAll('[data-layout]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.layout === layout))
+      })
+    }
+    document.querySelectorAll('[data-layout]').forEach(button => {
+      button.addEventListener('click', () => select(button.dataset.layout))
+    })
+    select('desktop')
+  </script>
+</body>
+</html>

@@ -1,23 +1,23 @@
+import { CelestialClock } from './motion/CelestialClock'
+import { rotationSpeeds } from '../../app/data/objectMotion'
+import { createCelestialObject } from './objects/createCelestialObject'
+import { disposeObject, setObjectOpacity, type CelestialObject } from './objects/CelestialObject'
+import { jupiterReference, saturnReference, marsReference, neptuneReference, moonReference, rendererFor, type RenderingReview } from './objects/renderingPolicy'
 import { renderStill } from './capture/StillRenderer'
 import { automaticCaptureSizes, captureWithFallbacks, throwIfAborted, waitForExportDetail } from './capture/exportPlan'
-import planetManifest from './planet/planet-manifest.json'
-import { PlanetTiles, type PlanetId } from './planet/PlanetTiles'
+import { type PlanetTiles } from './planet/PlanetTiles'
 import { compileScene } from './compileScene'
-import { RING_INNER_RADIUS, RING_OUTER_RADIUS } from './math/ringShadow'
 import { GpuTimer } from './GpuTimer'
 import { sceneAppearanceFor } from './math/sceneAppearance'
 import {
   Color,
   Group,
   HalfFloatType,
-  Material,
   Mesh,
   NoToneMapping,
   Object3D,
   PerspectiveCamera,
   PlaneGeometry,
-  Quaternion,
-  RingGeometry,
   ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
@@ -36,6 +36,7 @@ import {
 } from 'postprocessing'
 import type {
   PerigeeController,
+  RotationMode,
   StillExportOptions,
   PerigeeInitOptions,
   QualityTier,
@@ -51,20 +52,20 @@ import {
 import { backgroundGlowVisibility, stellarAppearanceForDiameter } from './math/stellarAppearance'
 import { atmosphericTransmission, skyConditions } from './math/skyPhotometry'
 import { fluxForMagnitude } from './scenes/starCatalogue'
-import { createPlanetMaterial, disposePlanetResources, type PlanetMaterialSet } from './materials/PlanetMaterial'
-import { createRingMaterial, type RingMaterialSet } from './materials/RingMaterial'
-import { createGalaxyMaterial, type GalaxyMaterialSet } from './materials/GalaxyMaterial'
-import { createObservedGalaxy, type ObservedGalaxy } from './galaxy/ObservedGalaxy'
-import { createStellarMaterial, stellarLooks, type StellarMaterialSet } from './materials/StellarMaterial'
+import { disposePlanetResources, type PlanetMaterialSet } from './materials/PlanetMaterial'
+import { type GalaxyMaterialSet } from './materials/GalaxyMaterial'
+import { type ObservedGalaxy } from './galaxy/ObservedGalaxy'
+import { createStellarMaterial, type StellarMaterialSet } from './materials/StellarMaterial'
+import { PortraitPass } from './effects/PortraitPass'
 import type { GlareMaterialSet } from './materials/GlareMaterial'
-import { createStarPointMaterial, type StarPointMaterialSet } from './materials/StarPointMaterial'
+import { type StarPointMaterialSet } from './materials/StarPointMaterial'
 import { FilmEffect } from './effects/FilmEffect'
 import { CameraRig } from './CameraRig'
 import { createSkyScene, type SkySceneBundle } from './scenes/createSkyScene'
 import { QualityManager, QUALITY_BUDGETS, effectivePixelRatio } from './QualityManager'
 import { ShotDirector } from './ShotDirector'
 import { surfaceMapFor } from './AssetManifest'
-import { configureTextureCache, disposeTextures, acquireTexture, prefetchTextures, setTextureBudget, textureDiagnostics, type TextureLease } from './TextureCache'
+import { configureTextureCache, disposeTextures, prefetchTextures, setTextureBudget, textureDiagnostics } from './TextureCache'
 
 /**
  * Where the hero hangs in each authored composition. Each vector's length sets
@@ -111,38 +112,17 @@ const BASE_PITCH = 0.11
 const BASE_VERTICAL_FOV = 52
 const CABO_PORTRAIT_VERTICAL_FOV = 80
 
-const RING_TEXTURE = '/assets/objects/saturn-ring-2k.webp'
-
 /**
  * Every hero is the same unit sphere, so the geometry is built once instead of
  * on every swap. A rebuild cost 25k vertices and a fresh GPU upload each time.
  */
 let sharedSphere: SphereGeometry | null = null
-let sharedRing: RingGeometry | null = null
-let sharedGalaxyPlane: PlaneGeometry | null = null
 let sharedGlarePlane: PlaneGeometry | null = null
 let sharedStarPointPlane: PlaneGeometry | null = null
 
 function sphereGeometry(): SphereGeometry {
   sharedSphere ??= new SphereGeometry(1, 192, 128)
   return sharedSphere
-}
-
-function ringGeometry(): RingGeometry {
-  sharedRing ??= new RingGeometry(RING_INNER_RADIUS, RING_OUTER_RADIUS, 256)
-  return sharedRing
-}
-
-/**
- * The carrier for a galaxy. It faces the camera and the shader does the
- * projection, so it is a plane rather than a tilted disc. Its half-extent is
- * 1.25 semi-major axes, which leaves room for the bulge and the halo to reach
- * past the foreshortened disc; its rim is never seen, because the shader fades
- * the light out before the plane ends.
- */
-function galaxyPlaneGeometry(): PlaneGeometry {
-  sharedGalaxyPlane ??= new PlaneGeometry(2.5, 2.5)
-  return sharedGalaxyPlane
 }
 
 /** The carrier for a star's glare: six radii across, behind the disc. */
@@ -156,71 +136,6 @@ function starPointPlaneGeometry(): PlaneGeometry {
   return sharedStarPointPlane
 }
 
-/**
- * Fades a subtree. Hero materials are hand-written shaders that carry their own
- * `uOpacity`; everything else uses the standard material property. Either way
- * the material's authored `transparent` flag is restored at full opacity, so a
- * fade never leaves an additive glow blending as if it were solid.
- */
-function setObjectOpacity(object: Object3D, opacity: number): void {
-  object.userData.opacity = opacity
-  object.traverse((child) => {
-    if (!(child instanceof Mesh)) return
-    const materials: Material[] = Array.isArray(child.material) ? child.material : [child.material]
-    materials.forEach((material) => {
-      if (material.userData.baseTransparent === undefined) {
-        material.userData.baseTransparent = material.transparent
-      }
-      material.transparent = material.userData.baseTransparent === true || opacity < 1
-
-      const uniforms = (material as Material & { uniforms?: Record<string, { value: unknown }> }).uniforms
-      if (uniforms?.uOpacity) uniforms.uOpacity.value = opacity
-      else material.opacity = opacity
-    })
-  })
-}
-
-/**
- * Geometries and textures are shared across heroes now, so a swap only releases
- * the materials it created. The shared resources go at teardown.
- */
-function disposeObject(object: Object3D): void {
-  if (object.userData.disposed) return
-  object.userData.disposed = true
-  const galaxy = object.userData.observedGalaxy as ObservedGalaxy | undefined
-  if (galaxy) { galaxy.dispose(); return }
-  const tiles = object.userData.planetTiles as PlanetTiles | undefined
-  tiles?.dispose()
-  const leases = object.userData.textureLeases as TextureLease[] | undefined
-  leases?.forEach((lease) => lease.release())
-  object.traverse((child) => {
-    if (!(child instanceof Mesh)) return
-    const materials: Material[] = Array.isArray(child.material) ? child.material : [child.material]
-    materials.forEach((material) => material.dispose())
-  })
-}
-
-interface HeroBundle {
-  group: Group
-  surface: Mesh
-  planet: PlanetMaterialSet | null
-  ring: { set: RingMaterialSet, mesh: Mesh } | null
-  stellar: StellarMaterialSet | null
-  galaxy: GalaxyMaterialSet | null
-  /** The additive halo behind a star; a billboard that tracks the camera. */
-  glare: Mesh | null
-  glareSet: GlareMaterialSet | null
-  /** Compact optical point used only while the physical stellar disc is unresolved. */
-  point: Mesh | null
-  pointSet: StarPointMaterialSet | null
-  /**
-   * Radians per second of visible spin. A galaxy turns once every few hundred
-   * million years, so rendering any rotation on it would be invention.
-   */
-  spinRate: number
-  animated: Array<{ value: number }>
-}
-
 export class PerigeeScene implements PerigeeController {
   private renderer: WebGLRenderer | null = null
   private composer: EffectComposer | null = null
@@ -229,17 +144,20 @@ export class PerigeeScene implements PerigeeController {
   private hero: Group | null = null
   private heroSurface: Mesh | null = null
   private heroPlanet: PlanetMaterialSet | null = null
-  private heroRing: { set: RingMaterialSet, mesh: Mesh } | null = null
   private heroStellar: StellarMaterialSet | null = null
   private heroGalaxy: GalaxyMaterialSet | null = null
   private heroGlare: Mesh | null = null
   private heroGlareSet: GlareMaterialSet | null = null
   private heroPoint: Mesh | null = null
   private heroPointSet: StarPointMaterialSet | null = null
-  private heroSpinRate = 0
+  private readonly celestialClock = new CelestialClock()
+  private rotationPaused = false
+  private rotationMode: RotationMode = 'cinematic'
+  private celestial: CelestialObject | null = null
+
+  constructor(private readonly renderingReview: RenderingReview = {}) {}
   /** Roll of a galaxy billboard about the view axis: its position angle. */
   private heroGalaxyRoll = 0
-  private heroTimeUniforms: Array<{ value: number }> = []
   private currentObjectId: SkyObjectId = 'saturn'
   private currentPresetId = 'moon-swap'
   private currentViewpointId: ViewpointId = 'rooftop'
@@ -286,7 +204,6 @@ export class PerigeeScene implements PerigeeController {
    * compiled to warm.
    */
   private stellarWarmup: StellarMaterialSet | null = null
-  private galaxyWarmup: GalaxyMaterialSet | null = null
   /** Bumped by every object swap, so a superseded load can drop its work. */
   private generation = 0
   /** Latest selection while loading, compiling, or waiting for the visible fade. */
@@ -296,7 +213,6 @@ export class PerigeeScene implements PerigeeController {
   private readonly sunWorld = new Vector3(0, 0, 1)
   private readonly scratchVector = new Vector3()
   private readonly scratchVector2 = new Vector3()
-  private readonly scratchQuaternion = new Quaternion()
 
   async initialize(canvas: HTMLCanvasElement, options: PerigeeInitOptions = {}): Promise<void> {
     try { await this.initializeScene(canvas, options) }
@@ -309,8 +225,11 @@ export class PerigeeScene implements PerigeeController {
     this.contextLost = false
     this.compilationAbort = new AbortController()
     this.bufferKey = ''
+    this.celestialClock.setBlocked('paused', true, performance.now())
+    this.celestialClock.setRates(this.rotationPaused ? 0 : rotationSpeeds[this.rotationMode], 1, performance.now())
     this.motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     this.reducedMotion = this.motionQuery.matches
+    this.celestialClock.setBlocked('reduced-motion', this.reducedMotion, performance.now())
     this.motionQuery.addEventListener('change', this.onMotionChange)
     const report = options.onProgress ?? (() => undefined)
 
@@ -370,8 +289,10 @@ export class PerigeeScene implements PerigeeController {
     const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.AGX })
     this.film = new FilmEffect()
     this.film.setReducedMotion(this.reducedMotion)
-    const finalPass = new EffectPass(this.camera, vignette, toneMapping, this.film)
-    this.finalPass = finalPass
+    const finalPass = new EffectPass(this.camera, vignette, toneMapping)
+    const portraitPass = new PortraitPass(this.sky.scene, this.camera)
+    const filmPass = new EffectPass(this.camera, this.film)
+    this.finalPass = filmPass
 
     // SMAA detects edges on luma, so it runs last, after tone mapping has
     // brought the HDR frame into the range its thresholds were tuned for.
@@ -385,6 +306,8 @@ export class PerigeeScene implements PerigeeController {
     this.composer.addPass(skyPass)
     this.composer.addPass(this.bloomPass)
     this.composer.addPass(finalPass)
+    this.composer.addPass(portraitPass)
+    this.composer.addPass(filmPass)
     this.composer.addPass(this.smaaPass)
 
     this.setQuality(this.quality.current)
@@ -447,7 +370,7 @@ export class PerigeeScene implements PerigeeController {
     pending: { presetId: string, generation: number, abort: AbortController },
     immediate: boolean,
   ): Promise<void> {
-    let built: HeroBundle
+    let built: CelestialObject
     try { built = await this.createHero(definition, pending.abort.signal) }
     catch (error) { if (this.disposed || pending.generation !== this.generation) return; throw error }
     const nextHero = built.group
@@ -463,8 +386,9 @@ export class PerigeeScene implements PerigeeController {
     await this.waitForObjectTransition(pending.abort.signal)
     if (stale()) { disposeObject(nextHero); return }
     const preset = definition.presets.find((candidate) => candidate.id === pending.presetId) ?? definition.presets[0]!
-    const placement = this.viewpointDirector.running && this.hero ? this.hero.position : this.heroPositionFor(this.currentViewpointId)
-    const radius = this.radiusFor(definition, preset.distanceKm) * placement.length() / this.heroPositionFor(this.currentViewpointId).length()
+    const targetPlacement = this.heroPositionFor(this.currentViewpointId, definition.id)
+    const placement = this.viewpointDirector.running && this.hero ? this.hero.position : targetPlacement
+    const radius = this.radiusFor(definition, preset.distanceKm) * placement.length() / targetPlacement.length()
     nextHero.position.copy(placement)
     nextHero.scale.setScalar(radius)
     nextHero.userData.radius = radius
@@ -479,9 +403,8 @@ export class PerigeeScene implements PerigeeController {
       }
     })
     nextHero.userData.observerUniforms = observerUniforms
-    setObjectOpacity(nextHero, immediate ? 1 : 0)
-    built.stellar?.setQuality(this.quality.current)
-    built.galaxy?.setQuality(this.quality.current)
+    built.setOpacity(immediate ? 1 : 0)
+    built.setQuality(this.quality.current)
     this.applyStarAppearance(radius, nextHero, built.stellar, built.glareSet, built.point, built.pointSet)
 
     this.distanceGeneration += 1
@@ -496,7 +419,6 @@ export class PerigeeScene implements PerigeeController {
     this.hero = nextHero
     this.heroSurface = built.surface
     this.heroPlanet = built.planet
-    this.heroRing = built.ring
     this.heroStellar = built.stellar
     this.heroGalaxy = built.galaxy
     this.heroGalaxyRoll = (definition.disc?.positionAngleDegrees ?? 0) * Math.PI / 180
@@ -504,8 +426,8 @@ export class PerigeeScene implements PerigeeController {
     this.heroGlareSet = built.glareSet
     this.heroPoint = built.point
     this.heroPointSet = built.pointSet
-    this.heroSpinRate = built.spinRate
-    this.heroTimeUniforms = built.animated
+    this.celestial = built
+    built.applyMotion(this.celestialClock.snapshot())
     this.appearanceOrigin.tint.copy(this.appearance.tint)
     this.appearanceOrigin.glow.copy(this.appearance.glow)
     this.appearanceOrigin.ground = this.appearance.ground
@@ -527,7 +449,7 @@ export class PerigeeScene implements PerigeeController {
         const opacity = { value: 0 }
         timeline.to(opacity, { value: 1, duration, onUpdate: () => {
           this.invalidate()
-          setObjectOpacity(nextHero, opacity.value)
+          built.setOpacity(opacity.value)
           setGlareOpacity(built.glare, opacity.value)
           this.sky.setTarget(definition.id, nextHero.position, opacity.value)
           this.applyGlow(definition, opacity.value ** 3)
@@ -658,7 +580,9 @@ export class PerigeeScene implements PerigeeController {
 
   getDiagnostics() {
     const size = this.renderer?.domElement
-    return { exporting: Boolean(this.exportTask), tier: this.quality.current, effectiveDpr: this.renderer?.getPixelRatio(),
+    return { renderer: rendererFor(this.currentObjectId, this.renderingReview), motion: this.celestialClock.snapshot(),
+      rotation: { paused: this.rotationPaused || this.reducedMotion, mode: this.rotationMode, multiplier: rotationSpeeds[this.rotationMode] },
+      exporting: Boolean(this.exportTask), tier: this.quality.current, effectiveDpr: this.renderer?.getPixelRatio(),
       width: size?.width, height: size?.height,
       estimatedTargetBytes: (size?.width ?? 0) * (size?.height ?? 0) * (20 + (this.composer?.multisampling ?? 0) * 12),
       timingSource: this.gpuTimer?.supported ? 'gpu-query' : 'frame-pacing', gpuMilliseconds: this.gpuMilliseconds,
@@ -745,13 +669,15 @@ export class PerigeeScene implements PerigeeController {
     const sizes = options.longEdge ? [options.longEdge] : automaticCaptureSizes(tier, navigator)
     if (sizes[0] !== null) {
       this.sky.setQuality('high')
-      this.heroStellar?.setQuality('high')
+      this.celestial?.setQuality('high')
       planet?.setQuality('high')
       galaxy?.setQuality('high')
     }
     this.camera.updateMatrixWorld()
     this.hero?.updateMatrixWorld()
     this.updateHeroLighting()
+    const pose = this.celestialClock.freeze()
+    this.celestial?.prepareExport(pose.snapshot)
     this.exportTask = captureWithFallbacks(sizes, abort.signal, async (longEdge) => {
       options.onProgress?.(0)
       this.sky.setPixelRatio(renderer.getPixelRatio())
@@ -776,7 +702,7 @@ export class PerigeeScene implements PerigeeController {
           return blob
         } finally { frame.width = frame.height = 1 }
       }
-      return renderStill({ renderer, scene: this.sky.scene, camera: this.camera,
+      return renderStill({ pose: { snapshot: pose.snapshot, apply: (snapshot) => this.celestial?.prepareExport(snapshot) }, renderer, scene: this.sky.scene, camera: this.camera,
         longEdge, signal: abort.signal, onProgress: options.onProgress,
         bloom: this.bloomPass?.enabled ? this.bloom?.intensity ?? 0 : 0,
         bloomTexture: this.bloom?.texture,
@@ -804,6 +730,7 @@ export class PerigeeScene implements PerigeeController {
         },
       })
     }).finally(() => {
+      pose.release(performance.now())
       options.signal?.removeEventListener('abort', cancel)
       this.exportTask = null
       this.exportAbort = null
@@ -831,6 +758,16 @@ export class PerigeeScene implements PerigeeController {
     this.invalidate()
   }
 
+  /** Review-harness override only. The product always uses automatic 120× spin. */
+  setRotation(paused: boolean, mode: RotationMode): void {
+    if (mode !== 'real' && mode !== 'cinematic') throw new Error('INVALID_ROTATION_MODE')
+    this.rotationPaused = paused
+    this.rotationMode = mode
+    this.celestialClock.setRates(paused ? 0 : rotationSpeeds[mode], 1, performance.now())
+    this.celestial?.applyMotion(this.celestialClock.snapshot())
+    this.invalidate()
+  }
+
   setQuality(tier: QualityTier): void {
     if (this.exportTask) return
     this.quality.set(tier, performance.now())
@@ -850,8 +787,7 @@ export class PerigeeScene implements PerigeeController {
     if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && (kind === 'star' || kind === 'galaxy')
     this.setAntialiasing(tier !== 'safe')
     this.film?.setGrain(tier === 'safe' ? 0 : 0.018)
-    this.heroStellar?.setQuality(tier)
-    this.heroGalaxy?.setQuality(tier)
+    this.celestial?.setQuality(tier)
     this.sky?.setQuality(tier)
     if (this.hero) this.applyGlow(skyObjectsById[this.currentObjectId], 1)
     this.invalidate()
@@ -892,6 +828,7 @@ export class PerigeeScene implements PerigeeController {
 
   pause(): void {
     this.exportAbort?.abort()
+    this.celestialClock.setBlocked('paused', true, performance.now())
     this.paused = true
     this.gpuTimer?.clear()
     if (this.frameId !== null) cancelAnimationFrame(this.frameId)
@@ -906,6 +843,7 @@ export class PerigeeScene implements PerigeeController {
 
   resume(): void {
     if (!this.initialized || this.disposed || this.contextLost || !this.renderer || !this.composer) return
+    this.celestialClock.setBlocked('paused', false, performance.now())
     this.paused = false
     this.sky?.setPaused(false)
     this.lastFrame = performance.now()
@@ -950,7 +888,6 @@ export class PerigeeScene implements PerigeeController {
     const sky = this.sky
     const hero = this.hero
     const stellarWarmup = this.stellarWarmup
-    const galaxyWarmup = this.galaxyWarmup
     const composer = this.composer
     const renderer = this.renderer
     // Three's compileAsync polls material-owned programs. Keep those programs
@@ -960,22 +897,16 @@ export class PerigeeScene implements PerigeeController {
       if (hero) disposeObject(hero)
       outgoing.forEach(disposeObject)
       stellarWarmup?.material.dispose()
-      galaxyWarmup?.material.dispose()
       composer?.dispose()
       renderer?.dispose()
     }
     if (this.compilations.size) void Promise.allSettled([...this.compilations]).then(releaseRendering)
     else releaseRendering()
     this.stellarWarmup = null
-    this.galaxyWarmup = null
     sharedSphere?.dispose()
-    sharedRing?.dispose()
-    sharedGalaxyPlane?.dispose()
     sharedGlarePlane?.dispose()
     sharedStarPointPlane?.dispose()
     sharedSphere = null
-    sharedRing = null
-    sharedGalaxyPlane = null
     sharedGlarePlane = null
     sharedStarPointPlane = null
     disposePlanetResources()
@@ -983,14 +914,13 @@ export class PerigeeScene implements PerigeeController {
     this.hero = null
     this.heroSurface = null
     this.heroPlanet = null
-    this.heroRing = null
+    this.celestial = null
     this.heroStellar = null
     this.heroGalaxy = null
     this.heroGlare = null
     this.heroGlareSet = null
     this.heroPoint = null
     this.heroPointSet = null
-    this.heroTimeUniforms = []
     this.composer = null
     this.renderer = null
     this.bloomPass = null
@@ -1037,16 +967,6 @@ export class PerigeeScene implements PerigeeController {
       this.stellarWarmup = createStellarMaterial('betelgeuse')
       const probe = new Mesh(sphereGeometry(), this.stellarWarmup.material)
       void this.compile(probe).catch(() => undefined)
-
-      const disc = skyObjectsById.andromeda.disc
-      if (!disc) return
-      this.galaxyWarmup = createGalaxyMaterial({
-        palette: disc.palette,
-        armPitchDegrees: disc.armPitchDegrees,
-        inclinationDegrees: disc.inclinationDegrees,
-      })
-      const discProbe = new Mesh(galaxyPlaneGeometry(), this.galaxyWarmup.material)
-      void this.compile(discProbe).catch(() => undefined)
     }
     this.warmupTimeout = typeof window.requestIdleCallback !== 'function'
     this.warmupId = this.warmupTimeout ? window.setTimeout(warm, 1200) : window.requestIdleCallback(warm)
@@ -1071,139 +991,19 @@ export class PerigeeScene implements PerigeeController {
     return pending
   }
 
-  private async createHero(definition: SkyObjectDefinition, signal?: AbortSignal): Promise<HeroBundle> {
-    const group = new Group()
-    group.name = `hero-${definition.id}`
-    const flattening = 1 - (definition.flattening ?? 0)
-
-    if (definition.kind === 'galaxy') {
-      const disc = definition.disc
-      if (!disc) throw new Error(`Missing disc definition for ${definition.id}`)
-      const galaxy = await createObservedGalaxy(this.invalidate, signal)
-      if (this.disposed || signal?.aborted) { galaxy.dispose(); throw new Error('HERO_PREPARATION_CANCELLED') }
-      galaxy.setQuality(this.quality.current)
-      const surface = galaxy.surface
-      group.userData.observedGalaxy = galaxy
-      group.add(surface)
-      return {
-        group,
-        surface,
-        planet: null,
-        ring: null,
-        stellar: null,
-        galaxy,
-        glare: null,
-        glareSet: null,
-        point: null,
-        pointSet: null,
-        spinRate: 0,
-        animated: [],
-      }
-    }
-
-    if (definition.kind === 'star') {
-      const stellar = createStellarMaterial(definition.id)
-      stellar.setQuality(this.quality.current)
-      const surface = new Mesh(sphereGeometry(), stellar.material)
-      surface.renderOrder = 2
-      // Optical scatter comes from the same HDR source through bloom. An
-      // independently authored glare quad adds unbudgeted flux and a bright rim.
-      const continuum = stellarLooks[definition.id as keyof typeof stellarLooks].color
-      const pointSet = createStarPointMaterial(new Color().setRGB(continuum[0], continuum[1], continuum[2]))
-      const point = new Mesh(starPointPlaneGeometry(), pointSet.material)
-      point.renderOrder = 3
-      group.add(surface)
-      group.add(point)
-      group.rotation.set(definition.shot.objectPitch ?? 0.08, definition.shot.objectYaw, -0.05)
-      return {
-        group,
-        surface,
-        planet: null,
-        ring: null,
-        stellar,
-        galaxy: null,
-        glare: null,
-        glareSet: null,
-        point,
-        pointSet,
-        spinRate: 0,
-        animated: [
-          stellar.material.uniforms.uTime!,
-          pointSet.material.uniforms.uTime!,
-        ],
-      }
-    }
-
-    if (!definition.texture) throw new Error(`Missing texture for ${definition.id}`)
-    const needsRing = definition.id === 'saturn'
-    const planetId = definition.id as PlanetId
-    const config = planetManifest.bodies[planetId]
-    const terrain = 'terrain' in config ? config.terrain : undefined
-    const planetUrl = `${planetManifest.baseUrl}/${planetId}`
-    // Every map at once. Loading them in series added a whole round trip to
-    // each swap that needs more than one.
-    const results = await Promise.allSettled([
-      acquireTexture(surfaceMapFor(definition.texture, this.quality.current), signal),
-      needsRing ? acquireTexture(RING_TEXTURE, signal) : Promise.resolve(null),
-      definition.normalMap ? acquireTexture(definition.normalMap, signal) : Promise.resolve(null),
-      terrain ? acquireTexture(`${planetUrl}/terrain-height.png`, signal) : Promise.resolve(null),
-      needsRing ? acquireTexture(`${planetUrl}/rings-depth.png`, signal) : Promise.resolve(null),
-    ])
-    const leases = results.flatMap((result) => result.status === 'fulfilled' && result.value ? [result.value] : [])
-    const failure = results.find((result) => result.status === 'rejected')
-    if (failure?.status === 'rejected') { leases.forEach((lease) => lease.release()); throw failure.reason }
-    if (this.disposed || signal?.aborted) { leases.forEach((lease) => lease.release()); throw new Error('HERO_PREPARATION_CANCELLED') }
-    group.userData.textureLeases = leases
-    const texture = (results[0] as PromiseFulfilledResult<TextureLease>).value.texture
-    const ringTexture = needsRing ? leases.find((lease) => lease !== leases[0])?.texture ?? null : null
-    const normalResult = results[2] as PromiseFulfilledResult<TextureLease | null>
-    const normalMap = normalResult.value?.texture ?? null
-    const height = (results[3] as PromiseFulfilledResult<TextureLease | null>).value?.texture
-    const ringDepth = (results[4] as PromiseFulfilledResult<TextureLease | null>).value?.texture
-    const planet = createPlanetMaterial(definition, texture, normalMap, ringTexture,
-      terrain && height ? { ...terrain, height } : undefined, ringDepth)
-
-    const surface = new Mesh(sphereGeometry(), planet.surface)
-    surface.scale.y = flattening
-    const tiles = new PlanetTiles(planetId, surface, this.invalidate)
-    tiles.setQuality(this.quality.current)
-    group.userData.planetTiles = tiles
-    group.add(surface)
-    let ring: { set: RingMaterialSet, mesh: Mesh } | null = null
-    if (ringTexture) {
-      const ringSet = createRingMaterial(ringTexture, flattening, ringDepth)
-      const mesh = new Mesh(ringGeometry(), ringSet.material)
-      // The base/detail draw at 10/11. During a fade the base joins the
-      // transparent queue, so rings must still follow both. The body's depth
-      // hides the rear arc while the front arc composites over its surface.
-      mesh.renderOrder = 12
-      mesh.rotation.x = Math.PI / 2
-      group.add(mesh)
-      ring = { set: ringSet, mesh }
-    }
-
-    group.rotation.set((definition.shot.objectPitch ?? 0.08) + (definition.shot.ringTilt ?? 0), definition.shot.objectYaw, -0.05)
-    return {
-      group,
-      surface,
-      planet,
-      ring,
-      stellar: null,
-      galaxy: null,
-      glare: null,
-      glareSet: null,
-      point: null,
-      pointSet: null,
-      spinRate: definition.id === 'moon' ? 0 : (2 * Math.PI) / (Math.max(Math.abs(definition.rotationPeriodHours ?? 24), 1) * 3600) * 60,
-      animated: [],
-    }
+  private createHero(definition: SkyObjectDefinition, signal?: AbortSignal): Promise<CelestialObject> {
+    return createCelestialObject(definition, {
+      quality: this.quality.current, review: this.renderingReview,
+      isDisposed: () => this.disposed, invalidate: this.invalidate,
+      sphereGeometry, planeGeometry: starPointPlaneGeometry,
+    }, signal)
   }
 
   private radiusFor(definition: SkyObjectDefinition, distanceKm: number): number {
     const theta = angularDiameterRadians(definition.diameterKm, distanceKm)
     return renderRadiusForAngularDiameter(
       theta,
-      this.heroPositionFor(this.currentViewpointId).length(),
+      this.heroPositionFor(this.currentViewpointId, definition.id).length(),
     )
   }
 
@@ -1231,7 +1031,7 @@ export class PerigeeScene implements PerigeeController {
     const definition = skyObjectsById[hero.name.replace('hero-', '') as SkyObjectId]
     const realDistance = definition.presets.at(-1)!.distanceKm
     const realPixels = this.projectedDiameterPixels(this.radiusFor(definition, realDistance))
-    const magnitude = definition.id === 'sirius' ? -1.46 : definition.id === 'rigel' ? .13 : .42
+    const magnitude = definition.id === 'sun' ? -26.74 : definition.id === 'sirius' ? -1.46 : definition.id === 'rigel' ? .13 : .42
     const flux = fluxForMagnitude(magnitude) * (pixels / Math.max(realPixels, 1e-12)) ** 2
     const appearance = stellarAppearanceForDiameter(pixels, flux)
     const altitude = Math.asin(hero.position.y / Math.max(hero.position.length(), .000001))
@@ -1248,8 +1048,10 @@ export class PerigeeScene implements PerigeeController {
     stellar.setProximity(proximityFor(radius))
   }
 
-  private heroPositionFor(viewpointId: ViewpointId): Vector3 {
-    const portrait = this.camera.aspect < PORTRAIT_ASPECT
+  private heroPositionFor(viewpointId: ViewpointId, objectId = this.currentObjectId): Vector3 {
+    // The approved Saturn ring silhouette needs central framing sooner than
+    // a globe alone, including narrow desktop/tablet windows.
+    const portrait = this.camera.aspect < (objectId === 'saturn' ? 1.25 : PORTRAIT_ASPECT)
     if (viewpointId !== 'cabo-da-roca') return portrait ? PORTRAIT_HERO_POSITION : HERO_POSITION
     return portrait ? CABO_PORTRAIT_HERO_POSITION : CABO_HERO_POSITION
   }
@@ -1278,17 +1080,35 @@ export class PerigeeScene implements PerigeeController {
     this.camera.fov = this.currentViewpointId === 'cabo-da-roca' && this.camera.aspect < PORTRAIT_ASPECT
       ? CABO_PORTRAIT_VERTICAL_FOV
       : BASE_VERTICAL_FOV
+    if (this.currentObjectId === 'saturn') {
+      // Keep at least 46° horizontally for the roughly 40° Moon-distance
+      // ring span. Widen the camera; never shrink the calculated globe.
+      const ringFov = 2 * Math.atan(Math.tan(23 * Math.PI / 180) / this.camera.aspect) * 180 / Math.PI
+      this.camera.fov = Math.max(this.camera.fov, ringFov)
+    }
+    if (this.currentObjectId === 'andromeda') {
+      // Fit the complete 49.4-degree close portrait on narrow screens by
+      // widening the camera, preserving the galaxy's physical angular scale.
+      const galaxyFov = 2 * Math.atan(Math.tan(28 * Math.PI / 180) / this.camera.aspect) * 180 / Math.PI
+      this.camera.fov = Math.max(this.camera.fov, galaxyFov)
+    }
     this.camera.updateProjectionMatrix()
   }
 
   private applyShot(definition: SkyObjectDefinition, skyProgress = 1): void {
+    this.applyViewpointCamera()
     const shot = definition.shot
     const kind = definition.kind
     const emissive = kind === 'star' || kind === 'galaxy'
     this.sky.setPalette(shot.skyPalette)
     this.sky.setTarget(definition.id, this.hero?.position ?? this.heroPositionFor(this.currentViewpointId), skyProgress)
 
-    this.sunWorld.set(...shot.sunDirection).normalize()
+    const light = this.heroPlanet && definition.id === 'moon' ? moonReference.sunDirection
+      : this.heroPlanet && definition.id === 'jupiter' ? jupiterReference.sunDirection
+        : this.heroPlanet && definition.id === 'saturn' ? saturnReference.sunDirection
+          : this.heroPlanet && definition.id === 'mars' ? marsReference.sunDirection
+            : this.heroPlanet && definition.id === 'neptune' ? neptuneReference.sunDirection : shot.sunDirection
+    this.sunWorld.set(light[0], light[1], light[2]).normalize()
     const tier = this.quality.current
     if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind)
     if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && emissive
@@ -1335,25 +1155,13 @@ export class PerigeeScene implements PerigeeController {
       const uniforms = hero.userData.observerUniforms as { value: number }[] | undefined
       uniforms?.forEach((uniform) => { uniform.value = skyConditions[this.currentViewpointId].extinction })
     }
-    if (this.heroPlanet) {
-      this.scratchVector.copy(this.sunWorld).transformDirection(this.camera.matrixWorldInverse)
-      this.heroSurface?.getWorldQuaternion(this.scratchQuaternion)
-      this.scratchVector2.copy(this.sunWorld).applyQuaternion(this.scratchQuaternion.invert())
-      this.heroPlanet.setSunDirection(this.scratchVector, this.scratchVector2)
-      if (this.hero) {
-        // Invert the live apparent scale so earthshine varies continuously while
-        // the distance director is moving, rather than jumping to the target.
-        const definition = skyObjectsById[this.currentObjectId]
-        const distance = definition.diameterKm * this.hero.position.length() / (2 * Math.max(this.hero.scale.x, .000001))
-        this.scratchVector2.copy(this.camera.position).sub(this.hero.position).normalize()
-        this.heroPlanet.setDistance(distance, this.sunWorld.dot(this.scratchVector2))
-      }
-    }
-    if (this.heroRing) {
-      this.heroRing.mesh.getWorldQuaternion(this.scratchQuaternion)
-      this.scratchVector.copy(this.sunWorld).applyQuaternion(this.scratchQuaternion.invert())
-      this.scratchVector2.copy(this.sunWorld).transformDirection(this.camera.matrixWorldInverse)
-      this.heroRing.set.setSunDirection(this.scratchVector, this.scratchVector2)
+    for (const hero of [this.hero, ...this.outgoing]) {
+      if (!hero) continue
+      const object = hero.userData.celestial as CelestialObject | undefined
+      const id = hero.name.replace('hero-', '') as SkyObjectId
+      const definition = skyObjectsById[id]
+      const distance = definition.diameterKm * hero.position.length() / (2 * Math.max(hero.scale.x, .000001))
+      object?.setLighting(this.camera, this.sunWorld, distance)
     }
   }
 
@@ -1375,6 +1183,7 @@ export class PerigeeScene implements PerigeeController {
 
   private readonly onMotionChange = (event: MediaQueryListEvent): void => {
     this.exportAbort?.abort()
+    this.celestialClock.setBlocked('reduced-motion', event.matches, performance.now())
     this.reducedMotion = event.matches
     this.invalidate()
     this.cameraRig?.setReducedMotion(event.matches)
@@ -1429,7 +1238,7 @@ export class PerigeeScene implements PerigeeController {
       if (nextTier) this.setQuality(nextTier)
     }
     this.lastFrame = now
-    if (!this.reducedMotion) this.elapsed += delta
+    this.elapsed = this.celestialClock.advance(now).evolutionSeconds
     const elapsed = this.elapsed
     this.cameraRig?.update(delta)
     const view = this.cameraRig?.view
@@ -1440,7 +1249,10 @@ export class PerigeeScene implements PerigeeController {
     if (this.hero) {
       // Spin the textured body, not its placement group. Rotating the group
       // makes Saturn's ring plane precess across the frame over time.
-      if (this.heroSurface && !this.reducedMotion) this.heroSurface.rotation.y += delta * this.heroSpinRate
+      this.celestial?.applyMotion(this.celestialClock.snapshot())
+      for (const outgoing of this.outgoing) {
+        (outgoing.userData.celestial as CelestialObject | undefined)?.applyMotion(this.celestialClock.snapshot())
+      }
       // Anchor the observational reference to the observer-to-galaxy direction,
       // not the camera's current aim. Panning must not rotate its volume.
       if (this.heroGalaxy && this.heroSurface) {
@@ -1472,9 +1284,6 @@ export class PerigeeScene implements PerigeeController {
       observed.update(this.camera, physicalPixels, this.hero.scale.x / this.hero.position.length(), now,
         this.reducedMotion, Number(this.hero.userData.opacity ?? 1))
     }
-    // Collected once per swap. Traversing the hero every frame to find the same
-    // handful of uniforms was pure overhead.
-    this.heroTimeUniforms.forEach((uniform) => { uniform.value = elapsed })
     this.frameListeners.forEach((listener) => listener())
 
     this.film?.setGrain(this.reducedMotion || this.quality.current === 'safe' ? 0 : 0.018)

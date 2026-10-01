@@ -23,7 +23,8 @@ export function groupObjects(objects: readonly SkyObjectDefinition[]): ObjectGro
     .map((group) => ({
       id: group.id,
       label: group.label,
-      objects: objects.filter((object) => group.kinds.includes(object.kind)),
+      objects: objects.filter((object) => object.id === 'sun'
+        ? group.id === 'solar-system' : group.kinds.includes(object.kind)),
     }))
     .filter((group) => group.objects.length > 0)
 }

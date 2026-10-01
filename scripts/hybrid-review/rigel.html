@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rigel · H6 review</title>
+<style>
+  :root{color-scheme:dark;font:15px/1.6 system-ui;background:#070b12;color:#dce5f3}
+  *{box-sizing:border-box}body{margin:0}main{max-width:1300px;margin:auto;padding:36px 20px 80px}
+  h1{font-size:28px;font-weight:550;margin:0}h2{font-size:18px;font-weight:500;margin:28px 0 12px}
+  p{max-width:850px;margin:12px 0;color:#b7c4d8}a{color:#abcaff;text-underline-offset:4px}
+  a:hover,a:focus-visible{color:white}button{font:inherit;color:inherit;background:transparent;border:1px solid #43516a;padding:8px 16px;cursor:pointer;transition:background .15s}
+  button:hover,button:focus-visible,button[aria-pressed=true]{background:#243854;outline-offset:4px}
+  nav{display:flex;gap:8px;margin:24px 0}figure{margin:0}figcaption{color:#bdcbe0;margin:8px 0;font-size:13px}
+  img{display:block;width:100%;height:auto}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  details{border-top:1px solid #283549;padding:16px 0}summary{cursor:pointer;font-size:17px}
+  summary:hover,summary:focus-visible{color:white;outline-offset:4px}.links{display:flex;flex-wrap:wrap;gap:12px 24px;margin:16px 0}
+  .caption{font-size:13px}.native{max-width:1280px}.status{color:#abcaff}
+  @media(max-width:640px){main{padding:24px 12px 60px}.pair{gap:8px}h1{font-size:24px}}
+</style>
+<main>
+  <h1>Rigel · H6 review</h1>
+  <p class="status">Approved and locally promoted. Rigel’s fixed portrait remains available as a rollback.</p>
+  <p>Original synthetic surface mottling, with a separate optical halo. No measured global map, surface-cell scale, current pattern or rotation period is claimed.</p>
+  <nav aria-label="Comparison layout">
+    <button data-layout="desktop" aria-pressed="true">Desktop</button>
+    <button data-layout="mobile" aria-pressed="false">Mobile layout</button>
+  </nav>
+  <p id="layout-note" class="caption"></p>
+  <div class="pair">
+    <figure><a data-image="portrait-0" target="_blank"><img data-image="portrait-0" alt="Fixed Rigel portrait in the matched scene"></a><figcaption>Fixed portrait</figcaption></figure>
+    <figure><a data-image="globe-0" target="_blank"><img data-image="globe-0" alt="Review-only Rigel globe in the matched scene"></a><figcaption>Accepted globe</figcaption></figure>
+  </div>
+  <h2>Saved 8K comparison</h2>
+  <figure class="native"><a data-image="8k-native-side-by-side" target="_blank"><img data-image="8k-native-side-by-side" alt="Matched unscaled 640 pixel crops from actual 8K portrait and globe PNG downloads"></a><figcaption>Fixed portrait left, candidate right. Each crop is 640 × 640 pixels in the saved artifact. Open the image to inspect at native resolution.</figcaption></figure>
+  <p>The candidate has more evenly distributed fine mottling and a smoother optical halo. The portrait’s particular bright patches and optical irregularities remain artistic differences. Apparent diameter, viewpoint, sky and production processing are held fixed.</p>
+  <details>
+    <summary>Complete exports and native detail</summary>
+    <div class="links" id="exports"></div>
+    <div class="pair">
+      <figure><a data-image="portrait-8k-full" data-ext="jpg" target="_blank"><img data-image="portrait-8k-full" data-ext="jpg" alt="Complete saved portrait export preview"></a><figcaption>Complete portrait 8K frame, reduced preview</figcaption></figure>
+      <figure><a data-image="globe-8k-full" data-ext="jpg" target="_blank"><img data-image="globe-8k-full" data-ext="jpg" alt="Complete saved globe export preview"></a><figcaption>Complete globe 8K frame, reduced preview</figcaption></figure>
+    </div>
+    <figure><a data-image="4k-native-side-by-side" target="_blank"><img data-image="4k-native-side-by-side" alt="Matched native crops from actual 4K downloads"></a><figcaption>4K native comparison</figcaption></figure>
+    <div class="links" id="details"></div>
+  </details>
+  <details>
+    <summary>Full surface, quality and distance checks</summary>
+    <img data-image="matrix" alt="Quarter turns, inclined and exact poles, seam-facing view and quality tiers">
+    <p class="caption">Enlarged live previews; native 4K pose exports are linked below. Pole and longitude controls are review-only authored coordinates.</p>
+    <div class="links" id="poses"></div>
+    <img data-image="distances" alt="Matched Rigel distance strips: 10 AU, 25 AU, 100 AU, 1000 AU and real distance">
+  </details>
+  <details>
+    <summary>Verification and limits</summary>
+    <p>Node 24: typecheck, 319 tests in 58 files, production build, 37 static routes and whitespace check passed. All 20 promotion frames are pixel-identical: accepted Rigel, portrait rollback and the eight earlier globes on both layouts. Actual product Capture → Save, reduced-motion suspension, cancellation, lease ownership and a single frozen pose per tiled export passed on both layouts.</p>
+    <p>Physical-phone touch/GPU/thermal, native hidden-tab acceptance, sustained performance and other browsers/GPUs remain unverified. A controlled visibility event tested the suspension handler. Explicit user approval cleared the visual acceptance gate; passing checks does not assign a numerical quality score.</p>
+    <a href="../../docs/rigel-hybrid-review.md">Provenance, decisions and evidence ledger</a>
+  </details>
+  <p class="caption">Explicit visual approval was received on 2026-10-01. The accepted globe is now active; its thumbnail, copy and credits are updated. Bulk motion remains disabled. No commit, upload or publication.</p>
+</main>
+<script>
+  const root='/tmp/hybrid-h6-rigel/selected/'
+  function select(layout){
+    document.querySelectorAll('[data-layout]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.layout===layout)))
+    document.querySelector('#layout-note').textContent=layout==='desktop'?'1440 × 900 desktop Chromium · DPR 1 · rooftop · 10 AU':'390 × 844 desktop Chromium with a mobile layout · DPR 1 · rooftop · 10 AU. This is not a physical-phone test.'
+    document.querySelectorAll('[data-image]').forEach(el=>{
+      const url=root+layout+'-'+el.dataset.image+'.'+(el.dataset.ext||'png')
+      if(el.tagName==='IMG')el.src=url;else el.href=url
+    })
+    function links(id,items){
+      const container=document.getElementById(id);container.replaceChildren()
+      for(const [suffix,label]of items){const a=document.createElement('a');a.href=root+layout+'-'+suffix+'.png';a.textContent=label;a.target='_blank';container.append(a)}
+    }
+    links('exports',[['portrait-4k','Portrait 4K'],['globe-4k','Globe 4K'],['portrait-8k','Portrait 8K'],['globe-8k','Globe 8K'],['product-capture','Product Capture → Save']])
+    links('details',['surface','limb','halo'].map(d=>['8k-'+d+'-side-by-side','Native '+d+' pair']))
+    links('poses',[['globe-longitude-90-4k','90°'],['globe-longitude-180-4k','180° / seam'],['globe-longitude-270-4k','270°'],['globe-pole-north-4k','Inclined north'],['globe-pole-south-4k','Inclined south'],['globe-longitude-180-pole-north-4k','Seam / inclined north'],['exact-pole-north-4k','Exact north pole'],['exact-pole-south-4k','Exact south pole'],['globe-balanced-4k','Balanced'],['globe-safe-4k','Safe']])
+  }
+  document.querySelectorAll('[data-layout]').forEach(b=>b.onclick=()=>select(b.dataset.layout))
+  select(innerWidth<640?'mobile':'desktop')
+</script>
+</html>

@@ -1,10 +1,12 @@
+import type { MotionSnapshot } from '../motion/CelestialClock'
 import {
-  AdditiveBlending, AgXToneMapping, Color, HalfFloatType, Mesh, NoBlending,
+  AdditiveBlending, Color, HalfFloatType, Mesh, NoBlending,
   OrthographicCamera, PlaneGeometry, Scene, ShaderMaterial, SRGBColorSpace,
   Vector2, Vector4, WebGLRenderTarget,
 } from 'three'
 import type { PerspectiveCamera, Texture, WebGLRenderer } from 'three'
 import { compileScene } from '../compileScene'
+import { renderPortraitLayer } from '../renderPortraitLayer'
 import { planStillExport, throwIfAborted, type ExportTile } from './exportPlan'
 
 const vertexShader = `varying vec2 vUv;
@@ -12,11 +14,15 @@ void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`
 
 /** Reuse the full-frame optical bloom: it cannot acquire tile-edge seams. */
 const finishShader = `
+// Offscreen render targets disable Three's automatic tone-mapping define.
+// Invoke the same AgX operator as the live ToneMappingEffect explicitly.
+#include <tonemapping_pars_fragment>
 uniform sampler2D uImage;
 uniform sampler2D uBloomImage;
 uniform vec4 uRect;
 uniform vec2 uFullSize;
 uniform float uBloom;
+uniform float uLinearOutput;
 varying vec2 vUv;
 void main() {
   vec2 globalUv = uRect.xy + vUv * uRect.zw;
@@ -27,16 +33,18 @@ void main() {
   }
   float d = distance(globalUv,vec2(.5));
   color *= 1. - smoothstep(.26*.799,.8,d*(.38+.26));
-  gl_FragColor = vec4(color,1.);
-  #include <tonemapping_fragment>
+  gl_FragColor = vec4(AgXToneMapping(color),1.);
+  if (uLinearOutput > .5) return;
   #include <colorspace_fragment>
-  // Dither once in encoded output using full-frame pixel coordinates.
+  // Dither once using full-frame pixel coordinates.
   vec2 p = floor(globalUv * uFullSize);
   float n = fract(52.9829189 * fract(.06711056*p.x + .00583715*p.y)) - .5;
   gl_FragColor.rgb += n / 255.;
 }`
 
 export interface StillRenderJob {
+  /** One immutable scene instant shared by all tiles and subpixel samples. */
+  pose?: { snapshot: MotionSnapshot, apply: (snapshot: MotionSnapshot) => void }
   renderer: WebGLRenderer
   scene: Scene
   camera: PerspectiveCamera
@@ -70,6 +78,11 @@ export async function renderStill(job: StillRenderJob): Promise<Blob> {
   const accumulation = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false })
   const output = new WebGLRenderTarget(1, 1, { depthBuffer: false })
   output.texture.colorSpace = SRGBColorSpace
+  let displayGlobe = false
+  scene.traverse(object => { if (object.userData.displayReferredGlobe) displayGlobe = true })
+  // Signed detail corrections must blend in a floating-point linear target,
+  // before the final sRGB encode. Keep the approved portrait/HDR path unchanged.
+  const display = displayGlobe ? new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: true }) : null
   const add = new ShaderMaterial({ vertexShader, fragmentShader: `uniform sampler2D uImage;
     varying vec2 vUv; void main() { gl_FragColor = texture2D(uImage,vUv) * .25; }`,
   uniforms: { uImage: { value: sample.texture } }, transparent: true, blending: AdditiveBlending,
@@ -77,9 +90,23 @@ export async function renderStill(job: StillRenderJob): Promise<Blob> {
   const finish = new ShaderMaterial({ vertexShader, fragmentShader: finishShader,
     uniforms: { uImage: { value: accumulation.texture }, uBloomImage: { value: job.bloomTexture ?? null },
       uRect: { value: new Vector4() }, uFullSize: { value: new Vector2(plan.width, plan.height) },
-      uBloom: { value: job.bloom } },
-    depthTest: false, depthWrite: false, blending: NoBlending })
+      uBloom: { value: job.bloom }, toneMappingExposure: { value: renderer.toneMappingExposure ?? 1 } },
+    depthTest: false, depthWrite: false, blending: NoBlending, toneMapped: false })
   const quad = new Mesh(geometry, add)
+  finish.uniforms.uLinearOutput = { value: display ? 1 : 0 }
+  const encode = display ? new ShaderMaterial({ vertexShader, fragmentShader: `
+    uniform sampler2D uImage;
+    uniform vec4 uRect;
+    uniform vec2 uFullSize;
+    varying vec2 vUv;
+    void main() {
+      gl_FragColor = texture2D(uImage, vUv);
+      #include <colorspace_fragment>
+      vec2 p = floor((uRect.xy + vUv * uRect.zw) * uFullSize);
+      float n = fract(52.9829189 * fract(.06711056*p.x + .00583715*p.y)) - .5;
+      gl_FragColor.rgb += n / 255.;
+    }`, uniforms: { uImage: { value: display.texture }, uRect: finish.uniforms.uRect!, uFullSize: finish.uniforms.uFullSize! },
+    depthTest: false, depthWrite: false, blending: NoBlending, toneMapped: false }) : null
   quadScene.add(quad)
   const rects: Vector4[] = []
   scene.traverse((object) => {
@@ -102,11 +129,15 @@ export async function renderStill(job: StillRenderJob): Promise<Blob> {
   }
   try {
     renderer.setScissorTest(false)
+    if (job.pose) job.pose.apply(job.pose.snapshot)
     await job.before?.()
     throwIfAborted(signal)
     await compileScene(renderer, quadScene, quadCamera, quadScene, signal)
+    if (encode) {
+      quad.material = encode
+      await compileScene(renderer, quadScene, quadCamera, quadScene, signal)
+    }
     quad.material = finish
-    renderer.toneMapping = AgXToneMapping
     await compileScene(renderer, quadScene, quadCamera, quadScene, signal)
     renderer.toneMapping = previous.toneMapping
     for (const [index, tile] of plan.tiles.entries()) {
@@ -117,12 +148,14 @@ export async function renderStill(job: StillRenderJob): Promise<Blob> {
       sample.setSize(tile.renderWidth, tile.renderHeight)
       accumulation.setSize(tile.renderWidth, tile.renderHeight)
       output.setSize(tile.renderWidth, tile.renderHeight)
+      display?.setSize(tile.renderWidth, tile.renderHeight)
       renderer.setRenderTarget(accumulation)
       if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('EXPORT_TRY_4K')
       renderer.setClearColor(0, 0)
       renderer.clear()
       // Four subpixel samples accumulate in linear HDR, before AgX or dither.
       for (const [dx, dy] of [[-.25,-.25],[.25,-.25],[-.25,.25],[.25,.25]]) {
+        if (job.pose) job.pose.apply(job.pose.snapshot)
         projection(tile, dx, dy)
         renderer.toneMapping = previous.toneMapping
         renderer.setRenderTarget(sample)
@@ -136,11 +169,19 @@ export async function renderStill(job: StillRenderJob): Promise<Blob> {
       projection(tile)
       finish.uniforms.uRect!.value.set(tile.left / plan.width, 1 - (tile.top + tile.renderHeight) / plan.height,
         tile.renderWidth / plan.width, tile.renderHeight / plan.height)
-      renderer.toneMapping = AgXToneMapping
-      renderer.setRenderTarget(output)
+      renderer.setRenderTarget(display ?? output)
       if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('EXPORT_TRY_4K')
       quad.material = finish
       renderer.render(quadScene, quadCamera)
+      // Match the live compositor: the approved portrait is display-referred
+      // and must not acquire a second photographic curve in saved images.
+      renderPortraitLayer(renderer, scene, camera)
+      if (encode) {
+        renderer.setRenderTarget(output)
+        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('EXPORT_TRY_4K')
+        quad.material = encode
+        renderer.render(quadScene, quadCamera)
+      }
       const pixels = new Uint8Array(tile.renderWidth * tile.renderHeight * 4)
       await renderer.readRenderTargetPixelsAsync(output, 0, 0, tile.renderWidth, tile.renderHeight, pixels)
       throwIfAborted(signal)
@@ -164,6 +205,8 @@ export async function renderStill(job: StillRenderJob): Promise<Blob> {
     sample.dispose()
     accumulation.dispose()
     output.dispose()
+    display?.dispose()
+    encode?.dispose()
     add.dispose()
     finish.dispose()
     geometry.dispose()

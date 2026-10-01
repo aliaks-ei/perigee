@@ -133,8 +133,10 @@ export function createPlanetMaterial(
         float t = -vBodyPosition.y / uSunLocal.y;
         float radius = length((vBodyPosition + t * uSunLocal).xz);
         float band = (radius - ${RING_INNER_RADIUS}) / ${(RING_OUTER_RADIUS - RING_INNER_RADIUS).toFixed(6)};
-        if (t <= 0.0 || band < 0.0 || band > 1.0) return 1.0;
         float width = max(fwidth(band), t * ${SATURN_SOLAR_ANGULAR_RADIUS} / ${(RING_OUTER_RADIUS - RING_INNER_RADIUS).toFixed(6)});
+        // Derivatives must precede per-fragment early returns. Outside samples
+        // contribute full sunlight below, filtering the annulus edge as well.
+        if (t <= 0.0) return 1.0;
         float result = 0.0;
         // Average transmission across the finite Sun; averaging optical depths
         // first would incorrectly close narrow gaps at a shadow boundary.

@@ -1,0 +1,84 @@
+{
+  "status": "review-only",
+  "source": {
+    "url": "https://www.jpl.nasa.gov/images/pia01492-neptune-full-disk-view/",
+    "download": "https://d2pn8kiwq2w21t.cloudfront.net/original_images/jpegPIA01492.jpg",
+    "sha256": "97b57802f44be2218578a98c8c26f8426ff7a95890d266d34486734f14c1edb6",
+    "dimensions": [
+      2188,
+      2185
+    ],
+    "epoch": "August 1989; about 4 days 20 hours before closest approach",
+    "credit": "NASA/JPL",
+    "filters": "green and orange; enhanced display composite, not calibrated RGB albedo",
+    "nativeDetector": "800 x 800; published enlargement is not native resolution"
+  },
+  "closeup": {
+    "url": "https://science.nasa.gov/resource/neptune-clouds-showing-vertical-relief/",
+    "download": "https://d2pn8kiwq2w21t.cloudfront.net/original_images/jpegPIA00058.jpg",
+    "sha256": "e0b740b8e97ef9b68e304f8a7bf20bc86974e04b920431a2903470770b503337",
+    "dimensions": [
+      682,
+      596
+    ],
+    "credit": "NASA/JPL",
+    "epoch": "August 1989; two hours before closest approach",
+    "captionLatitudeDegrees": 29,
+    "captionResolutionKmPerPixel": 11,
+    "registration": "illustrative affine placement at caption latitude; authored relative longitude -20 degrees, half-width 17 degrees and half-height 8 degrees; not SPICE geometry",
+    "coverageMask": "neptune-voyager-closeup-coverage-v4.png",
+    "maskSha256": "0bd70105df6404fa9ea2d3007dfe75773ee2f21074237a39099c9c35b1339b9c",
+    "processing": "positive green-channel residual after 35-pixel broad-light removal; excludes baked directional shadows; opacity capped at 0.2"
+  },
+  "output": {
+    "file": "neptune-voyager-reconstruction-v4.webp",
+    "sha256": "9f51c801c55a4948c9ad2a2d5a6cb59b75619f93a14e033d2f02a3ae62e839bc",
+    "dimensions": [
+      2048,
+      1024
+    ],
+    "bytes": 366538
+  },
+  "projection": {
+    "layout": "north-first, planetocentric, east-positive, -180 to 180 pixel-centred",
+    "sourceDisc": [
+      548.0,
+      558.0,
+      481.0,
+      481.0
+    ],
+    "workingImage": [
+      1094,
+      1093
+    ],
+    "approximateSubObserverLatitudeDegrees": -28,
+    "approximatePoleRollRadians": -0.2,
+    "longitude": "relative to the source-facing hemisphere; not IAU absolute longitude"
+  },
+  "reconstruction": {
+    "coverageMask": "neptune-voyager-coverage-v4.png",
+    "maskSha256": "c75934c10ef0addbc110034236016385eb7755568b9095c28887d8ccc8db1c44",
+    "sourceSupportedAreaFraction": 0.246684812602707,
+    "fullyWeightedAreaFraction": 0.12554698094092473,
+    "coverageMeaning": "geometric source support after conservative taper, not measured weather accuracy",
+    "elsewhere": "Voyager/OPAL zonal average plus explicitly modelled fine bands, smoothly convergent poles; no generated discrete storms",
+    "modelledFineStructure": {
+      "seed": 19890825,
+      "type": "periodic anisotropic zonal Fourier field",
+      "meaning": "authored atmospheric reconstruction, NOT observed weather; not extra source resolution",
+      "amplitude": "0.008 RMS base plus positive filament response and neutral condensate mix capped at 0.12, tapered to zero at poles",
+      "mask": "brightness and neutral condensate models at 1 - 0.6 * Voyager weight; no generated discrete storms"
+    },
+    "opalBase": "public/assets/objects/planets/1b448275b234/neptune/base.webp",
+    "opalSha256": "4e180856da70c2cea44c31afa698d2cd522f9b022be3e9a5f6da39d9ada2338d",
+    "delighting": "robust quadratic fit to log green channel inside 0.78 disc radius; residual source shading remains",
+    "paletteSrgb": [
+      0.5,
+      0.69,
+      0.81
+    ],
+    "calibration": "authored natural-colour-informed display balance, not calibrated colour",
+    "fineDetail": "bilaterally denoised and soft-thresholded finite Voyager observations plus separately identified modelled zonal texture; no upscaling claim or portrait pixels"
+  },
+  "recipeSha256": "6fba2f4a79420378e0a65237cb26d9e7665b55dc4ccbc1aef0e44f72b3bc801d"
+}

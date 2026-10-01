@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sun · H6 review</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.5 system-ui, sans-serif; background: #070d1c; color: #eef4ff }
+    * { box-sizing: border-box }
+    body { margin: 0; padding: clamp(20px, 4vw, 48px) }
+    main { max-width: 1500px; margin: auto }
+    header { max-width: 720px; margin-bottom: 28px }
+    h1 { font-size: clamp(28px, 4vw, 48px); line-height: 1.08; letter-spacing: -.04em; margin: 0 0 14px }
+    h2 { font-size: 20px; margin: 38px 0 12px; letter-spacing: -.02em }
+    p { color: #b8c6e0; margin: 0 0 14px }
+    .eyebrow { color: #94baff; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase }
+    .switch { display: flex; gap: 8px; margin: 20px 0 26px }
+    button { color: #d2def5; background: #15213b; border: 1px solid #354766; border-radius: 999px; padding: 9px 16px; font: inherit; cursor: pointer }
+    button[aria-pressed="true"] { color: #091329; background: #cde0ff; border-color: #cde0ff }
+    button:hover, a:hover { filter: brightness(1.15) }
+    button:focus-visible, a:focus-visible { outline: 2px solid #91baff; outline-offset: 3px }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+    figure { margin: 0; min-width: 0 }
+    figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 8px; color: #c9d7ee }
+    figcaption strong { font-size: 13px; letter-spacing: .04em; text-transform: uppercase }
+    figcaption span { color: #8597b7; font-size: 12px }
+    img { display: block; width: 100%; height: auto; background: #030814; border: 1px solid #23314d; border-radius: 3px }
+    .detail img { max-width: 700px }
+    .note { margin-top: 12px; font-size: 13px }
+    a { color: #a7caff }
+    footer { border-top: 1px solid #23314d; margin-top: 42px; padding-top: 18px; color: #8597b7; font-size: 13px }
+    @media (max-width: 700px) { .pair { gap: 8px } figcaption { display: block } figcaption span { display: block } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">H6 · approved 1 October 2026</p>
+      <h1>Sun, portrait and globe</h1>
+      <p>Matched rooftop viewpoint, apparent size, quality, distance preset, and production post-processing. Left is the fixed approved portrait. Right is the approved hybrid globe.</p>
+      <p>No numerical visual score is assigned here. Please judge desktop and mobile layout separately against the portrait.</p>
+    </header>
+    <nav class="switch" aria-label="Comparison layout">
+      <button type="button" data-layout="desktop" aria-pressed="true">Desktop · 1440 × 900</button>
+      <button type="button" data-layout="mobile" aria-pressed="false">Mobile layout · 390 × 844</button>
+    </nav>
+    <h2>Complete saved 4K frames</h2>
+    <div class="pair">
+      <figure><figcaption><strong>Approved portrait</strong><span>fixed baseline</span></figcaption><img id="portrait-full" alt="Full rooftop scene with the approved Sun portrait" loading="eager"></figure>
+      <figure><figcaption><strong>H6 globe</strong><span>review candidate</span></figcaption><img id="globe-full" alt="Matched rooftop scene with the synthetic Sun globe" loading="eager"></figure>
+    </div>
+    <h2>Native 4K crops · click for original pixels</h2>
+    <div class="pair detail">
+      <figure><figcaption><strong>Approved portrait</strong><span>unscaled pixels</span></figcaption><img id="portrait-detail" alt="Native export crop of the portrait photosphere and optical halo"></figure>
+      <figure><figcaption><strong>H6 globe</strong><span>unscaled pixels</span></figcaption><img id="globe-detail" alt="Native export crop of the globe photosphere and separate optical halo"></figure>
+    </div>
+    <p class="note">The globe map is an artistic reconstruction. Surface and spot patterns are synthetic, not observed or current solar activity.</p>
+    <h2>Saved 8K detail · both renderers</h2>
+    <div class="pair detail"><figure><figcaption><strong>Approved portrait</strong><span>native 8K crop</span></figcaption><img id="portrait-8k" alt="Native 8K portrait crop"></figure><figure><figcaption><strong>H6 globe</strong><span>native 8K crop</span></figcaption><img id="globe-8k" alt="Native 8K globe crop"></figure></div><p class="note">All crops are 640 × 640 source pixels; this page fits them to the viewport. Click any image to open its original file.</p><h2>Complete surface, tiers and bounded motion epochs</h2><img id="matrix" alt="Quarter turns, poles, quality tiers and differential-motion review epochs"><h2>All five distance presets</h2><img id="distances" alt="Matched portrait and globe distance presets"><p class="note"><a href="index.html?object=sun&amp;renderer=globe&amp;longitude=90&amp;controls=1">Open deterministic 90° turntable</a> · <a href="index.html?object=sun&amp;renderer=globe&amp;solarDays=4&amp;controls=1">Four-day sidereal feature epoch</a> · <a href="index.html?object=sun&amp;renderer=differential&amp;controls=1">Bounded clock demonstration</a></p>
+    <details><summary>Original 8K frames, active regions, limb and exact poles</summary>
+      <p><a id="portrait-export">Open complete portrait 8K PNG</a> · <a id="globe-export">Open complete globe 8K PNG</a></p>
+      <h2>Native 8K active-region crops</h2><div class="pair detail"><figure><figcaption>Approved portrait</figcaption><img id="portrait-spot" alt="Native portrait active-region crop"></figure><figure><figcaption>H6 globe</figcaption><img id="globe-spot" alt="Native globe active-region crop"></figure></div>
+      <h2>Native 8K limb crops</h2><div class="pair detail"><figure><figcaption>Approved portrait</figcaption><img id="portrait-limb" alt="Native portrait limb crop"></figure><figure><figcaption>H6 globe</figcaption><img id="globe-limb" alt="Native globe limb crop"></figure></div>
+      <h2>Exact north and south poles</h2><img id="exact-poles" alt="Exact north and south pole views">
+    </details>
+    <footer>Desktop Chromium mobile layout is not a physical-phone test. The approved globe is now the production default; the portrait remains available for rollback. <a href="../../docs/sun-hybrid-review.md">Read provenance and review notes</a>.</footer>
+  </main>
+  <script>
+    const base = '/tmp/hybrid-h6-sun/selected/'
+    const pairs = ['portrait-full', 'globe-full', 'portrait-detail', 'globe-detail', 'portrait-8k', 'globe-8k', 'matrix', 'distances', 'portrait-spot', 'globe-spot', 'portrait-limb', 'globe-limb', 'exact-poles']
+    function select(layout) {
+      const prefix = layout === 'mobile' ? 'mobile' : 'desktop'
+      const files = [
+        `${prefix}-portrait-4k.png`, `${prefix}-globe-4k.png`,
+        `${prefix}-portrait-4k-native.png`, `${prefix}-globe-4k-native.png`,
+        `${prefix}-portrait-8k-native.png`, `${prefix}-globe-8k-native.png`,
+        `${prefix}-matrix.png`, `${prefix}-distances.png`,
+        `${prefix}-portrait-8k-spot.png`, `${prefix}-globe-8k-spot.png`,
+        `${prefix}-portrait-8k-limb.png`, `${prefix}-globe-8k-limb.png`, `${prefix}-exact-poles.png`,
+      ]
+      pairs.forEach((id, index) => { document.getElementById(id).src = base + files[index] })
+      for (const renderer of ['portrait', 'globe']) document.getElementById(`${renderer}-export`).href = base + `${prefix}-${renderer}-8k.png`
+      document.querySelectorAll('[data-layout]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.layout === layout))
+      })
+    }
+    document.querySelectorAll('[data-layout]').forEach(button => {
+      button.addEventListener('click', () => select(button.dataset.layout))
+    })
+    document.querySelectorAll('img').forEach(img => { img.style.cursor = 'zoom-in'; img.addEventListener('click', () => window.open(img.src, '_blank', 'noopener')) })
+    select('desktop')
+  </script>
+</body>
+</html>

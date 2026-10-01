@@ -1,3 +1,4 @@
+import { marsGlobeSource, neptuneGlobeMap } from '../../src/perigee/objects/renderingPolicy'
 import planetManifest from '../../src/perigee/planet/planet-manifest.json'
 import type { SkyObjectDefinition, SkyObjectId } from '~/types/perigee'
 
@@ -46,6 +47,14 @@ const neptunePresets = [
 ]
 
 const hazardCopy = 'At this distance, Earth would not survive. Enjoy the view.'
+
+const sunPresets = [
+  { id: 'impossible', label: 'Impossible close pass', shortLabel: 'Close', metadataLabel: '3 million km from the centre', distanceKm: 3_000_000, hazardCopy },
+  { id: 'near-10-million', label: 'Above the solar surface', shortLabel: 'Near', metadataLabel: '10 million km from the centre', distanceKm: 10_000_000 },
+  { id: 'near-25-million', label: 'Inside Mercury’s orbit', shortLabel: 'Inner', metadataLabel: '25 million km from the centre', distanceKm: 25_000_000 },
+  { id: 'mercury', label: 'At Mercury’s mean distance', shortLabel: 'Mercury', metadataLabel: '57.9 million km from the centre', distanceKm: 57_900_000 },
+  { id: 'real', label: 'Real distance', shortLabel: 'Real', metadataLabel: '1 AU away on average', distanceKm: AU_KM },
+]
 
 const betelgeusePresets = [
   { id: 'impossible', label: 'Impossible close pass', shortLabel: 'Close', metadataLabel: '63 AU away', distanceKm: AU_KM * 63, hazardCopy },
@@ -104,8 +113,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.3,
       accent: '#c7c6c2',
     },
-    thumbnail: `/assets/objects/thumbs/moon-${planetManifest.version}.webp`,
-    attributionIds: ['planetary-observations', 'planetary-elevation-data'],
+    thumbnail: '/assets/objects/thumbs/moon-globe-v1.webp',
+    attributionIds: ['moon-lroc-lola-globe'],
   },
   {
     id: 'mars',
@@ -114,7 +123,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 6_779,
     flattening: 0.00589,
     rotationPeriodHours: 24.62,
-    texture: `${planetManifest.baseUrl}/mars/base.webp`,
+    texture: `${marsGlobeSource.baseUrl}/mars/base.webp`,
     normalMap: `${planetManifest.baseUrl}/mars/terrain-normal.webp`,
     material: 'rocky',
     presets: marsPresets,
@@ -127,8 +136,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.27,
       accent: '#c87950',
     },
-    thumbnail: `/assets/objects/thumbs/mars-${planetManifest.version}.webp`,
-    attributionIds: ['planetary-observations', 'planetary-elevation-data'],
+    thumbnail: '/assets/objects/thumbs/mars-globe-v1.webp',
+    attributionIds: ['mars-observational-composite', 'planetary-elevation-data'],
   },
   {
     id: 'jupiter',
@@ -136,8 +145,8 @@ export const skyObjects: SkyObjectDefinition[] = [
     kind: 'planet',
     diameterKm: 139_820,
     flattening: 0.06487,
-    rotationPeriodHours: 9.93,
-    texture: `${planetManifest.baseUrl}/jupiter/base.webp`,
+    rotationPeriodHours: 9.9,
+    texture: '/assets/objects/jupiter-cassini-pia07782.jpg',
     material: 'gas-giant',
     presets: jupiterPresets,
     shot: {
@@ -149,8 +158,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.24,
       accent: '#d4b89a',
     },
-    thumbnail: `/assets/objects/thumbs/jupiter-${planetManifest.version}.webp`,
-    attributionIds: ['planetary-observations'],
+    thumbnail: '/assets/objects/thumbs/jupiter-globe-v1.webp',
+    attributionIds: ['jupiter-cassini-map'],
   },
   {
     id: 'saturn',
@@ -158,22 +167,22 @@ export const skyObjects: SkyObjectDefinition[] = [
     kind: 'planet',
     diameterKm: 116_460,
     flattening: 0.09796,
-    rotationPeriodHours: 10.7,
-    texture: `${planetManifest.baseUrl}/saturn/base.webp`,
+    rotationPeriodHours: 38018 / 3600,
+    texture: '/assets/objects/saturn-observational-composite-v1.webp',
     material: 'gas-giant',
     presets: saturnPresets,
     shot: {
       timeOfDay: 0.16,
       exposure: 0.9,
-      sunDirection: [0.75, 0.28, 1],
+      sunDirection: [-0.75, 0.28, 1],
       skyPalette: ['#01040a', '#061327', '#24314a'],
       objectYaw: 0.38,
       objectPitch: 0.31,
       ringTilt: -0.31,
       accent: '#d8c7a4',
     },
-    thumbnail: `/assets/objects/thumbs/saturn-${planetManifest.version}.webp`,
-    attributionIds: ['planetary-observations', 'solar-system-scope-textures', 'ring-occultation-data'],
+    thumbnail: '/assets/objects/thumbs/saturn-globe-v1.webp',
+    attributionIds: ['saturn-observational-composite', 'saturn-cassini-ring-color', 'ring-occultation-data'],
   },
   {
     id: 'neptune',
@@ -182,7 +191,7 @@ export const skyObjects: SkyObjectDefinition[] = [
     diameterKm: 49_244,
     flattening: 0.01708,
     rotationPeriodHours: 16.11,
-    texture: `${planetManifest.baseUrl}/neptune/base.webp`,
+    texture: neptuneGlobeMap,
     material: 'ice-giant',
     presets: neptunePresets,
     shot: {
@@ -194,15 +203,34 @@ export const skyObjects: SkyObjectDefinition[] = [
       objectPitch: 0.29,
       accent: '#6187dc',
     },
-    thumbnail: `/assets/objects/thumbs/neptune-${planetManifest.version}.webp`,
-    attributionIds: ['planetary-observations'],
+    thumbnail: '/assets/objects/thumbs/neptune-globe-v1.webp',
+    attributionIds: ['neptune-voyager-reconstruction'],
+  },
+  {
+    id: 'sun',
+    label: 'Sun',
+    kind: 'star',
+    // NASA Sun Fact Sheet: nominal photospheric radius 695,700 km.
+    diameterKm: 1_391_400,
+    material: 'stellar',
+    presets: sunPresets,
+    shot: {
+      timeOfDay: 0.3,
+      exposure: 0.78,
+      sunDirection: [0.4, 0.5, 1],
+      skyPalette: ['#050407', '#171019', '#453022'],
+      objectYaw: 0,
+      objectPitch: 0,
+      accent: '#ffc56d',
+    },
+    thumbnail: '/assets/objects/thumbs/sun-globe-v1.webp',
+    attributionIds: ['sun-synthetic-globe'],
   },
   {
     id: 'betelgeuse',
     label: 'Betelgeuse',
     kind: 'star',
     diameterKm: 1_050_000_000,
-    rotationPeriodHours: 20_000,
     material: 'stellar',
     presets: betelgeusePresets,
     shot: {
@@ -215,15 +243,14 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#ff5d2f',
       accent: '#ed6a38',
     },
-    thumbnail: '/assets/objects/thumbs/betelgeuse-5d4128be14cd.webp',
-    attributionIds: ['perigee-procedural-art'],
+    thumbnail: '/assets/objects/thumbs/betelgeuse-globe-v1.webp',
+    attributionIds: ['betelgeuse-convection-art'],
   },
   {
     id: 'sirius',
     label: 'Sirius',
     kind: 'star',
     diameterKm: 2_380_000,
-    rotationPeriodHours: 120,
     material: 'stellar',
     presets: siriusPresets,
     shot: {
@@ -236,15 +263,14 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#b7d5ff',
       accent: '#b9d6ff',
     },
-    thumbnail: '/assets/objects/thumbs/sirius-334f60b83553.webp',
-    attributionIds: ['perigee-procedural-art'],
+    thumbnail: '/assets/objects/thumbs/sirius-globe-v1.webp',
+    attributionIds: ['sirius-synthetic-globe'],
   },
   {
     id: 'rigel',
     label: 'Rigel',
     kind: 'star',
     diameterKm: 109_000_000,
-    rotationPeriodHours: 1_200,
     material: 'stellar',
     presets: rigelPresets,
     shot: {
@@ -257,8 +283,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#a8c8ff',
       accent: '#abcaff',
     },
-    thumbnail: '/assets/objects/thumbs/rigel-bc3abdf6c7af.webp',
-    attributionIds: ['perigee-procedural-art'],
+    thumbnail: '/assets/objects/thumbs/rigel-globe-v1.webp',
+    attributionIds: ['rigel-synthetic-globe'],
   },
   {
     id: 'andromeda',
@@ -290,8 +316,8 @@ export const skyObjects: SkyObjectDefinition[] = [
       environmentTint: '#9fb8f0',
       accent: '#b7c8ff',
     },
-    thumbnail: '/assets/objects/thumbs/andromeda-55825fd3438b.webp',
-    attributionIds: ['andromeda-observations', 'gaia-foreground'],
+    thumbnail: '/assets/objects/thumbs/andromeda-portrait-v3.webp',
+    attributionIds: ['andromeda-nasa-inspired-portrait', 'gaia-foreground'],
   },
 ]
 

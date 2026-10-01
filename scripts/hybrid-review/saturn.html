@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saturn — portrait and globe review</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#080d14;color:#ebe8df}*{box-sizing:border-box}body{margin:0;padding:32px;max-width:1800px;margin-inline:auto}h1{font-size:28px;font-weight:500;margin:0 0 10px}p{max-width:80ch;line-height:1.6;color:#c3c4c4}nav{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:24px 0}button,select,a{font:inherit}button,select{padding:9px 13px;background:#17212b;border:1px solid #53606a;border-radius:5px;color:#fff}button{cursor:pointer}button:hover,button:focus-visible,select:focus-visible{outline:2px solid #dac39d;outline-offset:3px}button[aria-pressed=true]{background:#d7c39f;color:#101720}a{color:#e5cfa7;text-underline-offset:4px}a:hover,a:focus-visible{color:white}section{display:grid;grid-template-columns:1fr 1fr;gap:18px}figure{margin:0;min-width:0}figcaption{margin-bottom:10px;color:#e1d4bc}img{display:block;width:100%;height:auto}body[data-layout=mobile] section{max-width:800px}details{margin-top:28px;max-width:90ch}summary{cursor:pointer;font-size:18px}table{border-collapse:collapse;margin-block:20px;width:100%}td,th{text-align:left;border-bottom:1px solid #34404b;padding:10px 14px 10px 0}footer{margin-block:28px}::selection{background:#d7c39f;color:#101720}@media(max-width:650px){body{padding:18px}section{grid-template-columns:1fr}h1{font-size:24px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body data-layout="desktop">
+<h1>Saturn: portrait and rotating globe</h1>
+<p>You approved this observational globe on 16 September 2026. It is now the default Saturn renderer, with automatic rotation and a stable ring plane. Compare the original portrait and the approved globe below.</p>
+<nav aria-label="Comparison options">
+<button id="desktop" aria-pressed="true">Desktop · 1440 × 900</button>
+<button id="mobile" aria-pressed="false">Mobile layout · 390 × 844</button>
+<label>View <select id="view"><option value="0">Reference</option><option value="90">Quarter turn · 90°</option><option value="180">Half turn · 180°</option><option value="270">Three-quarter turn · 270°</option><option value="balanced">Balanced quality</option><option value="safe">Safe quality</option><option value="real">Real distance</option></select></label>
+</nav>
+<section aria-label="Matched image comparison">
+<figure><figcaption>Original portrait · retained for rollback</figcaption><a id="reference-link"><img id="reference" alt="Approved Saturn portrait above the rooftop"></a></figure>
+<figure><figcaption>Approved globe — Cassini / Hubble observational reconstruction</figcaption><a id="candidate-link"><img id="candidate" alt="Approved Saturn globe in the same scene"></a></figure>
+</section>
+<footer><a id="portrait-export">Open portrait 4K PNG</a> · <a id="globe-export">Open globe 4K PNG</a> · <a href="index.html?object=saturn&amp;renderer=production">Open live 120× production renderer</a></footer>
+<details><summary>Assessment and acceptance status</summary>
+<p>The original OPAL review scored below the target. This revision improves the lower silhouette, real cloud detail, ring color and shadow readability. It still has coarser cloud contrast and a less distinct polar feature than the portrait. The scores below are the historical agent assessment before your approval, not automated similarity measurements. Your subsequent visual approval authorizes this exact candidate; no numerical 95% result is claimed.</p>
+<table><thead><tr><th>Dimension</th><th>Weight</th><th>Desktop</th><th>Mobile layout</th></tr></thead><tbody>
+<tr><td>Surface detail</td><td>30%</td><td>85</td><td>90</td></tr><tr><td>Lighting and depth</td><td>25%</td><td>90</td><td>91</td></tr><tr><td>Color fidelity</td><td>20%</td><td>92</td><td>94</td></tr><tr><td>Silhouette and rings</td><td>15%</td><td>94</td><td>94</td></tr><tr><td>Composition</td><td>10%</td><td>95</td><td>95</td></tr><tr><th>Weighted result</th><td></td><th>90.0 / 100</th><th>92.15 / 100</th></tr>
+</tbody></table>
+<p>The historical scores remain below 95. The user subsequently approved the displayed candidate and authorized promotion. Quarter turns, stable ring plane, rotation clock, reduced motion, quality tiers, replacement, frozen exports and cancellation passed in desktop Chromium. Mobile images are resized desktop tests, not physical-phone acceptance.</p>
+</details>
+<details><summary>Sources and reconstruction limits</summary>
+<p>The 3600 × 1801 surface combines Cassini 2011 cloud structure, Hubble OPAL 2024 broad haze and a Cassini 2013 polar view. It is an authored multi-epoch reconstruction, not simultaneous weather or calibrated albedo. Missing strips and the longitude seam are interpolated. The rings combine Cassini 2008 display color and independent Voyager 1981 optical depth. Pole, light, palette and longitude are authored shot settings. Weak perspective preserves the portrait framing; the globe is oblate and the rings remain equatorial. Approximate ringshine and bounded shadow fill preserve readable indirect light.</p>
+<p>The clock uses the Cassini ring-seismology estimate of 10h 33m 38s. The review's disclosed 120× time-lapse makes one turn in 316.8 seconds. Rotation settings are absent from the product; accepted objects spin automatically, respecting reduced motion.</p>
+<p><a href="https://atmos.nmsu.edu/data_and_services/atmospheres_data/Cassini/sat_global_map.html">Cassini map archive</a> · <a href="https://www.jpl.nasa.gov/images/pia21611-saturns-hexagon-as-summer-solstice-approaches/">Polar source</a> · <a href="https://science.nasa.gov/photojournal/a-full-sweep-of-saturns-rings/">Ring color</a> · <a href="https://pds-rings.seti.org/voyager/uvs/profiles.html">Voyager profiles</a> · <a href="https://science.nasa.gov/solar-system/scientists-finally-know-what-time-it-is-on-saturn/">Rotation source</a></p></details>
+<script>
+let layout='desktop';const base='../../tmp/hybrid-h5/observational-v1/';const view=document.querySelector('#view');
+function update(){document.body.dataset.layout=layout;const pose=view.value;const reference=['balanced','safe','real'].includes(pose)?pose:'0';for(const [id,file] of [['reference',`${layout}-portrait-${reference}.png`],['candidate',`${layout}-globe-${pose}.png`]]){document.querySelector(`#${id}`).src=base+file;document.querySelector(`#${id}-link`).href=base+file}document.querySelector('#portrait-export').href=base+`${layout}-portrait-4k.png`;document.querySelector('#globe-export').href=base+`${layout}-globe-4k.png`;for(const name of ['desktop','mobile'])document.querySelector(`#${name}`).setAttribute('aria-pressed',String(name===layout))}
+for(const name of ['desktop','mobile'])document.querySelector(`#${name}`).onclick=()=>{layout=name;update()};view.onchange=update;update();
+</script>
+</body>
+</html>
