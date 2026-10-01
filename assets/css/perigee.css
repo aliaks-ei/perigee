@@ -1361,18 +1361,26 @@
 }
 
 /* The gas giants are shot wider than the rocky bodies. */
-.object-jupiter .object-thumbnail img,
-.object-saturn .object-thumbnail img,
-.object-neptune .object-thumbnail img {
+.object-jupiter .object-thumbnail img {
   transform: scale(1.42);
+}
+
+/* Preserve the complete bodies and ring span in the circular menu preview. */
+.object-moon .object-thumbnail img,
+.object-saturn .object-thumbnail img,
+.object-neptune .object-thumbnail img,
+.object-andromeda .object-thumbnail img {
+  transform: none;
 }
 
 /* The star and galaxy thumbnails are drawn from their shaders with the halo
    already in the frame, so they are shown whole rather than cropped in. */
 .object-betelgeuse .object-thumbnail img,
 .object-sirius .object-thumbnail img,
+.object-sun .object-thumbnail img,
 .object-rigel .object-thumbnail img,
-.trigger-thumb img.star {
+.trigger-thumb img.star,
+.trigger-thumb img.galaxy {
   transform: none;
 }
 

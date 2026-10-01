@@ -6,6 +6,7 @@ const RAD = Math.PI / 180
 /** Fixed ICRS directions; geocentric JPL Horizons 2016-01-01 00:00 UTC
  * for the Solar System, catalogue centres for stars/M31. See stellar-sky.md. */
 export const targetCoordinates: Record<SkyObjectId, [number, number]> = {
+  sun: [280.62371, -23.07790],
   andromeda: [10.6847, 41.269], betelgeuse: [88.7929, 7.4071],
   sirius: [101.2872, -16.7161], rigel: [78.6345, -8.2016],
   moon: [176.83046, 1.54929], mars: [206.86507, -9.48133],

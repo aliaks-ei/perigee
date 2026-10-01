@@ -4,6 +4,7 @@ import type { QualityTier, SkyObjectId } from '../../../app/types/perigee'
 /** Linear RGB continuum proxies, normalized to unit luminance. Structure is
  * deliberately stylized, not a photographic map; see docs/stellar-sky.md for references. */
 export const stellarLooks = {
+  sun: { color: [1, 0.91, 0.74], limb: 0.6, contrast: 0.5, scale: 28, evolution: 0 },
   betelgeuse: { color: [1, 0.56, 0.29], limb: 0.58, contrast: 0.88, scale: 2.1, evolution: 1 / 900 },
   sirius: { color: [0.87, 0.93, 1], limb: 0.38, contrast: 0.8, scale: 9, evolution: 1 / 300 },
   rigel: { color: [0.8, 0.89, 1], limb: 0.32, contrast: 0.86, scale: 14, evolution: 1 / 600 },

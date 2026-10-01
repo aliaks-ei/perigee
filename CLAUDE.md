@@ -76,8 +76,13 @@ Rendering is a hybrid and the switch is inverted on purpose:
   photometric limits are documented in `docs/planet-assets.md` and `/method`.
 - Reduced motion freezes hero spin, shader time, film time, star drift/twinkle and meteors. Settled
   scenes render on invalidation; pointer input, resources, selection, resize and recovery wake the
-  same frame loop. Normal motion remains full cadence. Planets use recorded periods at 60x time;
-  the Moon, stars and Andromeda have no solid-body spin.
+  same frame loop. Normal motion remains full cadence. `CelestialClock` integrates active spin/evolution time;
+  portraits remain static. The approved Jupiter globe has separate placement, pole and spin
+  frames and a sourced 9.9-hour period. Approved Mars/Jupiter/Saturn/Neptune globes
+  spin automatically at a disclosed 120×; public pause/rate controls were removed.
+  The Moon stays Earth-facing; all four stellar globes retain disabled bulk spin. The code-only pilot selector stays paused
+  for reproducible reference comparisons, and the portrait selector remains a rollback.
+  See `docs/hybrid-rendering.md` for the baseline, selector and capture snapshot contract.
 - Viewpoint loading precedes composition movement. An active two-plate blend completes before the
   newest queued plate starts, bounding sampler/residency cost without resetting visible mix. Its
   promise covers both loading and the fade. Foreground masks and water reflections are not shipped.

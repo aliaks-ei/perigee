@@ -1,0 +1,33 @@
+{
+  "source": "saturn-cassini-rgb-original.fits",
+  "sourceSha256": "32a62eca9b82255c7dd763ba0752cee1664ae73d5ec4d5d5260227deecd422af",
+  "output": "public/assets/objects/saturn-observational-composite-v1.webp",
+  "outputSha256": "d913a5610933037d047de2449986b7975cf11a8dd5895109f657aee713296f98",
+  "size": [
+    3600,
+    1801
+  ],
+  "cassiniObservedFractionBeforeFill": 0.8067740144364242,
+  "polarValidRows": [
+    116,
+    1715
+  ],
+  "orientation": "north first, eastward columns (positive-west longitude 360 to 0)",
+  "gapPolicy": "smooth zonal fill at ring-obscured latitudes; polar fallback; 1.6 degree longitude seam blend; not observed detail",
+  "northCap": "PIA21611 left panel 2013-06-25, stereographic 25km/px; authored longitude; blend 78.5-81 N",
+  "northCapSha256": "2e9765b2ffada33d74bfbe0443ea0bbf59bb15f27a128b7ba99160fdeb78f177",
+  "filter": "0.55 native pixel Gaussian; lossless WebP",
+  "displayComposite": "85% original + 15% published contrast-enhanced RGB; .84 display gain",
+  "enhancedSha256": "afe6eb3b13e1f664b758ff58bfe52ce2bb1cd5c8f2e575c9322db082207a2a31",
+  "broadHaze": {
+    "source": "public/assets/objects/planets/1b448275b234/saturn/base.webp",
+    "sha256": "93a0809e743fe65620f3b65fc176be2f2a7583830b535fc6232fab3eb6dc459f",
+    "epoch": "Hubble OPAL 2024-08-22",
+    "method": "80% Hubble broad luminance in authored cream palette / 20% low-pass Cassini; Cassini high-pass sigma approx 6x12px, bounded +/-12, gain 2.0; polar chromatic-boundary-preserving blue-grey balance"
+  },
+  "sourceUrl": "https://atmos.nmsu.edu/PDS/data/PDS4/co_iss_global-maps/data_derived/Cassini_ISS_RGB_Saturn_global_color_map_original.fits",
+  "enhancedUrl": "https://atmos.nmsu.edu/PDS/data/PDS4/co_iss_global-maps/data_derived/Cassini_ISS_RGB_Saturn_global_color_map_contrast_enhance.fits",
+  "polarUrl": "https://www.jpl.nasa.gov/images/pia21611-saturns-hexagon-as-summer-solstice-approaches/",
+  "hubbleUrl": "https://archive.stsci.edu/hlsp/opal/opal-saturn-cycle-31",
+  "credit": "NASA/JPL-Caltech/Space Science Institute/Hampton University; NASA/ESA/STScI; Wang et al. 2025, doi:10.1038/s41597-025-04392-3"
+}

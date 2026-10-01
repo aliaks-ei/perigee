@@ -4,6 +4,7 @@ export type SkyObjectId =
   | 'jupiter'
   | 'saturn'
   | 'neptune'
+  | 'sun'
   | 'betelgeuse'
   | 'sirius'
   | 'rigel'
@@ -98,6 +99,8 @@ export interface PerigeeInitOptions {
   /** Reports 0..1 while the first shot's assets load. */
   onProgress?: (ratio: number) => void
 }
+
+export type RotationMode = 'real' | 'cinematic'
 
 export interface PerigeeController {
   initialize(canvas: HTMLCanvasElement, options?: PerigeeInitOptions): Promise<void>

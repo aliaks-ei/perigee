@@ -49,7 +49,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The planet and Andromeda surface trees, about 216 MB, are stored in Cloudflare R2
+The planet, approved Mars colour and Andromeda surface trees, about 247 MiB, are stored in Cloudflare R2
 rather than in the repository. `npm run dev`, `npm test`, `npm run build` and
 `npm run generate` restore them first, verifying each archive against the SHA-256
 in `scripts/asset-bundles.json`, so the first of those commands downloads them and
@@ -74,6 +74,19 @@ ID is explicitly configured.
 | `npm run assets:pack` | Repack the asset trees for upload after regenerating them |
 
 Run `npm run verify` before opening a pull request.
+
+## Deployment
+
+Cloudflare Workers Builds publishes `main` to [perigee.observer](https://perigee.observer).
+Build with Node 24 and `npm run generate`, then deploy the static output with
+Wrangler using `wrangler.toml`. The generate prehook restores the three
+checksum-verified R2 bundles, including all 673 approved Mars colour files.
+Keep existing published bundle keys immutable; give regenerated archives a new
+key and checksum in `scripts/asset-bundles.json` before opening a release PR.
+Verify a fresh checkout with `npm ci`, `npm run assets`, `npm run verify` and
+`npm run generate`, then review the preview before merging the protected branch.
+Physical-device touch, sustained performance and thermal checks remain separate
+from desktop browser tests.
 
 ## Project structure
 

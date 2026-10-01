@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Color, Mesh, PerspectiveCamera, PlaneGeometry, Scene, ShaderMaterial, Vector3, Vector4, WebGLRenderTarget } from 'three'
+import { Color, HalfFloatType, Mesh, PerspectiveCamera, PlaneGeometry, Scene, ShaderMaterial, Vector3, Vector4, WebGLRenderTarget } from 'three'
 import type { WebGLRenderer } from 'three'
 import { automaticCaptureSizes, captureWithFallbacks, planStillExport, waitForExportDetail } from '../src/perigee/capture/exportPlan'
 import { renderStill } from '../src/perigee/capture/StillRenderer'
@@ -126,7 +126,7 @@ function fixture() {
     getViewport: (v: Vector4) => v.set(0, 0, 800, 600), getScissor: (v: Vector4) => v.set(0, 0, 800, 600),
     getScissorTest: () => false,
     setRenderTarget: vi.fn(), setClearColor: vi.fn(), setViewport: vi.fn(), setScissor: vi.fn(), setScissorTest: vi.fn(),
-    clear: vi.fn(), render: vi.fn(), compile: () => new Set(),
+    clear: vi.fn(), clearDepth: vi.fn(), render: vi.fn(), compile: () => new Set(),
     readRenderTargetPixelsAsync: vi.fn(async (_target, _x, _y, width, height, pixels: Uint8Array) => {
       for (let row = 0; row < height; row++) pixels.fill(row % 256, row * width * 4, (row + 1) * width * 4)
     }),
@@ -136,15 +136,41 @@ function fixture() {
 }
 
 describe('still resource transaction', () => {
-  it.each(['failure', 'cancel'] as const)('restores state and frees all temporary targets on %s', async (mode) => {
+  it('blends display-globe detail in linear half-float before encoding, and frees its extra target', async () => {
+    const f = fixture()
+    f.scene.children[0]!.userData.displayReferredGlobe = true
+    let target: WebGLRenderTarget | null = null
+    f.renderer.setRenderTarget.mockImplementation(value => { target = value })
+    const displayPasses: WebGLRenderTarget[] = []
+    f.renderer.render.mockImplementation((_scene, camera) => {
+      if (camera.layers.mask === 2) {
+        expect(target?.texture.type).toBe(HalfFloatType)
+        expect(target?.depthBuffer).toBe(true)
+        displayPasses.push(target!)
+      }
+    })
+    const dispose = vi.spyOn(WebGLRenderTarget.prototype, 'dispose')
+    const plan = planStillExport(16 / 9, 3840, 4096)
+    await renderStill({ ...f, renderer: f.renderer as unknown as WebGLRenderer,
+      longEdge: 3840, signal: new AbortController().signal, bloom: 0, prepare: async () => undefined })
+    expect(displayPasses).toHaveLength(plan.tiles.length)
+    expect(new Set(displayPasses).size).toBe(1)
+    expect(f.renderer.render).toHaveBeenCalledTimes(plan.tiles.length * 11)
+    // setSize retires backing allocations too; four target objects are owned.
+    expect(new Set(dispose.mock.contexts).size).toBe(4)
+    expect(dispose.mock.contexts.slice(-4)).toContain(displayPasses[0])
+  })
+
+  it.each([['failure', false], ['cancel', false], ['failure', true], ['cancel', true]] as const)('restores state on %s (display globe %s)', async (mode, displayGlobe) => {
     const f = fixture()
     const dispose = vi.spyOn(WebGLRenderTarget.prototype, 'dispose')
+    f.scene.children[0]!.userData.displayReferredGlobe = displayGlobe
     const abort = new AbortController()
     await expect(renderStill({ ...f, renderer: f.renderer as unknown as WebGLRenderer,
       longEdge: 3840, signal: abort.signal, bloom: 0,
       prepare: async () => { if (mode === 'cancel') abort.abort(); else throw new Error('missing tile') },
     })).rejects.toThrow()
-    expect(dispose).toHaveBeenCalledTimes(3)
+    expect(dispose).toHaveBeenCalledTimes(displayGlobe ? 4 : 3)
     expect(f.rect.toArray()).toEqual([0, 0, 1, 1])
     expect(f.renderer.toneMapping).toBe(0)
     expect(f.renderer.setRenderTarget).toHaveBeenLastCalledWith(null)
@@ -155,12 +181,24 @@ describe('still resource transaction', () => {
   it('accumulates four frozen samples per tile and crops/flips native readback', async () => {
     const f = fixture()
     const plan = planStillExport(16 / 9, 3840, 4096)
+    const snapshot = Object.freeze({ simulatedSeconds: 1234, evolutionSeconds: 12 })
+    const apply = vi.fn()
     const prepare = vi.fn(async () => undefined)
     const blob = await renderStill({ ...f, renderer: f.renderer as unknown as WebGLRenderer,
-      longEdge: 3840, signal: new AbortController().signal, bloom: .5, prepare })
+      longEdge: 3840, signal: new AbortController().signal, bloom: .5, prepare, pose: { snapshot, apply } })
     expect(blob.type).toBe('image/png')
+    expect(apply).toHaveBeenCalledTimes(1 + plan.tiles.length * 4)
+    expect(apply.mock.calls.every(([value]) => value === snapshot)).toBe(true)
     expect(prepare).toHaveBeenCalledTimes(plan.tiles.length)
-    expect(f.renderer.render).toHaveBeenCalledTimes(plan.tiles.length * 9)
+    // Four source/accumulation pairs, finish, then the display-referred portrait.
+    expect(f.renderer.render).toHaveBeenCalledTimes(plan.tiles.length * 10)
+    // Automatic renderer tone mapping is disabled on non-XR targets. The finish
+    // shader must explicitly apply AgX, or exports silently bypass the live look.
+    const finishScene = f.renderer.render.mock.calls[8]![0] as Scene
+    const finish = (finishScene.children[0] as Mesh).material as ShaderMaterial
+    expect(finish.toneMapped).toBe(false)
+    expect(finish.fragmentShader).toContain('AgXToneMapping(color)')
+    expect(finish.uniforms.toneMappingExposure!.value).toBe(1)
     expect(f.writes).toHaveLength(plan.tiles.length)
     expect(f.writes[0]!.data[0]).toBe((plan.tiles[0]!.renderHeight - plan.overlap - 1) % 256)
     expect(f.writes.at(-1)).toMatchObject({ x: plan.tiles.at(-1)!.x, y: plan.tiles.at(-1)!.y })

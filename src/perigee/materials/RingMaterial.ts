@@ -1,5 +1,6 @@
 import { OBSERVER_ATMOSPHERE_GLSL } from '../math/skyPhotometry'
-import { SATURN_SOLAR_ANGULAR_RADIUS } from '../math/ringShadow'
+import { useSaturnPortraitProjection } from './saturnProjection'
+import { RING_INNER_RADIUS, RING_OUTER_RADIUS, SATURN_SOLAR_ANGULAR_RADIUS } from '../math/ringShadow'
 import {
   DoubleSide,
   SRGBColorSpace,
@@ -70,10 +71,8 @@ export function createRingMaterial(texture: Texture, polarRatio = 1, opticalDept
       varying vec3 vViewDirection;
 
       void main() {
-        // The strip is sampled along one row by radius. The geometry's inner
-        // radius is 0.5345 of its outer one, which is where the strip starts.
-        float radial = length(vUv - vec2(0.5)) * 2.0;
-        float band = (radial - 0.5345) / 0.4655;
+        // Sample the same physical radial interval as the shadow shader.
+        float band = (length(vLocal.xy) - ${RING_INNER_RADIUS}) / ${(RING_OUTER_RADIUS - RING_INNER_RADIUS).toFixed(6)};
         // Soft edges instead of a discard, so the anti-aliasing pass has a
         // gradient to resolve rather than a stair-step.
         float edgeWidth = max(fwidth(band), 0.001);
@@ -115,18 +114,31 @@ export function createRingMaterial(texture: Texture, polarRatio = 1, opticalDept
         vec3 ray = normalize(sun * ellipsoid);
         float along = dot(origin, ray);
         float offset = length(origin - ray * along);
-        float penumbra = max(fwidth(offset), max(-along, 0.0) * ${SATURN_SOLAR_ANGULAR_RADIUS.toFixed(5)});
+        float penumbra = max(fwidth(offset) * 1.5, max(-along, 0.0) * ${SATURN_SOLAR_ANGULAR_RADIUS.toFixed(5)});
         float shadow = step(along, 0.0) * (1.0 - smoothstep(uPlanetRadius - penumbra, uPlanetRadius + max(penumbra, 0.00001), offset));
-        light *= 1.0 - shadow;
+        // Small unresolved multiple-scattering floor in the umbra, an authored
+        // display approximation rather than a calibrated radiative-transfer solve.
+        light *= mix(1.0, .035, shadow);
+        // First-order planetshine: a Lambert phase function and inverse-square
+        // dilution. Finite planet extent supplies grazing light to the annulus.
+        float planetPhase = acos(clamp(dot(sun, normalize(vLocal)), -1., 1.));
+        light += .10 * (sin(planetPhase) + (3.14159265359 - planetPhase) * cos(planetPhase))
+          / (3.14159265359 * dot(vLocal, vLocal));
 
-        gl_FragColor = vec4(ring.rgb * light * observerTransmission(), alpha * uOpacity);
+        // Keep optical depth independent of the observed Cassini colour strip.
+        // Authored ivory display response; not a calibrated albedo retrieval.
+        float luminance = dot(ring.rgb, vec3(.2126, .7152, .0722));
+        vec3 color = mix(vec3(luminance), ring.rgb, .65) * vec3(1.05, 1., .86);
+        gl_FragColor = vec4(color * light * 1.25 * mix(vec3(1.), observerTransmission(), .2), alpha * uOpacity);
       }
     `,
     transparent: true,
     depthWrite: false,
+    forceSinglePass: true,
     side: DoubleSide,
   })
 
+  useSaturnPortraitProjection(material)
   return {
     material,
     setSunDirection(localDirection, viewDirection) {

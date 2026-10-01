@@ -13,6 +13,12 @@
       "directory": "public/assets/objects/andromeda/55825fd3438b",
       "sha256": "60443f1e5dd477c73f57fe831f9745d15dcb446c6a6531d7d33aed0da50f3884",
       "bytes": 84530688
+    },
+    {
+      "key": "mars-observational-v3-74f5e51ebef0.tar",
+      "directory": "public/assets/objects/planets/mars-observational-v3/mars",
+      "sha256": "74f5e51ebef06771161037fa885a407974595e549c41401962b7e6a343824a31",
+      "bytes": 29839360
     }
   ]
 }

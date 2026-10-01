@@ -4,7 +4,53 @@ Chunk 3, 2026-09-07. Code implementation; user browser acceptance pending.
 This document records the observational inputs, authored choices and verification
 boundary. It does not claim that the staged landscapes are a live planetarium.
 
+## Andromeda portrait (2026-09-16)
+
+Andromeda now uses the approved 1672×941 PNG via `AndromedaMaterial` on the
+same post-AgX portrait layer as the updated planets and stars. This supersedes
+the observational tile renderer for the selected galaxy. The original warm core,
+cool outer disc, dust lanes and companion galaxies retain their authored lighting;
+no extra exposure, bloom or inclination is applied. Portrait v2 removes the photographic stars surrounding the galaxy at source.
+Source-derived coverage blends the clean dark backdrop into the landscape sky. Both live and
+saved-still rendering share this path. The optical major axis controls angular
+scaling through every distance preset. This is static artistic reconstruction,
+not measured detail, internal parallax or a simulated three-dimensional approach.
+Legacy observational assets and their provenance remain available for research.
+
+## Sun portrait (2026-09-15)
+
+The Sun uses `SunMaterial` with the lossless user-approved cinematic image.
+Its radius is 695,700 km (NASA Sun Fact Sheet); centre distances run from
+3 million km to 1 AU in five steps. The photosphere controls angular size;
+its optical halo adds a 15% margin. At 1 AU the disc spans approximately 0.533°.
+The portrait shares Betelgeuse's post-AgX layer and saved-still path, preserving
+sunspot positions, fine texture and warm highlights without double exposure.
+It is static, camera-facing artwork, not a rotating spherical map or live Sun.
+The source's black exterior becomes transparent glow; no extra flares are added.
+The staged landscape and star field do not simulate solar daylight, heating or
+survivability. Resolved exposure is illustrative, not direct naked-eye appearance.
+The existing point/disc transition uses the solar reference magnitude −26.74.
+The fixed solar reference direction is RA 280.62371°, Dec −23.07790°, from
+JPL Horizons target 10, centre 500@399, 2016-01-01 00:00 UTC, quantity 1,
+ANG_FORMAT=DEG (retrieved 2026-09-15). It follows the same staged rising-hour
+rotation as other targets; this is not a live ephemeris.
+Asset provenance and generation boundaries are in `public/assets/ATTRIBUTIONS.md`.
+
 ## Stellar reconstruction
+
+Update 2026-09-14: Betelgeuse now uses the user-approved generated full-object
+portrait via `BetelgeuseMaterial`, superseding its procedural surface described
+below. The original flat map was unavailable at implementation time. The visible
+face and edge glow therefore use a camera-facing image, not a rotating 3D map.
+The photospheric radius controls angular size; glow occupies an additional 16%
+margin. Black outside the star becomes transparency, with a radial cutoff to
+exclude background stars. The portrait is composited after AgX in display-linear
+light, before live film/antialiasing, preserving the approved image's colors and
+contrast without further RGB grading, extinction or bloom. Saved stills use the
+same layer after their finishing pass. Resolved
+brightness is illustrative; the existing magnitude-based unresolved point and
+distance transition remain. No additional source animation is invented. Texture
+loads use cancellable leases and the existing cache. See the asset attribution.
 
 Following user review on 2026-09-07, stellar surfaces deliberately use stronger
 artistic detail than the observational planetary/galaxy treatment. The supplied

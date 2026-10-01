@@ -131,6 +131,8 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
     typeCheck: true,
+    // Local review archives contain old app copies, not application source.
+    tsConfig: { exclude: ['../tmp/**'] },
   },
   experimental: {
     appManifest: false,

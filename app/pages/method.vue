@@ -143,81 +143,121 @@ useHead({
 
     <h2>How are motion and surface detail presented?</h2>
     <p>
-      Planet rotation uses the recorded rotation periods at 60 times real time.
-      The Moon keeps its Earth-facing presentation; stars and Andromeda do not spin.
+      The Moon, stars and Andromeda keep a fixed visible face.
       The catalogue sky stays fixed while the camera pans. Motion pauses while the tab is
       hidden, and reduced motion freezes ambient animation.
     </p>
     <p>
-      Moon and Mars use measured elevations at their actual vertical scale. Fine
-      normals affect lighting; sufficiently large views also displace the surface
-      and sample terrain toward the Sun for approximate crater shadows. The safe
-      quality tier uses normal shading only. Lunar earthshine follows an explicit
-      Earth phase and distance model; other night sides receive no ambient lift.
+      Jupiter rotates around its own axis using an approximate 9.9-hour period;
+      Saturn uses the Cassini ring-seismology estimate of 10h 33m 38s.
+      Mars uses a 24.6229-hour sidereal period; Neptune uses the approximate
+      16.11-hour Voyager magnetic-coordinate period. At automatic 120× time-lapse,
+      Jupiter and Saturn take about five minutes per turn, Mars about 12.3 minutes,
+      and Neptune about 8.1 minutes.
+      This speed changes only planetary rotation;
+      the sky, weather and observer's landscape do not advance with it. Captures
+      freeze one pose across every tile, and reduced motion pauses the rotation.
+    </p>
+    <p>
+      The Moon rotates once per orbit, keeping substantially the same hemisphere
+      toward Earth. Its sidereal rotation takes about 27.32 days; the roughly
+      29.53-day phase cycle is different. Perigee holds an Earth-facing view with
+      fixed sunlight, without automatic spin, orbital motion or libration.
+      Terrain shading uses measured elevation; earthshine is approximate.
     </p>
 
     <h2 id="planetary-imagery">Planetary imagery and reconstruction</h2>
     <p>
-      The Moon uses NASA's December 2025 CGI Moon Kit, with LROC colour and LOLA
-      elevation. Mars uses the USGS/NASA Ames colourized Viking mosaic and MOLA
-      elevation. Their source detail supports 16K colour tiles, streamed within
-      a device budget. Mars's mosaic contains residual photographed terrain
-      shading and artistically assigned colour; it is not a lighting-neutral
-      spectrophotometric albedo map.
+      The Moon uses a globe with LROC reflectance imagery and LOLA elevation from
+      NASA's CGI Moon Kit. Dark maria, pale highlands and rays come from the map;
+      measured slopes provide terrain lighting at their source resolution.
+      Colour and contrast are adjusted for display. Polar reflectance is coarser,
+      and the source grids include interpolation and small filled gaps.
+      The nearly full phase and near-side orientation are fixed. Apparent size
+      follows the calculated diameter and distance. There is no atmospheric glow.
     </p>
     <p>
-      Jupiter and Saturn use November and August 2024 Hubble OPAL maps; Neptune
-      uses June 2025 observations. These maps have finite observational resolution,
-      despite their resampled global projections. Missing polar coverage and
-      Saturn's ring-obscured band are interpolated, without generated storms.
-      Narrow-filter colours receive a restrained display balance. Neptune's pale
-      blue-green appearance is guided by the 2024 colour study; the selected RGB
-      balance is an approximation, not a new calibrated measurement.
+      Mars uses an oblate, rotating 3D globe. Mars Express HRSC colour is combined
+      with Viking imagery and Mars Global Surveyor TES brightness; MOLA elevations
+      supply measured terrain. The dated mosaics retain some photographed shadows
+      and interpolated gaps. Polar caps use Viking imagery. Colour balance,
+      reference orientation and a thin atmospheric haze are authored; the sources
+      do not describe simultaneous weather. No geographic features are generated,
+      and terrain heights are not exaggerated. Apparent size remains calculated.
     </p>
     <p>
-      Saturn's rings use a Voyager 2 ultraviolet occultation profile for radial
-      optical depth, separate from their colour texture. A single-scattering slab
-      approximates lit and unlit sides; finite-Sun shadows connect the planet and
-      rings. Dense regions saturate in the data, and one radial cut does not
-      describe all azimuths, particle sizes, or visible-wavelength scattering.
+      Jupiter uses an oblate 3D globe with
+      <a href="https://www.jpl.nasa.gov/images/pia07782-cassinis-best-maps-of-jupiter-cylindrical-map/" target="_blank" rel="noopener noreferrer">Cassini's December 2000 global cloud map</a>
+      (NASA/JPL/Space Science Institute). The near-infrared/blue composite approximates
+      natural colour; its polar regions are hazy and less resolved. Contrast, sunlight
+      and pole orientation are authored choices, while apparent size follows the
+      calculated diameter and distance. The map rotates as one surface; this is
+      neither current weather nor a simulation of differential cloud motion.
+    </p>
+    <p>
+      Neptune uses an oblate globe combining NASA/JPL Voyager cloud structure from
+      August 1989 with explicitly modelled fine bands and atmospheric haze.
+      Full-disc PIA01492 and a small PIA00058 close-up provide dated cloud morphology;
+      their registration and lighting removal are approximate. Unobserved regions,
+      polar caps and fine band continuity are reconstruction, not observations.
+      The pale palette is informed by the 2024 natural-colour study; the source's
+      enhanced blue is not treated as calibrated colour. Sunlight, haze and pole
+      orientation are authored, while apparent size remains calculated. One rotating
+      map cannot reproduce differential winds or evolving weather.
+    </p>
+    <p>
+      Saturn uses an oblate globe with a multi-epoch reconstruction from
+      <a href="https://atmos.nmsu.edu/data_and_services/atmospheres_data/Cassini/sat_global_map.html" target="_blank" rel="noopener noreferrer">Cassini's observed cloud structure</a>,
+      Hubble's broader haze bands and a Cassini polar view. Missing coverage is
+      interpolated; colour and lighting are authored, not calibrated measurements.
+      Separate equatorial rings combine Cassini colour with Voyager optical depth,
+      including the main divisions and mutual planet/ring shadows. The globe spins
+      beneath a stable ring plane. Indirect light is approximate, and weak perspective
+      preserves the approved full-ring framing. This is a cinematic reconstruction,
+      not simultaneous weather or a current spacecraft view. Scene and saved captures
+      use the same frozen pose and material.
     </p>
     <p>
       Sources and credits:
+      <a href="https://science.nasa.gov/resource/the-near-side-of-the-moon/" target="_blank" rel="noopener noreferrer">NASA/GSFC/Arizona State University, the near side of the Moon</a>;
       <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">NASA's Scientific Visualization Studio, LROC and LOLA teams</a>;
+      <a href="https://archives.esac.esa.int/psa/ftp/pub/mirror/Guest-Storage-Facility/Mars_HRSC_High-Altitude-Mosaic_V1.0/" target="_blank" rel="noopener noreferrer">ESA/DLR/FU Berlin, G. G. Michael and the HRSC team</a>;
+      <a href="https://mars.asu.edu/data/mdim_color/" target="_blank" rel="noopener noreferrer">NASA/USGS/ASU Viking merged colour</a>;
+      <a href="https://tes.mars.asu.edu/products/" target="_blank" rel="noopener noreferrer">NASA/JPL/ASU, Philip Christensen and the TES team</a>;
+      <a href="https://pds-geosciences.wustl.edu/missions/mgs/megdr.html" target="_blank" rel="noopener noreferrer">NASA MOLA and the PDS Geosciences Node</a>;
       <a href="https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m" target="_blank" rel="noopener noreferrer">USGS Astrogeology and NASA Ames</a>;
       <a href="https://archive.stsci.edu/hlsp/opal" target="_blank" rel="noopener noreferrer">NASA, ESA, Amy Simon and the Hubble OPAL team</a>;
       <a href="https://pds-rings.seti.org/voyager/uvs/profiles.html" target="_blank" rel="noopener noreferrer">NASA Voyager UVS and the PDS Ring-Moon Systems Node</a>;
       <a href="https://www.ox.ac.uk/news/2024-01-05-new-images-reveal-what-neptune-and-uranus-really-look-0" target="_blank" rel="noopener noreferrer">Irwin and colleagues, 2024</a>.
-      Ring colour remains derived from the
-      <a href="https://edu.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">Solar System Scope texture</a>
-      under CC BY 4.0. Map processing, hashes and reconstruction limits are recorded
+      Ring colour comes from
+      <a href="https://science.nasa.gov/photojournal/a-full-sweep-of-saturns-rings/" target="_blank" rel="noopener noreferrer">Cassini PIA11142, NASA/JPL/Space Science Institute</a>.
+      Map processing, hashes and reconstruction limits are recorded
       in the repository's asset provenance.
     </p>
 
     <h2 id="andromeda-imagery">Andromeda imagery and reconstruction</h2>
     <p>
-      Andromeda combines a complete Digitized Sky Survey image with Hubble
-      PHAT/PHAST detail, registered in celestial coordinates. It uses an enhanced
-      photographic exposure. Hubble's two-filter colours are matched to the wider
-      image; this is not calibrated naked-eye colour or a measurement of surface brightness.
-      Catalogue-selected Milky Way stars are masked before the image is enlarged.
-      Faint unclassified points can remain, and the surrounding sky is a separate star field.
+      Andromeda uses an AI-generated artistic portrait informed by NASA Hubble
+      PHAT/PHAST and visible-light references. Its core, dust lanes and companions
+      are interpreted artwork, not telescope measurements or calibrated naked-eye colour.
+      The same colour-preserving compositor used for the planetary and stellar
+      portraits retains its original lighting in the live scene and captures.
     </p>
     <p>
-      The close views reconstruct an inclined disc, a finite-thickness bulge and
-      companion depths from one viewing direction. Dust transmission and depth are
-      inferred. The major-axis correction preserves the optical-size convention;
-      the faint halo extends beyond that boundary. The model does not simulate
+      Distance changes scale the optical major axis. The image retains its authored
+      inclination and orientation; it does not reconstruct internal parallax,
       stellar orbits, a collision or a freely explorable galaxy volume.
+      Small points within the portrait are part of the artwork; the surrounding
+      sky is rendered separately from catalogue stars.
     </p>
     <p>
-      Hubble image: <a href="https://esahubble.org/images/heic2501a/" rel="noopener">NASA, ESA, B. Williams (University of Washington)</a>.
-      Complete field: <a href="https://esahubble.org/images/heic1502b/" rel="noopener">NASA, ESA, Digitized Sky Survey 2 (Acknowledgement: Davide De Martin)</a>.
-      Both are used under <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>.
-      Reprojection, foreground masking, colour matching, dust estimation and tiling by Perigee.
+      Visual references:
+      <a href="https://science.nasa.gov/asset/hubble/hubble-m31-phatphast-mosaic/" rel="noopener">NASA Hubble PHAT+PHAST mosaic</a>
+      and <a href="https://svs.gsfc.nasa.gov/30990" rel="noopener">NASA SVS optical view (NOAO, AURA/NSF)</a>.
+      The portrait is original Perigee artwork; these reference photographs are not redistributed in it.
     </p>
     <p>
-      Foreground masking and the background sky use data from the European Space Agency (ESA) mission
+      The background sky uses data from the European Space Agency (ESA) mission
       <a href="https://www.cosmos.esa.int/gaia" rel="noopener">Gaia</a>, processed by the
       <a href="https://www.cosmos.esa.int/web/gaia/dpac/consortium" rel="noopener">Gaia Data Processing and Analysis Consortium (DPAC)</a>.
       Funding for DPAC has been provided by national institutions, in particular
@@ -231,8 +271,16 @@ useHead({
       Sirius has pale granulation and Rigel has finer blue-white mottling. Surface
       contrast and colour differences are deliberately enhanced for visual detail.
       Radio and infrared false colours are not treated as visible surface colours.
-      Surface evolution is deliberately compressed to minutes, rather than presented
-      as a measured timescale. Reduced motion freezes it.
+      Betelgeuse, Sirius A and Rigel use approved synthetic globes with no claimed bulk rotation
+      period or measured surface geography. Rigel's original blue-white mottling is artistic
+      reconstruction; it is not solar granulation, a Betelgeuse convection model or a current
+      photospheric pattern. Spectra and interferometric wind diagnostics do not provide a visible
+      global surface map. Automatic Rigel motion remains disabled.
+      The Sun uses synthetic photospheric granulation and invented spot groups,
+      informed by visible-light HMI research and near-infrared DKIST granulation.
+      Neither magnetic-field colours nor ultraviolet corona imagery are surface texture.
+      Its warm ivory colour and optical glow are authored choices, and its spot pattern
+      does not represent current solar activity. Automatic solar motion remains disabled.
     </p>
     <p>
       The Yale bright-star catalogue and Gaia DR3 supply positions and colours.

@@ -36,13 +36,13 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
       'close-pass': 'How big would the Moon look on a close pass?',
     },
     whatYouSee: {
-      'real': 'This is the Moon exactly as it appears tonight, at the distance the sky actually puts it.',
+      'real': 'The Moon at its average distance, shown as an Earth-facing globe with fixed sunlight.',
       'three-quarter': 'A quarter of the way in, the disc is noticeably broader but still reads as the Moon.',
       'half': 'Halving the distance doubles the apparent width. The familiar face no longer fits the space your eye expects.',
       'quarter': 'This close, the Moon dominates the sky rather than sitting in it.',
-      'close-pass': 'Surface relief that is normally a smudge resolves into terrain.',
+      'close-pass': 'Dark plains, bright highlands and crater rays become easier to distinguish in LROC imagery and LOLA terrain.',
     },
-    sourceIds: ['nasa-moon-facts'],
+    sourceIds: ['nasa-moon-facts', 'nasa-cgi-moon', 'nasa-moon-tidal-locking'],
     reviewState: 'approved',
   },
   {
@@ -50,8 +50,8 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     headline: 'Mars at closer distances',
     subject: 'Mars',
     summary:
-      'Mars is the planet closest to Earth in size and the one people most often imagine standing on. In the real sky it never grows past a bright point. The distance ladder shows what it would take for the rust-coloured surface to become something you could actually read.',
-    boundary: 'calculated',
+      'Mars’s rust-coloured plains, dark markings and polar ice become readable as it moves closer. Its apparent size is calculated. A rotating globe combines Viking, Mars Express and Mars Global Surveyor observations with measured terrain. Automatic time-lapse reveals new longitudes; the reconstructed colour and haze do not represent simultaneous weather.',
+    boundary: 'rendered',
     questions: {
       'close-pass': 'How big would Mars look on an impossibly close pass?',
       'near-pass': 'How big would Mars look from ninety-six thousand kilometres?',
@@ -66,7 +66,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
       'hundredth-au': 'The disc is unmistakable, but it has receded into the surrounding sky.',
       'real': 'At its closest real approach Mars is still a point of light. No unaided eye resolves a disc.',
     },
-    sourceIds: ['nasa-mars-facts', 'iau-astronomical-unit'],
+    sourceIds: ['nasa-mars-facts', 'iau-astronomical-unit', 'mars-hrsc-mosaic', 'mars-viking-color', 'mars-tes-albedo', 'mars-mola-elevation'],
     reviewState: 'approved',
   },
   {
@@ -74,8 +74,8 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     headline: 'Jupiter at closer distances',
     subject: 'Jupiter',
     summary:
-      'Jupiter is the largest planet in the Solar System and the most dramatic object to move inward, because its diameter is many times the Moon\'s. The moment it reaches the Moon\'s distance it stops being an object in the sky and becomes the sky.',
-    boundary: 'calculated',
+      'Jupiter is the largest planet in the Solar System and the most dramatic object to move inward, because its diameter is many times the Moon\'s. Its apparent size is calculated. A rotating oblate globe carries Cassini\'s observed cloud bands and Great Red Spot through fixed sunlight. Automatic time-lapse rotation reveals different longitudes.',
+    boundary: 'rendered',
     questions: {
       'moon-swap': 'How big would Jupiter look if it replaced the Moon?',
       'two-million': 'How big would Jupiter look from two million kilometres?',
@@ -98,8 +98,8 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     headline: 'Saturn at closer distances',
     subject: 'Saturn',
     summary:
-      'Saturn is the object most people picture when they imagine a planet replacing the Moon, and the comparison holds up: the globe alone spans tens of full Moons at that distance, and the ring system reaches considerably further. Perigee renders the globe at its calculated angular size, and draws the rings to the same geometry.',
-    boundary: 'calculated',
+      'Saturn is the object most people picture when they imagine a planet replacing the Moon, and the comparison holds up: the globe alone spans tens of full Moons at that distance, and the ring system reaches considerably further. Its apparent globe size is calculated. An oblate globe carries a reconstruction from Cassini and Hubble observations beneath separate equatorial rings, with mutual shadows and automatic time-lapse rotation.',
+    boundary: 'rendered',
     questions: {
       'moon-swap': 'How big would Saturn look if it replaced the Moon?',
       'close': 'How big would Saturn look from a hundredth of an astronomical unit?',
@@ -122,7 +122,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     headline: 'Neptune at closer distances',
     subject: 'Neptune',
     summary:
-      'Neptune is the most distant planet in the Solar System and has never been seen as anything but a point without a telescope. It is also the deepest blue object Perigee renders. Moving it inward is the clearest demonstration that distance, not size, is what keeps most of the Solar System invisible.',
+      'Neptune is the most distant planet in the Solar System. Perigee combines dated Voyager clouds with reconstructed atmospheric bands and haze in a pale blue globe. Moving it inward reveals how distance hides the scale of this ice giant.',
     boundary: 'calculated',
     questions: {
       'moon-swap': 'How big would Neptune look if it replaced the Moon?',
@@ -132,13 +132,36 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
       'real': 'How big does Neptune look at its closest real approach?',
     },
     whatYouSee: {
-      'moon-swap': 'At the Moon\'s distance Neptune is far the wider of the two, and a deep, even blue.',
+      'moon-swap': 'At the Moon\'s distance Neptune spans a broad blue disc, with dated Voyager clouds and reconstructed bands.',
       'two-million': 'The faint banding in the atmosphere becomes readable.',
       'twelve-million': 'The planet is still a definite blue disc against the star field.',
       'hundred-twenty-million': 'Neptune contracts toward a tiny blue point.',
       'real': 'At its real distance Neptune is not visible to an unaided eye at all.',
     },
-    sourceIds: ['nasa-neptune-facts', 'iau-astronomical-unit'],
+    sourceIds: ['nasa-neptune-facts', 'voyager-neptune-clouds', 'neptune-natural-colour', 'iau-astronomical-unit'],
+    reviewState: 'approved',
+  },
+  {
+    objectId: 'sun',
+    headline: 'The Sun at closer distances',
+    subject: 'the Sun',
+    summary: 'Our nearest star opens into a luminous globe as the distance shrinks. Its granulation and sunspot groups are artistic reconstruction informed by photospheric research, not a measured global map or current solar activity. Apparent size is calculated; warm colour and optical glow are authored choices.',
+    boundary: 'rendered',
+    questions: {
+      'impossible': 'What would the Sun look like on an impossible close pass?',
+      'near-10-million': 'How would the Sun look above its surface?',
+      'near-25-million': 'How big would the Sun look inside Mercury’s orbit?',
+      'mercury': 'How big would the Sun look from Mercury?',
+      'real': 'How big does the Sun look from Earth?',
+    },
+    whatYouSee: {
+      'impossible': 'The luminous disc fills the sky, with dark sunspot groups and fine granulation. The landscape is staged; heat, radiation and daylight illumination are not simulated.',
+      'near-10-million': 'The globe contracts with distance, retaining its fine surface texture and restrained optical glow.',
+      'near-25-million': 'Sunspot groups grow smaller as the apparent disc narrows.',
+      'mercury': 'The disc remains wider than it appears from Earth, using Mercury’s mean orbital distance.',
+      'real': 'The familiar apparent size, shown with compressed photographic exposure against a staged landscape rather than a daylight simulation.',
+    },
+    sourceIds: ['nasa-sun-facts', 'hmi-observables', 'dkist-first-light', 'iau-au-resolution-2012'],
     reviewState: 'approved',
   },
   {
@@ -146,7 +169,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     headline: 'Betelgeuse at closer distances',
     subject: 'Betelgeuse',
     summary:
-      'Betelgeuse is a red supergiant large enough that, placed at the centre of the Solar System, its surface would reach out past the inner planets. It is the clearest answer to the question of how close a star has to come before it stops looking like a point. The answer is: much closer than you would guess, because stars are extraordinarily far away.',
+      'Betelgeuse is a red supergiant large enough that, placed at the centre of the Solar System, its surface would reach out past the inner planets. Its calculated apparent size opens into a globe of imagined convection as it comes closer. The colours and cells are artistic reconstruction, not a measured surface map or a claim about its rotation.',
     boundary: 'rendered',
     questions: {
       'impossible': 'What would Betelgeuse look like inside the Solar System?',
@@ -157,20 +180,20 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     },
     whatYouSee: {
       'impossible': 'Perigee renders the apparent size and the light. It does not simulate what this would do to Earth.',
-      'near-250-au': 'The surface now has the scale of a small Moon, with broad, stylized convection regions across it.',
+      'near-250-au': 'The globe now has the scale of a small Moon, with broad, stylized convection regions across it.',
       'near-1000-au': 'The point opens into a measurable red-orange disc.',
       'near-10000-au': 'Still unresolved to an unaided eye, but vastly brighter than the real star.',
       'real': 'At its true distance Betelgeuse is one of the brightest stars in Orion, and still a point.',
     },
-    sourceIds: ['nasa-betelgeuse'],
+    sourceIds: ['nasa-betelgeuse', 'alma-betelgeuse-hotspots', 'eso-betelgeuse-sphere'],
     reviewState: 'approved',
   },
   {
     objectId: 'sirius',
-    headline: 'Sirius at closer distances',
-    subject: 'Sirius',
+    headline: 'Sirius A at closer distances',
+    subject: 'Sirius A',
     summary:
-      'Sirius is the brightest star in the night sky, and it earns that mostly by being close rather than by being large. Walking it inward shows how much of a star\'s brightness is proximity and how little of it is size.',
+      'Sirius A is the bright star we see in the Sirius system. Moving it inward reveals its calculated apparent size as a pale blue-white globe. The granulation is an artistic reconstruction, not an observed surface map; no bulk spin is animated.',
     boundary: 'rendered',
     questions: {
       'impossible': 'What would Sirius look like inside the Solar System?',
@@ -181,12 +204,12 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     },
     whatYouSee: {
       'impossible': 'Well inside the orbit of Mercury. Apparent size is calculated; the consequences are not simulated.',
-      'near-1-au': 'A blue-white photosphere with enhanced pale granulation; it is not a photographic surface map.',
+      'near-1-au': 'A luminous blue-white globe with synthetic pale granulation, not a photographic surface map.',
       'near-5-au': 'The star is crossing from resolved surface to compact point source.',
       'near-25-au': 'Sirius reads as an intense point with a tight optical fringe.',
       'real': 'The brightest star in the sky, at the distance that makes it so. Still a point.',
     },
-    sourceIds: ['simbad-sirius'],
+    sourceIds: ['simbad-sirius', 'hubble-sirius-binary', 'vlti-sirius-diameter', 'astar-convection-model'],
     reviewState: 'approved',
   },
   {
@@ -194,7 +217,7 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     headline: 'Rigel at closer distances',
     subject: 'Rigel',
     summary:
-      'Rigel is a blue supergiant in Orion, far larger and far more luminous than Sirius, and far more distant. Comparing the two at the same distance separates the two things that make a star look bright from Earth: how big it is, and how near it is.',
+      'Rigel is a blue supergiant in Orion, far larger and more luminous than Sirius. Its blue-white globe uses original synthetic mottling: an artistic reconstruction, not a measured global surface map or current photospheric pattern. Interferometry constrains the disc and spectral-line regions; it does not supply the visible surface geography shown here. Automatic rotation remains disabled.',
     boundary: 'rendered',
     questions: {
       'impossible': 'What would Rigel look like inside the Solar System?',
@@ -205,12 +228,12 @@ export const objectEditorial: ObjectEditorialDefinition[] = [
     },
     whatYouSee: {
       'impossible': 'The scene renders the light and the size. Nothing about the physical consequences is modelled.',
-      'near-25-au': 'Rigel spans a blue-white disc with soft limb darkening and enhanced blue-white mottling.',
+      'near-25-au': 'Rigel spans a blue-white disc with invented surface mottling and a separate authored optical halo.',
       'near-100-au': 'The disc remains measurable rather than implied.',
       'near-1000-au': 'Rigel is crossing into an unresolved point source.',
       'real': 'At its true distance Rigel is among the most luminous stars an unaided eye can see.',
     },
-    sourceIds: ['simbad-rigel'],
+    sourceIds: ['simbad-rigel', 'rigel-most-spectroscopy', 'rigel-vega-interferometry', 'rigel-intensity-interferometry'],
     reviewState: 'approved',
   },
   {

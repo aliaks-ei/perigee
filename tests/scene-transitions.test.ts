@@ -1,9 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { Group, Mesh, Scene, ShaderMaterial, Texture } from 'three'
-import type { SkyObjectId } from '../app/types/perigee'
+import { Group, Mesh, PerspectiveCamera, Scene, ShaderMaterial, Texture, Vector3 } from 'three'
+import type { SkyObjectId, ViewpointId } from '../app/types/perigee'
 import { PerigeeScene } from '../src/perigee/PerigeeScene'
 import { compileScene } from '../src/perigee/compileScene'
 import { ShotDirector } from '../src/perigee/ShotDirector'
+import { PORTRAIT_LAYER } from '../src/perigee/renderPortraitLayer'
+import { acquireTexture } from '../src/perigee/TextureCache'
 
 vi.mock('../src/perigee/compileScene', () => ({ compileScene: vi.fn() }))
 vi.mock('../src/perigee/TextureCache', async (importOriginal) => ({
@@ -26,8 +28,8 @@ function deferred() {
   const promise = new Promise<void>((done) => { resolve = done })
   return { promise, resolve }
 }
-function harness() {
-  const engine = new PerigeeScene()
+function harness(review: ConstructorParameters<typeof PerigeeScene>[0] = {}) {
+  const engine = new PerigeeScene(review)
   const scene = new Scene()
   const compileAsync = vi.mocked(compileScene)
   compileAsync.mockReset().mockResolvedValue(undefined)
@@ -42,32 +44,227 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('transactional scene selection', () => {
-  it.each(['arriving', 'departing'])('keeps Saturn’s front rings above its body while %s', async (direction) => {
+  it('preserves the Andromeda portrait, distance scale and lease through a swap', async () => {
     const { engine, scene } = harness()
+    await engine.setObject('andromeda', 'touching', true)
+    const hero = scene.getObjectByName('hero-andromeda')!
+    const surface = hero.children[0] as Mesh<never, ShaderMaterial>
+    const lease = hero.userData.textureLeases[0]
+    expect(acquireTexture).toHaveBeenCalledWith('/assets/objects/andromeda-portrait-v2.png', expect.any(AbortSignal))
+    expect(hero.children).toHaveLength(1)
+    expect(hero.userData.observedGalaxy).toBeUndefined()
+    expect(surface.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(surface.material.toneMapped).toBe(false)
+    expect(surface.material.uniforms.uPortrait!.value).toBe(lease.texture)
+    const radius = hero.scale.x
+    for (const [preset, distance] of [['quarter-million', 250_000], ['half-million', 500_000], ['one-million', 1_000_000], ['real', 2_500_000]] as const) {
+      await engine.setDistance(preset, { duration: 0 })
+      expect(hero.scale.x / radius).toBeCloseTo(150_000 / distance, 6)
+      expect(surface.material.uniforms.uOpacity!.value).toBe(1)
+    }
+    await engine.setObject('moon', 'real', true)
+    expect(lease.release).toHaveBeenCalledTimes(1)
+    engine.dispose()
+  })
+
+  it.each([[390, 844], [1440, 900]])('fits the Andromeda portrait at %s×%s without changing its scale', async (width, height) => {
+    const { engine, scene } = harness()
+    const camera = Reflect.get(engine, 'camera') as PerspectiveCamera
+    camera.aspect = width / height
+    await engine.setObject('andromeda', 'touching', true)
+    const hero = scene.getObjectByName('hero-andromeda')!
+    for (const imageX of [0, 1672]) {
+      const tip = new Vector3((imageX - 836) / 900 * hero.scale.x, 0, 0)
+        .add(hero.position).project(camera)
+      expect(Math.abs(tip.x)).toBeLessThan(1)
+    }
+    engine.dispose()
+  })
+
+  it('keeps the approved Sirius globe at physical scale and resolves back to a point at its real distance', async () => {
+    const { engine, scene } = harness()
+    await engine.setObject('sirius', 'impossible', true)
+    const hero = scene.getObjectByName('hero-sirius')!
+    const surface = Reflect.get(engine, 'heroSurface') as Mesh<never, ShaderMaterial>
+    const point = Reflect.get(engine, 'heroPoint') as Mesh<never, ShaderMaterial>
+    const lease = hero.userData.textureLeases[0]
+    expect(acquireTexture).toHaveBeenCalledWith('/assets/objects/sirius-granulation-review-v1.webp', expect.any(AbortSignal))
+    expect(surface.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(surface.material.toneMapped).toBe(false)
+    expect(surface.material.uniforms.uMap!.value).toBe(lease.texture)
+    expect(surface.material.uniforms.uVisibility!.value).toBe(1)
+    expect(point.material.uniforms.uVisibility!.value).toBe(0)
+    const closeRadius = hero.scale.x
+    for (const [preset, ratio] of [['near-1-au', .25], ['near-5-au', .05], ['near-25-au', .01]] as const) {
+      await engine.setDistance(preset, { duration: 0 })
+      expect(hero.scale.x / closeRadius).toBeCloseTo(ratio, 6)
+      expect(surface.material.uniforms.uOpacity!.value).toBe(1)
+    }
+    await engine.setDistance('real', { duration: 0 })
+    expect(surface.material.uniforms.uVisibility!.value).toBe(0)
+    expect(point.material.uniforms.uVisibility!.value).toBe(1)
+    await engine.setObject('sun', 'real', true)
+    expect(lease.release).toHaveBeenCalledTimes(1)
+    engine.dispose()
+  })
+
+  it('keeps Rigel artwork at physical scale and resolves back to a point at its real distance', async () => {
+    const { engine, scene } = harness()
+    await engine.setObject('rigel', 'impossible', true)
+    const hero = scene.getObjectByName('hero-rigel')!
+    const surface = hero.userData.celestial.surface as Mesh<never, ShaderMaterial>
+    const point = hero.userData.celestial.point as Mesh<never, ShaderMaterial>
+    const lease = hero.userData.textureLeases[0]
+    expect(acquireTexture).toHaveBeenCalledWith('/assets/objects/rigel-mottling-review-v1.webp', expect.any(AbortSignal))
+    expect(surface.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(surface.material.toneMapped).toBe(false)
+    expect(surface.material.uniforms.uMap!.value).toBe(lease.texture)
+    expect(surface.material.uniforms.uVisibility!.value).toBe(1)
+    expect(point.material.uniforms.uVisibility!.value).toBe(0)
+    const closeRadius = hero.scale.x
+    for (const [preset, ratio] of [['near-25-au', .4], ['near-100-au', .1], ['near-1000-au', .01]] as const) {
+      await engine.setDistance(preset, { duration: 0 })
+      expect(hero.scale.x / closeRadius).toBeCloseTo(ratio, 6)
+      expect(surface.material.uniforms.uOpacity!.value).toBe(1)
+    }
+    await engine.setDistance('real', { duration: 0 })
+    expect(surface.material.uniforms.uVisibility!.value).toBe(0)
+    expect(point.material.uniforms.uVisibility!.value).toBe(1)
+    await engine.setObject('sun', 'real', true)
+    expect(lease.release).toHaveBeenCalledTimes(1)
+    engine.dispose()
+  })
+
+  it('preserves rollback Neptune artwork lighting and physical scale through its distance ladder', async () => {
+    const { engine, scene } = harness({ neptune: 'portrait' })
+    await engine.setObject('neptune', 'moon-swap', true)
+    const hero = scene.getObjectByName('hero-neptune')!
+    const surface = hero.children[0] as Mesh<never, ShaderMaterial>
+    expect(hero.children).toHaveLength(1)
+    expect(hero.userData.planetTiles).toBeUndefined()
+    expect(surface.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(surface.frustumCulled).toBe(false)
+    expect(surface.material.toneMapped).toBe(false)
+    const radius = hero.scale.x
+    for (const [preset, distance] of [['two-million', 2_000_000], ['twelve-million', 12_000_000], ['hundred-twenty-million', 120_000_000], ['real', 4_300_000_000]] as const) {
+      await engine.setDistance(preset, { duration: 0 })
+      expect(hero.scale.x / radius).toBeCloseTo(384_400 / distance, 6)
+      expect(surface.material.uniforms.uOpacity!.value).toBe(1)
+    }
+    engine.dispose()
+  })
+
+  it('keeps the Moon rollback portrait at physical scale across its distance ladder', async () => {
+    const { engine, scene } = harness({ moon: 'portrait' })
+    await engine.setObject('moon', 'real', true)
+    const hero = scene.getObjectByName('hero-moon')!
+    const surface = hero.children[0] as Mesh<never, ShaderMaterial>
+    expect(hero.children).toHaveLength(1)
+    expect(hero.userData.planetTiles).toBeUndefined()
+    expect(surface.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(surface.frustumCulled).toBe(false)
+    expect(surface.material.toneMapped).toBe(false)
+    const realRadius = hero.scale.x
+    for (const [preset, ratio] of [['three-quarter', 4 / 3], ['half', 2], ['quarter', 4], ['close-pass', 8]] as const) {
+      await engine.setDistance(preset, { duration: 0 })
+      expect(hero.scale.x / realRadius).toBeCloseTo(ratio, 5)
+      expect(surface.material.uniforms.uOpacity!.value).toBe(1)
+    }
+    engine.dispose()
+  })
+
+  it('preserves the approved Mars display layer and physical distance scale', async () => {
+    const { engine, scene } = harness()
+    await engine.setObject('mars', 'close-pass', true)
+    const hero = scene.getObjectByName('hero-mars')!
+    const surface = hero.userData.celestial.surface as Mesh<never, ShaderMaterial>
+    expect(hero.children).toHaveLength(1)
+    expect(hero.userData.planetTiles).toBeDefined()
+    expect(surface.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(surface.frustumCulled).toBe(false)
+    expect(surface.material.toneMapped).toBe(false)
+    const closeRadius = hero.scale.x
+    for (const [preset, distance] of [['near-pass', 96_000], ['moon-swap', 384_400], ['real', 54_600_000]] as const) {
+      await engine.setDistance(preset, { duration: 0 })
+      expect(hero.scale.x / closeRadius).toBeCloseTo(32_000 / distance, 6)
+      expect(surface.material.uniforms.uOpacity!.value).toBe(1)
+    }
+    engine.dispose()
+  })
+
+  it.each<[number, number, ViewpointId]>([
+    [390, 844, 'rooftop'], [884, 862, 'rooftop'],
+    [1440, 900, 'rooftop'], [390, 844, 'cabo-da-roca'],
+  ])('fits Saturn’s full ring span at %s×%s over %s', async (width, height, viewpoint) => {
+    const { engine, scene } = harness()
+    const camera = Reflect.get(engine, 'camera') as PerspectiveCamera
+    camera.aspect = width / height
+    Reflect.set(engine, 'currentViewpointId', viewpoint)
+    await engine.setObject('saturn', 'moon-swap', true)
+    const hero = scene.getObjectByName('hero-saturn')!
+    // A conservative full-ring span at the physical globe scale.
+    for (const ringTip of [-2.32, 2.32]) {
+      const tip = new Vector3(ringTip * hero.scale.x, 0, 0)
+        .add(hero.position).project(camera)
+      expect(Math.abs(tip.x)).toBeLessThan(1)
+    }
+    // Distance changes must retain physical globe scale, irrespective of FOV.
+    const radius = hero.scale.x
+    await engine.setDistance('close', { duration: 0 })
+    // GSAP rounds the interpolated logarithm, so compare to six decimals.
+    expect(hero.scale.x / radius).toBeCloseTo(384_400 / 1_495_978.707, 6)
+    engine.dispose()
+  })
+
+  it.each(['arriving', 'departing'])('fades Saturn’s rollback portrait while %s', async (direction) => {
+    const { engine, scene } = harness({ saturn: 'portrait' })
     await engine.setObject(direction === 'arriving' ? 'moon' : 'saturn', 'real', true)
     const transition = engine.setObject(direction === 'arriving' ? 'saturn' : 'moon', 'real')
     await drain()
     holdFade(engine, .3)
     const saturn = scene.getObjectByName('hero-saturn')!
     const body = saturn.children[0] as Mesh<never, ShaderMaterial>
-    const rings = saturn.children[1] as Mesh<never, ShaderMaterial>
-    // Three draws transparent meshes by renderOrder first. Even while the
-    // body is translucent, it must seed depth before the rings are composited.
+    // Baked ring occlusion must not get a second, separately fading ring mesh.
+    expect(saturn.children).toHaveLength(1)
+    expect(body.layers.mask).toBe(1 << PORTRAIT_LAYER)
+    expect(body.frustumCulled).toBe(false)
+    expect(body.material.toneMapped).toBe(false)
     expect(body.material.transparent).toBe(true)
-    expect(body.material.depthWrite).toBe(true)
-    expect(rings.renderOrder).toBeGreaterThan(body.renderOrder + 1)
-    expect(rings.material.depthTest).toBe(true)
-    expect(rings.material.depthWrite).toBe(false)
+    expect(body.material.depthWrite).toBe(false)
     const opacity = body.material.uniforms.uOpacity!.value as number
     expect(opacity).toBeGreaterThan(0)
     expect(opacity).toBeLessThan(1)
-    expect(rings.material.uniforms.uOpacity!.value).toBe(opacity)
     objectDirector(engine).finish()
     await transition
   })
 
+  it.each(['arriving', 'departing'])('fades the approved Saturn globe and rings together while %s', async (direction) => {
+    const { engine, scene } = harness()
+    await engine.setObject(direction === 'arriving' ? 'moon' : 'saturn', 'real', true)
+    const transition = engine.setObject(direction === 'arriving' ? 'saturn' : 'moon', 'real')
+    await drain()
+    holdFade(engine, .3)
+    const saturn = scene.getObjectByName('hero-saturn')!
+    const ring = saturn.getObjectByName('equatorial-rings') as Mesh<never, ShaderMaterial>
+    const materials: ShaderMaterial[] = []
+    saturn.traverse((node) => {
+      if (node instanceof Mesh && node !== ring) materials.push(node.material as ShaderMaterial)
+    })
+    expect(materials).toHaveLength(1)
+    const opacity = materials[0]!.uniforms.uOpacity!.value as number
+    expect(opacity).toBeGreaterThan(0)
+    expect(opacity).toBeLessThan(1)
+    expect(ring.material.uniforms.uOpacity!.value).toBe(opacity)
+    expect(ring.material.depthWrite).toBe(false)
+    expect(ring.renderOrder).toBe(12)
+    objectDirector(engine).finish()
+    await transition
+    engine.dispose()
+  })
+
   it.each<[SkyObjectId, SkyObjectId, SkyObjectId]>([
     ['moon', 'saturn', 'jupiter'],
+    ['jupiter', 'mars', 'moon'],
     ['saturn', 'betelgeuse', 'andromeda'],
     ['andromeda', 'sirius', 'moon'],
   ])('preserves a visible fade during rapid %s → %s → %s selection', async (first, second, third) => {

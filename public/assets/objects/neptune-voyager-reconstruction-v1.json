@@ -1,0 +1,60 @@
+{
+  "status": "review-only",
+  "source": {
+    "url": "https://www.jpl.nasa.gov/images/pia01492-neptune-full-disk-view/",
+    "download": "https://d2pn8kiwq2w21t.cloudfront.net/original_images/jpegPIA01492.jpg",
+    "sha256": "97b57802f44be2218578a98c8c26f8426ff7a95890d266d34486734f14c1edb6",
+    "dimensions": [
+      2188,
+      2185
+    ],
+    "epoch": "August 1989; about 4 days 20 hours before closest approach",
+    "credit": "NASA/JPL",
+    "filters": "green and orange; enhanced display composite, not calibrated RGB albedo",
+    "nativeDetector": "800 x 800; published enlargement is not native resolution"
+  },
+  "output": {
+    "file": "neptune-voyager-reconstruction-v1.webp",
+    "sha256": "e1b2593c8e55b7e94ee3f6f2eae1ed12e11b1899b1658f5de92b69ced9cc61e1",
+    "dimensions": [
+      2048,
+      1024
+    ],
+    "bytes": 297382
+  },
+  "projection": {
+    "layout": "north-first, planetocentric, east-positive, -180 to 180 pixel-centred",
+    "sourceDisc": [
+      548.0,
+      558.0,
+      481.0,
+      481.0
+    ],
+    "workingImage": [
+      1094,
+      1093
+    ],
+    "approximateSubObserverLatitudeDegrees": -28,
+    "approximatePoleRollRadians": -0.2,
+    "longitude": "relative to the source-facing hemisphere; not IAU absolute longitude"
+  },
+  "reconstruction": {
+    "coverageMask": "neptune-voyager-coverage-v1.png",
+    "maskSha256": "c75934c10ef0addbc110034236016385eb7755568b9095c28887d8ccc8db1c44",
+    "sourceSupportedAreaFraction": 0.246684812602707,
+    "fullyWeightedAreaFraction": 0.12554698094092473,
+    "coverageMeaning": "geometric source support after conservative taper, not measured weather accuracy",
+    "elsewhere": "longitude-independent broad OPAL zonal profile, smoothly convergent poles; no invented storms",
+    "opalBase": "public/assets/objects/planets/1b448275b234/neptune/base.webp",
+    "opalSha256": "4e180856da70c2cea44c31afa698d2cd522f9b022be3e9a5f6da39d9ada2338d",
+    "delighting": "robust quadratic fit to log green channel inside 0.78 disc radius; residual source shading remains",
+    "paletteSrgb": [
+      0.57,
+      0.74,
+      0.81
+    ],
+    "calibration": "authored natural-colour-informed display balance, not calibrated colour",
+    "fineDetail": "finite Voyager observations; no procedural noise, no upscaling claim, no portrait pixels"
+  },
+  "recipeSha256": "7d2a011c574ab839acd6e935aec7503d0d8dc684a16379413ca29882a53e02bd"
+}

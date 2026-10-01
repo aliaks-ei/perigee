@@ -255,7 +255,7 @@ async function openViewpoints(): Promise<void> {
         <span class="trigger-thumb block shrink-0 overflow-hidden rounded-full" aria-hidden="true">
           <img
             class="block h-full w-full object-cover"
-            :class="{ star: currentObject.kind === 'star' }"
+            :class="{ star: currentObject.kind === 'star', galaxy: currentObject.kind === 'galaxy' }"
             :src="currentObject.thumbnail"
             alt=""
             width="160"
