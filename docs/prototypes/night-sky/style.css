@@ -1,0 +1,63 @@
+@font-face { font-family: Manrope; src: url('../../../node_modules/@fontsource/manrope/files/manrope-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap }
+@font-face { font-family: Manrope; src: url('../../../node_modules/@fontsource/manrope/files/manrope-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap }
+:root { font-family: Manrope, sans-serif; color: #f5f3ee; background: #02050a; color-scheme: dark; --muted: #bac5d4; --line: #455264; --accent: #d8c7a4 }
+* { box-sizing: border-box }
+body { margin: 0 }
+button, select, summary { font: inherit; font-size: 13px }
+button, summary, select { cursor: pointer }
+button { min-height: 44px; border: 1px solid transparent; color: var(--muted); background: transparent; padding: 10px 16px; border-radius: 999px; transition: color 160ms, background 160ms, border-color 160ms }
+button:hover, summary:hover { color: #fff; background: #ffffff0c }
+button[aria-pressed="true"] { color: #fff; border-color: var(--line); background: #ffffff0a }
+button:disabled { cursor: wait; opacity: .6 }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px }
+::selection { color: #02050a; background: #d8c7a4 }
+a { color: var(--accent); text-underline-offset: 4px }
+#stage { height: 100dvh; min-height: 560px; position: relative; overflow: hidden; margin: auto; background: #02050a }
+#sky { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab }
+#sky:active { cursor: grabbing }
+header { position: absolute; top: 28px; left: 38px; right: 28px; display: flex; gap: 25px; align-items: center }
+.wordmark { color: #f5f3ee; font-size: 11px; letter-spacing: .42em; text-decoration: none }
+.study-label { color: var(--muted); font-size: 12px }
+#layout { margin-left: auto }
+.identity { position: absolute; left: 4.2%; bottom: 185px; pointer-events: none; max-width: 620px; text-shadow: 0 2px 14px #000 }
+h1 { font-weight: 400; font-size: clamp(32px, 4.2vw, 58px); letter-spacing: -.025em; line-height: 1.12; margin: 0 0 16px }
+.identity p { color: var(--muted); font-size: 14px; line-height: 1.65; max-width: 45ch; margin: 0 }
+.identity .hint { margin-top: 12px; font-size: 11px; color: #aebccc }
+.controls { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; max-width: calc(100% - 28px); min-width: min(550px, calc(100% - 28px)); background: #040911ed; padding: 8px 15px; border-radius: 16px }
+.directions { display: flex; gap: 5px; border-bottom: 1px solid #ffffff18; padding-bottom: 6px; width: 100%; justify-content: center }
+.directions button { flex: 1; white-space: nowrap }
+.actions { display: flex; align-items: center; gap: 4px; padding-top: 6px }
+.primary { color: #02050a; background: #d8c7a4; font-weight: 600 }
+.primary:hover { color: #02050a; background: #eddec1 }
+#status { font-size: 11px; color: var(--muted); margin: 6px 0 2px; text-align: center; line-height: 1.6 }
+details { position: relative }
+summary { min-height: 44px; padding: 13px 12px; border-radius: 999px; color: var(--muted); list-style: none }
+summary::-webkit-details-marker { display: none }
+.settings { position: absolute; right: 0; bottom: 52px; width: 300px; padding: 20px; border-radius: 12px; background: #080e18; border: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.65 }
+.settings label { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 16px }
+.settings label:has(input) { justify-content: flex-start }
+.settings input { accent-color: #d8c7a4; width: 16px; height: 16px }
+select { padding: 7px; border-radius: 5px; background: #111d2e; color: #f5f3ee; border: 1px solid var(--line) }
+.settings p { margin: 12px 0; font-size: 11px }
+#failure { position: absolute; inset: 30% 12% auto; padding: 24px; background: #080e18; line-height: 1.6 }
+body.phone #stage { width: 390px; max-width: 100%; height: 844px; min-height: 0 }
+body.phone header { left: 20px; right: 14px; top: 18px; gap: 12px }
+body.phone .study-label { display: none }
+body.phone .identity { left: 24px; right: 24px; bottom: 218px }
+body.phone h1 { font-size: 34px }
+body.phone .actions { flex-wrap: wrap; justify-content: center }
+body.phone .controls { min-width: 0; width: calc(100% - 24px); padding: 8px; bottom: 12px }
+body.phone .directions button { padding: 10px 8px; font-size: 12px }
+body.phone details { position: static }
+body.phone .settings { right: 12px; bottom: calc(100% + 12px); width: calc(100% - 24px) }
+@media (max-width: 640px) {
+  header { left: 20px; right: 14px; top: 18px; gap: 12px }
+  .study-label { display: none }
+  .identity { left: 24px; right: 24px; bottom: 212px }
+  .controls { width: calc(100% - 24px); padding: 8px }
+  .actions { flex-wrap: wrap; justify-content: center }
+  .directions button { padding: 10px 8px; font-size: 12px }
+  details { position: static }
+  .settings { right: 12px; bottom: calc(100% + 12px); width: calc(100% - 24px) }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }

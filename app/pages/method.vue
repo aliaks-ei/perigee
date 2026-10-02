@@ -298,11 +298,19 @@ useHead({
       receive atmospheric attenuation without point-star twinkling.
     </p>
     <p>
-      Stars share a normalized optical point profile and a continuous point-to-disc
-      flux budget. Extreme brightness ratios are deliberately compressed for display.
+      Catalogue stars use normalized compact cores, with faint optical wings around
+      brighter sources. Pixel-area integration keeps their light stable as resolution changes.
+      Selected stellar objects retain a continuous point-to-disc flux budget.
+      Extreme brightness ratios are deliberately compressed for display.
       One AgX transform follows linear-light composition; photographic landscapes
       receive no extra object-coloured wash. These exposure choices do not reproduce
       unaided-eye visibility or physically illuminate the photographed ground.
+    </p>
+    <p>
+      Occasional meteors are illustrative atmospheric events. Most are brief, narrow
+      streaks; rare brighter events leave a fading train. Their paths stay fixed in the
+      sky while you look around. Timing, brightness and train drift are authored,
+      not a meteor-shower forecast. Landscape artwork also contains static stars.
     </p>
     <p>
       Sky survey: <a href="https://alasky.cds.unistra.fr/ancillary/GaiaDR3/G-flux-map/properties" rel="noopener">T. Boch / CDS, CNRS / Université de Strasbourg, ESA / Gaia / DPAC</a>.

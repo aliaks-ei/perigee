@@ -10,7 +10,7 @@ vi.mock('../src/perigee/scenes/createEnvironmentLayer', () => ({
   createEnvironmentLayer: () => ({ mesh: new Group(), setReducedMotion() {}, dispose() {}, update() {} }),
 }))
 vi.mock('../src/perigee/scenes/createMeteorLayer', () => ({
-  createMeteorLayer: () => ({ mesh: new Group(), setReducedMotion() {}, dispose() {}, update() {} }),
+  createMeteorLayer: () => ({ mesh: new Group(), setReducedMotion() {}, setPaused() {}, setObserver() {}, dispose() {}, update() {} }),
 }))
 const drain = async () => { for (let i = 0; i < 12; i++) await Promise.resolve() }
 afterEach(() => vi.unstubAllGlobals())
