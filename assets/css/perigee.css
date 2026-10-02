@@ -399,9 +399,9 @@
     visibility var(--speed-base) ease;
 }
 
+/* Soften busy copy without moving the title or its actions. */
 .object-identity.transitioning {
   opacity: 0.55;
-  transform: translateY(5px);
 }
 
 .perigee-shell.browser-open .object-identity {

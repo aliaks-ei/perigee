@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { Group, Mesh, PerspectiveCamera, Scene, ShaderMaterial, Texture, Vector3 } from 'three'
+import { Group, Mesh, PerspectiveCamera, Scene, ShaderMaterial, Texture, Vector3, LinearSRGBColorSpace, SRGBColorSpace } from 'three'
 import type { SkyObjectId, ViewpointId } from '../app/types/perigee'
 import { PerigeeScene } from '../src/perigee/PerigeeScene'
 import { compileScene } from '../src/perigee/compileScene'
@@ -221,7 +221,7 @@ describe('transactional scene selection', () => {
     await engine.setObject(direction === 'arriving' ? 'moon' : 'saturn', 'real', true)
     const transition = engine.setObject(direction === 'arriving' ? 'saturn' : 'moon', 'real')
     await drain()
-    holdFade(engine, .3)
+    holdFade(engine, direction === 'arriving' ? .65 : .15)
     const saturn = scene.getObjectByName('hero-saturn')!
     const body = saturn.children[0] as Mesh<never, ShaderMaterial>
     // Baked ring occlusion must not get a second, separately fading ring mesh.
@@ -243,7 +243,7 @@ describe('transactional scene selection', () => {
     await engine.setObject(direction === 'arriving' ? 'moon' : 'saturn', 'real', true)
     const transition = engine.setObject(direction === 'arriving' ? 'saturn' : 'moon', 'real')
     await drain()
-    holdFade(engine, .3)
+    holdFade(engine, direction === 'arriving' ? .65 : .15)
     const saturn = scene.getObjectByName('hero-saturn')!
     const ring = saturn.getObjectByName('equatorial-rings') as Mesh<never, ShaderMaterial>
     const materials: ShaderMaterial[] = []
@@ -259,6 +259,69 @@ describe('transactional scene selection', () => {
     expect(ring.renderOrder).toBe(12)
     objectDirector(engine).finish()
     await transition
+    engine.dispose()
+  })
+
+  it('warms settled and fading shaders in the compositor color space before departure', async () => {
+    const { engine, scene, compileAsync } = harness()
+    await engine.setObject('moon', 'real', true)
+    const outgoing = scene.getObjectByName('hero-moon')!
+    const renderer = Reflect.get(engine, 'renderer')
+    renderer.outputColorSpace = SRGBColorSpace
+    const states: { opacity: number, colorSpace: string }[] = []
+    compileAsync.mockImplementation(async (_renderer, object) => {
+      states.push({ opacity: Number(object.userData.opacity ?? 1), colorSpace: renderer.outputColorSpace })
+      expect(outgoing.visible).toBe(true)
+      expect(outgoing.userData.opacity).toBe(1)
+    })
+    const transition = engine.setObject('mars', 'real')
+    await drain()
+    expect(states).toEqual([
+      { opacity: 1, colorSpace: LinearSRGBColorSpace },
+      { opacity: 0, colorSpace: LinearSRGBColorSpace },
+    ])
+    expect(renderer.outputColorSpace).toBe(SRGBColorSpace)
+    objectDirector(engine).finish()
+    await transition
+    engine.dispose()
+  })
+
+  it('keeps the current object complete if preparing the fade shader fails', async () => {
+    const { engine, scene, compileAsync } = harness()
+    await engine.setObject('moon', 'real', true)
+    const outgoing = scene.getObjectByName('hero-moon')!
+    compileAsync.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('fade compile failed'))
+    await expect(engine.setObject('mars', 'real')).rejects.toThrow('fade compile failed')
+    expect(scene.children).toEqual([outgoing])
+    expect(outgoing.visible).toBe(true)
+    expect(outgoing.userData.opacity).toBe(1)
+    expect(engine.getSelection().objectId).toBe('moon')
+    engine.dispose()
+  })
+
+  it.each<[SkyObjectId, SkyObjectId]>([
+    ['moon', 'mars'], ['saturn', 'jupiter'], ['jupiter', 'saturn'],
+    ['andromeda', 'rigel'], ['sirius', 'moon'],
+  ])('never lets %s and %s depth-occlude one another during a dissolve', async (first, second) => {
+    const { engine, scene } = harness()
+    await engine.setObject(first, 'real', true)
+    const outgoing = scene.getObjectByName(`hero-${first}`)!
+    const transition = engine.setObject(second, 'real')
+    await drain()
+    const incoming = scene.getObjectByName(`hero-${second}`)!
+    holdFade(engine, .15)
+    expect(outgoing.visible).toBe(true)
+    expect(outgoing.userData.opacity).toBeGreaterThan(0)
+    expect(incoming.visible).toBe(false)
+    holdFade(engine, .65)
+    expect(outgoing.visible).toBe(false)
+    expect(incoming.visible).toBe(true)
+    expect(incoming.userData.opacity).toBeGreaterThan(0)
+    objectDirector(engine).finish()
+    await transition
+    expect(incoming.visible).toBe(true)
+    expect(incoming.userData.opacity).toBe(1)
+    expect(outgoing.userData.disposed).toBe(true)
     engine.dispose()
   })
 

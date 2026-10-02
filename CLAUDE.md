@@ -55,9 +55,13 @@ Rendering is a hybrid and the switch is inverted on purpose:
   replacement preserves the rendered state. Object opacity, distance and viewpoint movement have
   separate directors so distance input cannot strand an object fade. Object preparation is transactional
   through texture loading and shader compilation. Rapid object selections prepare the newest request
-  while the visible two-object fade completes; superseded preparations are cancelled, and duplicate
+  while the visible dissolve completes; superseded preparations are cancelled, and duplicate
   selections reuse pending work or the visible hero. Catalogue orientation follows the object fade,
-  retaining its blend during viewpoint/viewport placement updates. `compileScene.ts` preserves Three r185's asynchronous
+  retaining its blend during viewpoint/viewport placement updates. Swaps hold the complete outgoing hero
+  until preparation finishes, then dissolve through the sky; only one hero is visible at a time so
+  depth-writing globes cannot occlude one another. Settled/fade shaders are warmed in the composer's
+  linear color space. Slow selections use the identity's reserved metadata row for status.
+  `compileScene.ts` preserves Three r185's asynchronous
   readiness checks with cancellation and captured program references; revisit it when upgrading Three.
 - `QualityManager.ts` is the authoritative mutable policy. Device hints choose an initial tier,
   then valid GPU queries (or explicitly labeled frame pacing) drive hysteretic adaptation with
