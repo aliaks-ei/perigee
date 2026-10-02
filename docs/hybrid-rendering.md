@@ -157,12 +157,16 @@ as approved replacements through code reuse alone.
 - Jupiter has placement → fixed pole → local spin → oblate surface/detail children.
   Saturn review rings are siblings of the spin frame under the pole. Physical radius
   and existing distance/framing math are unchanged.
-- `jupiterReference` documents the authored light and initial longitude. Shot pitch
+- `jupiterReference` records the historical portrait light and initial longitude. Shot pitch
   and roll orient the local +Y pole; they are not astronomical coordinates. The
   reference phase puts the observed Great Red Spot in view. Review quarter turns
   are offsets from that authored phase, not measured ephemeris longitudes.
-- Lighting is transformed from scene space into view/body space. Turning the
-  surface does not rotate the Sun. Jupiter uses the linear HDR path and a single
+- All five reflected-light globes use the shared authored world-space Sun
+  `normalize([-.65, .2, 1])`, independent of object and viewpoint selection.
+  Historical per-object reference directions are retained as portrait provenance.
+  Lighting is transformed into view/body/ring space; turning the surface does
+  not rotate the Sun. Material responses, terrain/ring shadows and earthshine
+  remain body-specific. Jupiter uses the linear HDR path and a single
   final AgX transform. Portraits still composite after AgX in live and saved views.
 - `CelestialClock` integrates active time with independent spin/evolution rates.
   Pause, reduced motion and nested export freezes discard inactive intervals.
