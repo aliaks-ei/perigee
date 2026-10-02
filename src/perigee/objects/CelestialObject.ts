@@ -80,7 +80,7 @@ export interface CelestialObject {
 type ObjectParts = Pick<CelestialObject, 'group' | 'surface' | 'planet' | 'stellar' | 'galaxy' | 'glare' | 'glareSet' | 'point' | 'pointSet' | 'animated'>
 
 /** Portrait adapter preserves child order, layer, uniforms and scale exactly. */
-export function celestialObject(parts: ObjectParts, frames?: { pole: Group, spin: Group, rotation: RotationModel, sunDirection?: Vector3,
+export function celestialObject(parts: ObjectParts, frames?: { pole: Group, spin: Group, rotation: RotationModel,
   rings?: { mesh: Mesh, material: RingMaterialSet } }): CelestialObject {
   const sunView = new Vector3()
   const sunBody = new Vector3()
@@ -103,18 +103,16 @@ export function celestialObject(parts: ObjectParts, frames?: { pole: Group, spin
     setOpacity(opacity) { setObjectOpacity(parts.group, opacity) },
     setLighting(camera, sun, distanceKm) {
       if (!parts.planet) return
-      // A fixed-source review may retain its illumination while outgoing during
-      // a swap. Other approved objects retain their existing scene-light policy.
-      const light = frames?.sunDirection ?? sun
-      sunView.copy(light).transformDirection(camera.matrixWorldInverse)
+      // Surfaces, terrain, atmospheres and rings all follow the scene's Sun.
+      sunView.copy(sun).transformDirection(camera.matrixWorldInverse)
       parts.surface.getWorldQuaternion(orientation)
-      sunBody.copy(light).applyQuaternion(orientation.invert())
+      sunBody.copy(sun).applyQuaternion(orientation.invert())
       parts.planet.setSunDirection(sunView, sunBody)
       observer.copy(camera.position).sub(parts.group.position).normalize()
-      parts.planet.setDistance(distanceKm, light.dot(observer))
+      parts.planet.setDistance(distanceKm, sun.dot(observer))
       if (frames?.rings) {
         frames.rings.mesh.getWorldQuaternion(orientation)
-        sunBody.copy(light).applyQuaternion(orientation.invert())
+        sunBody.copy(sun).applyQuaternion(orientation.invert())
         frames.rings.material.setSunDirection(sunBody, sunView)
       }
     },

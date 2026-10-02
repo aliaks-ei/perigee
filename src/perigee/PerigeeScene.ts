@@ -2,7 +2,7 @@ import { CelestialClock } from './motion/CelestialClock'
 import { rotationSpeeds } from '../../app/data/objectMotion'
 import { createCelestialObject } from './objects/createCelestialObject'
 import { disposeObject, setObjectOpacity, type CelestialObject } from './objects/CelestialObject'
-import { jupiterReference, saturnReference, marsReference, neptuneReference, moonReference, rendererFor, type RenderingReview } from './objects/renderingPolicy'
+import { rendererFor, type RenderingReview } from './objects/renderingPolicy'
 import { renderStill } from './capture/StillRenderer'
 import { automaticCaptureSizes, captureWithFallbacks, throwIfAborted, waitForExportDetail } from './capture/exportPlan'
 import { type PlanetTiles } from './planet/PlanetTiles'
@@ -210,7 +210,8 @@ export class PerigeeScene implements PerigeeController {
   private pendingSelection: { objectId: SkyObjectId, presetId: string, generation: number, promise: Promise<void>, abort: AbortController } | null = null
   private readonly director = new ShotDirector()
   private readonly frameListeners = new Set<() => void>()
-  private readonly sunWorld = new Vector3(0, 0, 1)
+  /** Shared authored illumination, fixed in world space; not an ephemeris. */
+  private readonly sunWorld = new Vector3(-.65, .2, 1).normalize()
   private readonly scratchVector = new Vector3()
   private readonly scratchVector2 = new Vector3()
 
@@ -1103,12 +1104,6 @@ export class PerigeeScene implements PerigeeController {
     this.sky.setPalette(shot.skyPalette)
     this.sky.setTarget(definition.id, this.hero?.position ?? this.heroPositionFor(this.currentViewpointId), skyProgress)
 
-    const light = this.heroPlanet && definition.id === 'moon' ? moonReference.sunDirection
-      : this.heroPlanet && definition.id === 'jupiter' ? jupiterReference.sunDirection
-        : this.heroPlanet && definition.id === 'saturn' ? saturnReference.sunDirection
-          : this.heroPlanet && definition.id === 'mars' ? marsReference.sunDirection
-            : this.heroPlanet && definition.id === 'neptune' ? neptuneReference.sunDirection : shot.sunDirection
-    this.sunWorld.set(light[0], light[1], light[2]).normalize()
     const tier = this.quality.current
     if (this.bloom) this.bloom.intensity = this.bloomIntensity(tier, kind)
     if (this.bloomPass) this.bloomPass.enabled = tier !== 'safe' && emissive

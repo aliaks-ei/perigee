@@ -1,4 +1,4 @@
-import { Color, Group, Mesh, RepeatWrapping, RingGeometry, Vector3 } from 'three'
+import { Color, Group, Mesh, RepeatWrapping, RingGeometry } from 'three'
 import type { PlaneGeometry, SphereGeometry } from 'three'
 import type { QualityTier, SkyObjectDefinition } from '../../../app/types/perigee'
 import { objectMotion } from '../../../app/data/objectMotion'
@@ -401,7 +401,7 @@ export async function createCelestialObject(definition: SkyObjectDefinition, con
         + (context.review.moon === 'globe-pilot' ? context.review.longitudeDegrees ?? 0 : 0) * Math.PI / 180 }
     return celestialObject({ group, surface, planet, stellar: null, galaxy: null,
       glare: null, glareSet: null, point: null, pointSet: null, animated: [],
-    }, { pole, spin, rotation, sunDirection: new Vector3(...moonReference.sunDirection).normalize() })
+    }, { pole, spin, rotation })
   }
 
   if (definition.id === 'mars' && definition.texture && definition.normalMap) {
