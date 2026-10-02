@@ -13,6 +13,7 @@ import {
   Color,
   Group,
   HalfFloatType,
+  LinearSRGBColorSpace,
   Mesh,
   NoToneMapping,
   Object3D,
@@ -190,7 +191,7 @@ export class PerigeeScene implements PerigeeController {
   private distanceGeneration = 0
   private readonly outgoing = new Set<Group>()
   private readonly objectDirector = new ShotDirector()
-  /** Includes retirement of the outgoing hero, so queued swaps never cut a visible fade. */
+  /** Includes retirement of the outgoing hero, so queued swaps never cut a visible dissolve. */
   private objectTransition: Promise<void> | null = null
   private readonly viewpointDirector = new ShotDirector()
   private bloom: BloomEffect | null = null
@@ -330,6 +331,15 @@ export class PerigeeScene implements PerigeeController {
     if (this.disposed || !this.renderer) return
     await this.compile(this.sky.scene)
     if (this.disposed) return
+    // The first hero also needs its departure shader ready. Warm it while
+    // the entry screen is still up, before the frame loop can show this state.
+    const firstHero = this.hero
+    if (firstHero) {
+      setObjectOpacity(firstHero, 0)
+      try { await this.compile(firstHero) }
+      finally { if (!this.disposed) setObjectOpacity(firstHero, 1) }
+    }
+    if (this.disposed) return
     report(1)
 
     this.initialized = true
@@ -378,11 +388,19 @@ export class PerigeeScene implements PerigeeController {
     const stale = (): boolean => this.disposed || this.contextLost || pending.generation !== this.generation
     if (stale()) { disposeObject(nextHero); return }
     try {
-      if (!immediate) await this.compile(nextHero, pending.abort.signal)
+      if (!immediate) {
+        // Compile both the settled and transparent states before changing the
+        // visible sky. Three uses a different program for an opaque material.
+        await this.compile(nextHero, pending.abort.signal)
+        if (!stale()) {
+          built.setOpacity(0)
+          await this.compile(nextHero, pending.abort.signal)
+        }
+      }
     } catch (error) { disposeObject(nextHero); if (!stale()) throw error; return }
     if (stale()) { disposeObject(nextHero); return }
     // Prepare concurrently, but show only the latest request once the current
-    // two-hero blend lands. Cancellation releases a waiting hero immediately.
+    // dissolve lands. Cancellation releases a waiting hero immediately.
     if (immediate) this.objectDirector.finish()
     await this.waitForObjectTransition(pending.abort.signal)
     if (stale()) { disposeObject(nextHero); return }
@@ -445,24 +463,34 @@ export class PerigeeScene implements PerigeeController {
       if (!this.disposed && this.hero === nextHero) this.applyGlow(definition, 1)
     }
     if (!immediate) {
-      const duration = this.reducedMotion || this.paused ? 0 : 1.1
+      const animated = !this.reducedMotion && !this.paused
+      const departure = previous && animated ? .35 : 0
+      const arrival = animated ? .65 : 0
+      // Both globes occupy the same depth, and their bases must write depth
+      // to occlude their own terrain/rings. Never draw them simultaneously:
+      // an alpha-zero globe still writes depth and can erase the other one.
+      nextHero.visible = !previous || departure === 0
       const transition = this.objectDirector.replace((timeline) => {
+        if (previous) {
+          const opacity = { value: Number(previous.userData.opacity ?? 1) }
+          timeline.to(opacity, { value: 0, duration: departure, onUpdate: () => {
+            this.invalidate()
+            setObjectOpacity(previous, opacity.value)
+            setGlareOpacity(previousGlare, opacity.value)
+          }, onComplete: () => {
+            previous.visible = false
+            nextHero.visible = true
+            this.invalidate()
+          } }, 0)
+        }
         const opacity = { value: 0 }
-        timeline.to(opacity, { value: 1, duration, onUpdate: () => {
+        timeline.to(opacity, { value: 1, duration: arrival, onUpdate: () => {
           this.invalidate()
           built.setOpacity(opacity.value)
           setGlareOpacity(built.glare, opacity.value)
           this.sky.setTarget(definition.id, nextHero.position, opacity.value)
           this.applyGlow(definition, opacity.value ** 3)
-        } }, 0)
-        if (previous) {
-          const opacity = { value: Number(previous.userData.opacity ?? 1) }
-          timeline.to(opacity, { value: 0, duration: duration * 0.7, onUpdate: () => {
-            this.invalidate()
-            setObjectOpacity(previous, opacity.value)
-            setGlareOpacity(previousGlare, opacity.value)
-          } }, 0)
-        }
+        } }, departure)
       }).then(retirePrevious).finally(() => {
         if (this.objectTransition === transition) this.objectTransition = null
       })
@@ -983,7 +1011,16 @@ export class PerigeeScene implements PerigeeController {
     requestSignal?.addEventListener('abort', cancel, { once: true })
     if (lifecycleSignal.aborted || requestSignal?.aborted) cancel()
     const signal = abort.signal
-    const pending = Promise.resolve().then(() => compileScene(renderer, object, this.camera, this.sky.scene, signal)).finally(() => {
+    const pending = Promise.resolve().then(() => {
+      // Heroes render into the composer's linear working buffer. Compiling
+      // against the screen's sRGB output would warm a different program and
+      // leave the first visible frame doing the real compilation.
+      const outputColorSpace = renderer.outputColorSpace
+      try {
+        renderer.outputColorSpace = LinearSRGBColorSpace
+        return compileScene(renderer, object, this.camera, this.sky.scene, signal)
+      } finally { renderer.outputColorSpace = outputColorSpace }
+    }).finally(() => {
       lifecycleSignal.removeEventListener('abort', cancel)
       requestSignal?.removeEventListener('abort', cancel)
     })

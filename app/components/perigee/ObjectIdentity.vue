@@ -19,12 +19,22 @@ const {
   angularDiameter,
   hazardCopy,
   busy,
+  pendingObjectId,
   freeDiscovery,
   discoveryOpen,
   revealed,
   openDiscovery,
   selectObject,
 } = usePerigee()
+
+// Use the reserved metadata row so a slow switch is clear without covering
+// the sky or shifting the object name and actions.
+const switching = ref(false)
+watch(pendingObjectId, (id, _previous, onCleanup) => {
+  if (!id) { switching.value = false; return }
+  const timer = setTimeout(() => { switching.value = true }, 250)
+  onCleanup(() => clearTimeout(timer))
+})
 
 /** The question the note answers, so the link reads as a thought, not a menu. */
 const discoveryPrompt = computed(() => freeDiscovery.value?.prompt ?? 'About this view')
@@ -58,8 +68,11 @@ async function open(): Promise<void> {
     <h1 class="font-display">{{ currentObject.label }}</h1>
 
     <div class="identity-metadata-slot">
-      <Transition name="hint">
-        <p v-if="revealed('orient')" class="object-metadata text-shadow flex items-center gap-3">
+      <Transition name="hint" mode="out-in">
+        <p v-if="switching" key="switching" class="object-metadata text-shadow" role="status">
+          Bringing {{ currentObject.label }} into view…
+        </p>
+        <p v-else-if="revealed('orient')" key="metadata" class="object-metadata text-shadow flex items-center gap-3">
           <span class="metadata-lead shrink-0">{{ formatAngularDiameter(angularDiameter) }}</span>
           <span aria-hidden="true" class="metadata-rule metadata-lead-rule shrink-0" />
           <span class="metadata-preset shrink-0">{{ currentPreset.label }}</span>
