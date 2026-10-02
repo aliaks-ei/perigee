@@ -1244,6 +1244,7 @@ export class PerigeeScene implements PerigeeController {
     const view = this.cameraRig?.view
     if (view) this.sky.setView(view.yaw, view.pitch, this.camera.fov, this.camera.aspect)
     this.camera.updateMatrixWorld()
+    this.sky.setObserver(this.camera, this.renderer?.domElement.clientHeight || window.innerHeight)
     this.sky.update(elapsed)
 
     if (this.hero) {

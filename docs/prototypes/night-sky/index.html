@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Night sky studies — Perigee</title>
+</head>
+<body>
+  <main id="stage">
+    <canvas id="sky" aria-label="Interactive catalogue sky. Drag to look around."></canvas>
+    <header>
+      <span class="wordmark">PERIGEE</span>
+      <span class="study-label">Night sky studies</span>
+      <button id="layout" aria-pressed="false">Phone frame</button>
+    </header>
+    <section class="identity" aria-labelledby="name">
+      <h1 id="name">The naked eye</h1>
+      <p id="description">Fine pinpoints. Uneven, quiet twinkle. A brief silver streak.</p>
+      <p class="hint">Drag to look around · same catalogue in every study</p>
+    </section>
+    <section class="controls" aria-label="Prototype controls">
+      <div class="directions" role="group" aria-label="Choose a rendering study">
+        <button data-study="1" aria-pressed="true">Naked eye</button>
+        <button data-study="2" aria-pressed="false">Night lens</button>
+        <button data-study="3" aria-pressed="false">Rare fireball</button>
+      </div>
+      <div class="actions">
+        <button id="replay" class="primary" disabled>Loading sky…</button>
+        <button id="baseline" aria-pressed="false">Compare current</button>
+        <button id="pause" aria-pressed="false">Pause</button>
+        <details>
+          <summary>Settings</summary>
+          <div class="settings">
+            <label>Landscape <select id="landscape"><option value="hilltop">Hilltop</option><option value="rooftop">Rooftop</option><option value="lakeside">Lakeside</option><option value="cabo-da-roca">Cabo da Roca</option></select></label>
+            <label><input id="automatic" type="checkbox" checked> Occasional meteors</label>
+            <label><input id="isolate" type="checkbox" checked> Soften stars baked into backdrop</label>
+            <p>Backdrop filtering is a review aid. Final artwork needs a star-free sky.</p>
+            <p id="behavior"></p>
+            <a href="./README.md">Implementation notes</a>
+          </div>
+        </details>
+      </div>
+      <p id="status" role="status" aria-live="polite">Loading the existing Yale / Gaia catalogue…</p>
+    </section>
+    <div id="failure" role="alert" hidden></div>
+  </main>
+  <script type="module" src="./prototype.ts"></script>
+</body>
+</html>

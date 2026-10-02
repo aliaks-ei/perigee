@@ -84,6 +84,36 @@ Noise moves one spatial unit per 900, 300 and 600 seconds respectively. This is
 explicitly time-compressed visualization, not a measured convection lifetime.
 Stars do not rotate. Reduced motion freezes source time and scintillation.
 
+## Naked-eye catalogue treatment (2026-10-02)
+
+The user selected the naked-eye study with occasional fireballs. Catalogue points
+now use a normalized two-Gaussian display kernel: compact 0.46–0.66 CSS-pixel
+cores and up to 9% of the same flux in 1.35-pixel optical wings for bright stars.
+Sprite radius varies from 3 to 7 CSS pixels. Finite square support is normalized;
+analytic pixel-area integration using an error-function approximation avoids
+subpixel brightness jumps at low DPR and scales the same way in tiled exports.
+Magnitude flux, colour proxy, atmospheric visibility, survey subtraction, catalogue
+positions and selected-target suppression are retained. Catalogue scintillation
+amplitude is 1.55 times the previous irregular model; stellar heroes retain their
+existing point profile and source appearance. These are authored display optics,
+not calibrated human eye sensitivity or measured stellar diameters.
+
+Most meteors last 0.45–0.85 seconds. An illustrative 3.5% event mix uses brighter
+0.7–1.2-second fireballs with a separately aging 2.2-second train. Each complete
+event is followed by a 30–60-second quiet gap. A growing, narrow trail follows
+near-linear travel. Each reusable ribbon is placed in sky coordinates when the
+event starts; panning and tiled capture reproject the same geometry rather than
+moving a screen-space mark. Ignition, burnout, ablation flare, subtle colour shift
+and train drift are artistic choices, not a shower forecast or atmospheric orbit.
+Reduced motion suppresses events and trains; pause freezes event age. The active
+scene clock and export transaction freeze geometry, light profile and age for all
+tiles/samples. Depth testing and render ordering preserve hero occlusion.
+
+The approved landscape plates retain their baked-in illustrated stars. No runtime
+blur or replacement artwork is introduced. Catalogue-only sky artwork remains a
+separate asset task requiring preserved landscape/horizon detail. The review-only
+prototype keeps copies of the original sky/meteor shaders for before/after comparison.
+
 ## Exposure and optical profile
 
 Catalogue magnitudes use flux = 10^(-0.4*(m-2)). Stellar hero magnitudes are
@@ -97,11 +127,11 @@ Andromeda retains resolved surface brightness, without inverse-square attenuatio
 per galaxy pixel. The diffuse G map uses a fixed 0.000025 photographic gain.
 These cross-family gains are display choices requiring manual acceptance.
 
-The optical profile is a Gaussian with sigma .65 CSS pixels, truncated at four
-sigma and normalized by its enclosed integral. Both catalogue points and hero
-billboards apply the profile exactly once. Drawing-buffer DPR changes the sampled
-footprint, not CSS-area-integrated brightness. Rasterization/AA at subpixel positions
-still needs device review. Between 2.2 and 7 CSS pixels, point and disc weights
+Stellar hero billboards retain the Gaussian with sigma .65 CSS pixels, truncated
+at four sigma and normalized by its enclosed integral. Catalogue points use the
+compact core/wing kernel described above. Both paths apply the profile exactly
+once. Drawing-buffer DPR changes the sampled footprint, not CSS-area-integrated
+brightness. Rasterization/AA still needs device review. Between 2.2 and 7 CSS pixels, point and disc weights
 sum to one and use the same flux budget. The deliberately enhanced photospheric modulation and
 point-only scintillation mean instantaneous rendered flux is approximate.
 No independent glare quad or object-coloured ground/sky wash adds light. Bloom
@@ -253,3 +283,24 @@ subpixel positions per drawing-buffer pixel. Flux remains normalized in CSS unit
 the footprint follows native/adaptive DPR. This reduces single-pixel brightness
 changes during movement without enlarging or inventing catalogue stars. Numerical
 flux checks include subpixel phases and DPR 0.75–3; browser appearance remains pending.
+
+## Naked-eye integration verification (2026-10-02)
+
+`NUXT_IGNORE_LOCK=1 npm run verify` passed: strict typecheck, 61 test files /
+333 tests, and production build. Catalogue regression tests integrate the optical
+flux at five magnitudes, six DPR values and four pixel phases. Meteor tests cover
+world anchoring through camera pan/export view offsets, pause, reduced motion,
+ordinary-event duration, rare-event mix and quiet gaps after the complete train.
+The original review prototype still passes its own strict typecheck and Vite build.
+Static generation also passed, with 37 prerendered routes. The integrated static
+build was inspected at 1280 × 720 and 390 × 844 in desktop Chromium, with no
+captured shader/runtime warnings or errors. The scene and capture preview rendered,
+and Save Image displayed its saved feedback. Browser download tooling timed out,
+so the actual high-resolution downloaded PNG and its visual parity remain
+unverified. No integrated rare-fireball recording was obtained. Physical-phone,
+native Safari, other-GPU, FPS and thermal acceptance remain unverified.
+
+Review images are saved in `docs/prototypes/night-sky/integrated-review.jpg` and
+`integrated-mobile-layout.jpg`. The narrow viewport is mobile-layout evidence
+from desktop Chromium, not physical-device acceptance. The approved landscape
+artwork is retained, including its baked stars.

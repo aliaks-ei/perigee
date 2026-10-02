@@ -3,15 +3,13 @@ import {
   DataUtils, Group, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, Mesh,
   Points, Quaternion, RedFormat, RepeatWrapping, Scene, ShaderMaterial, SphereGeometry, Vector3,
 } from 'three'
-import type { PerspectiveCamera } from 'three'
 import type { QualityTier, SkyObjectId, ViewpointId } from '../../../app/types/perigee'
-import { createEnvironmentLayer } from './createEnvironmentLayer'
-import { createMeteorLayer } from './createMeteorLayer'
-import { colorForIndex, exposedCatalogueFlux, loadStarCatalogue, parseGaiaCatalogue, type CatalogueStar } from './starCatalogue'
-import { equatorialDirection, referenceSkyRotation, targetCoordinates } from '../math/skyCoordinates'
-import { SKY_PHOTOMETRY_GLSL, skyConditions } from '../math/skyPhotometry'
-import { CATALOGUE_OPTICS_GLSL } from '../math/catalogueOptics'
-import manifest from './skyManifest.json'
+import { createEnvironmentLayer } from '../../../src/perigee/scenes/createEnvironmentLayer'
+import { createMeteorLayer } from './baselineMeteorLayer'
+import { colorForIndex, exposedCatalogueFlux, loadStarCatalogue, parseGaiaCatalogue, type CatalogueStar } from '../../../src/perigee/scenes/starCatalogue'
+import { equatorialDirection, referenceSkyRotation, targetCoordinates } from '../../../src/perigee/math/skyCoordinates'
+import { PSF_SIGMA_CSS, PSF_ENCLOSED, SKY_PHOTOMETRY_GLSL, skyConditions } from '../../../src/perigee/math/skyPhotometry'
+import manifest from '../../../src/perigee/scenes/skyManifest.json'
 
 export interface SkySceneBundle {
   scene: Scene
@@ -36,7 +34,6 @@ export interface SkySceneBundle {
   setQuality: (tier: QualityTier) => void
   setViewpoint: (viewpointId: ViewpointId, immediate?: boolean, onReady?: () => void) => Promise<void>
   setView: (yaw: number, pitch: number, verticalFovDegrees: number, viewportAspect: number) => void
-  setObserver: (camera: PerspectiveCamera, cssHeight: number) => void
   update: (time: number) => void
   dispose: () => void
 }
@@ -94,37 +91,40 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
       uniform vec3 uTarget;
       attribute float aMagnitude, aPhase;
       varying vec3 vColor;
-      varying float vTwinkle, vAltitude, vMagnitude, vHidden, vOpticalRadius;
+      varying float vTwinkle, vAltitude, vMagnitude, vHidden;
       ${SKY_PHOTOMETRY_GLSL}
-      ${CATALOGUE_OPTICS_GLSL}
       void main() {
         vec4 world = modelMatrix * vec4(position, 1.0);
         vColor = color;
         vAltitude = normalize(world.xyz).y;
         vMagnitude = aMagnitude;
-        vTwinkle = 1.0+1.55*(scintillation(uTime, aPhase, vAltitude)-1.0);
+        vTwinkle = scintillation(uTime, aPhase, vAltitude);
         // Selected stellar catalogue entry is replaced by the hero, never doubled.
         vHidden = uHideTarget * step(0.99999994, dot(normalize(position), uTarget));
-        vOpticalRadius = mix(3.0,7.0,catalogueBrightness(aMagnitude));
-        gl_PointSize = 2.0*vOpticalRadius*uPixelRatio;
+        gl_PointSize = ${(8 * PSF_SIGMA_CSS).toFixed(8)} * uPixelRatio;
         gl_Position = projectionMatrix * viewMatrix * world;
       }
     `,
     fragmentShader: `
       uniform float uExtinction, uLimit, uPixelRatio;
       varying vec3 vColor;
-      varying float vTwinkle, vAltitude, vMagnitude, vHidden, vOpticalRadius;
+      varying float vTwinkle, vAltitude, vMagnitude, vHidden;
       ${SKY_PHOTOMETRY_GLSL}
-      ${CATALOGUE_OPTICS_GLSL}
+      float pixelProfile(vec2 p) {
+        return exp(-8.0 * dot(p, p));
+      }
       void main() {
         vec2 point = (gl_PointCoord-.5)*2.0;
-        if (vAltitude <= 0.0 || vHidden > .5) discard;
+        float r2 = dot(point, point);
+        if (r2 > 1.0 || vAltitude <= 0.0 || vHidden > .5) discard;
         float air = opticalAirmass(vAltitude);
         float visible = 1.0-smoothstep(uLimit-1.0, uLimit+1.0, vMagnitude+uExtinction*air);
-        if (visible <= 0.0) discard;
-        // Finite, unit-integral core/wings; integrate a whole drawing-buffer
-        // pixel rather than sampling a sharper core at a handful of points.
-        float profile = cataloguePixelProfile(point*vOpticalRadius,vMagnitude,vOpticalRadius,uPixelRatio);
+        // Integrate the subpixel footprint so faint points do not jump between
+        // harsh single pixels when the camera or adaptive resolution moves.
+        float tap = .25 / (${(4 * PSF_SIGMA_CSS).toFixed(8)} * uPixelRatio);
+        float profile = (pixelProfile(point + vec2(tap,tap)) + pixelProfile(point + vec2(-tap,tap))
+          + pixelProfile(point + vec2(tap,-tap)) + pixelProfile(point - vec2(tap,tap)))
+          / ${(4*2*Math.PI*PSF_SIGMA_CSS**2*PSF_ENCLOSED).toFixed(9)};
         gl_FragColor = vec4(vColor*skyTransmission(vAltitude,uExtinction)*vTwinkle*profile, visible);
       }
     `,
@@ -239,7 +239,7 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
     setPixelRatio(value) { pointsMaterial.uniforms.uPixelRatio!.value = value },
     prefetch() { environment.prefetch() },
     finish() { environment.finish() },
-    setPaused(value) { environment.setPaused(value); meteors.setPaused(value) },
+    setPaused(value) { environment.setPaused(value) },
     setReducedMotion(value) {
       reducedMotion = value
       environment.setReducedMotion(value)
@@ -255,8 +255,7 @@ export function createSkyScene(initialQuality: QualityTier, reducedMotion = fals
         onReady?.()
       })
     },
-    setView(yaw, pitch, fov, aspect) { environment.setView(yaw, pitch, fov, aspect) },
-    setObserver(camera, cssHeight) { meteors.setObserver(camera, cssHeight) },
+    setView(yaw, pitch, fov, aspect) { environment.setView(yaw, pitch, fov, aspect); meteors.setAspect(aspect) },
     update(time) {
       pointsMaterial.uniforms.uTime!.value = reducedMotion ? 0 : time
       environment.update(time)
