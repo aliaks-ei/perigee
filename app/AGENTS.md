@@ -1,4 +1,4 @@
-Loaded when Claude reads files under `app/`. The root `CLAUDE.md` carries the commands, the
+Applies to files under `app/`. The root `AGENTS.md` carries the commands, the
 layer boundary and the cross-layer contracts.
 
 ## Styling
@@ -103,7 +103,7 @@ not into a new corner. The one control beside it is the music toggle (`SoundTogg
 a sound switch in the top corner is what every immersive site trains people to look for.
 
 The staged reveal is a first-visit experience. The highest stage reached is stored (see the root
-`CLAUDE.md` on `perigee:settings`) and restored on the next visit, so someone coming back gets the
+`AGENTS.md` on `perigee:settings`) and restored on the next visit, so someone coming back gets the
 whole interface at once. The drag hint goes with it: it is only offered to a viewer still at
 `arrive`.
 
